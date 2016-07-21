@@ -14,6 +14,7 @@
 
 #include <stdlib.h>
 
+/* XXX - temp */
 #include <stdio.h>
 
 #include "zstdmt.h"

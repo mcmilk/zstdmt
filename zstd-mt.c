@@ -23,6 +23,8 @@
 #include "zstdmt.h"
 #include "util.h"
 
+/* program for testing threaded stuff on zstd */
+
 void perror_exit(const char *msg)
 {
 	perror(msg);
