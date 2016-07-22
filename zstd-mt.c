@@ -43,7 +43,6 @@ void usage(void)
 	printf("Usage: zstd-mt [options] infile outfile\n\n");
 	printf("Otions:\n");
 	printf(" -l N    set level of compression (default: 3)\n");
-	printf(" -s N    set number of streams (default: same as threads)\n");
 	printf(" -t N    set number of threads (default: 2)\n");
 	printf(" -c      compress (default mode)\n");
 	printf(" -d      use decompress mode\n");
@@ -56,15 +55,20 @@ void usage(void)
 #define MODE_COMPRESS    1
 #define MODE_DECOMPRESS  2
 
-void do_compress(int threads, int streams, int level, int fdin, int fdout)
+void do_compress(int threads, int level, int fdin, int fdout)
 {
 	/* 1) create compression context */
-	ZSTDMT_CCtx *ctx = ZSTDMT_createCCtx(threads, streams, level);
+	ZSTDMT_CCtx *ctx = ZSTDMT_createCCtx(threads, level);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 2) get pointer for input buffer, this is constant */
 	void *inbuf = ZSTDMT_GetInBufferCCtx(ctx);
+	printf("ctx->buffer_in @ main = %p\n", ctx->buffer_in);
+	for (int t=0; t<threads; t++) {
+		printf("ctx->outbuf[%d] = %p\n", t, ctx->outbuf[t]);
+	}
+
 	void *outbuf;
 
 	/* 3) get optimal size for the input data */
@@ -77,8 +81,10 @@ void do_compress(int threads, int streams, int level, int fdin, int fdout)
 		if (ret == 0)
 			break;
 
-		/* 5) run threaded then the compression */
+		/* 5) start threaded compression */
+		printf("ZSTDMT_CompressCCtx()\n");
 		ZSTDMT_CompressCCtx(ctx, ret);
+		printf("ZSTDMT_CompressCCtx() 22\n");
 
 		for (t = 0; t < threads; t++) {
 			size_t len;
@@ -92,6 +98,8 @@ void do_compress(int threads, int streams, int level, int fdin, int fdout)
 			ret = write_loop(fdout, outbuf, len);
 		}
 	}
+
+	printf("insize=%zu outsize=%zu frames=%zu\n", ctx->insize, ctx->outsize, ctx->frames);
 }
 
 void do_decompress(int threads, int fdin, int fdout)
@@ -104,7 +112,7 @@ void do_decompress(int threads, int fdin, int fdout)
 int main(int argc, char **argv)
 {
 	/* default options: */
-	int opt, opt_threads = 2, opt_level = 3, opt_streams = 0;
+	int opt, opt_threads = 2, opt_level = 3;
 	int opt_mode = MODE_COMPRESS, fdin, fdout;
 
 	while ((opt = getopt(argc, argv, "vhl:t:dc")) != -1) {
@@ -115,9 +123,6 @@ int main(int argc, char **argv)
 			usage();
 		case 'l':	/* level */
 			opt_level = atoi(optarg);
-			break;
-		case 's':	/* streams */
-			opt_streams = atoi(optarg);
 			break;
 		case 't':	/* threads */
 			opt_threads = atoi(optarg);
@@ -153,12 +158,6 @@ int main(int argc, char **argv)
 	else if (opt_threads > ZSTDMT_THREADMAX)
 		opt_threads = ZSTDMT_THREADMAX;
 
-	/* opt_streams */
-	if (opt_streams <= 0)
-		opt_streams = opt_threads;
-	else if (opt_threads > ZSTDMT_THREADMAX)
-		opt_streams = ZSTDMT_THREADMAX;
-
 	/* file names */
 	fdin = open_read(argv[optind]);
 	if (fdin == -1)
@@ -169,7 +168,7 @@ int main(int argc, char **argv)
 		perror_exit("Opening outfile failed");
 
 	if (opt_mode == MODE_COMPRESS) {
-		do_compress(opt_threads, opt_streams, opt_level, fdin, fdout);
+		do_compress(opt_threads, opt_level, fdin, fdout);
 	} else {
 		do_decompress(opt_threads, fdin, fdout);
 	}
