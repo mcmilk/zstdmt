@@ -44,6 +44,7 @@ void usage(void)
 	printf("Otions:\n");
 	printf(" -l N    set level of compression (default: 3)\n");
 	printf(" -t N    set number of threads (default: 2)\n");
+	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -c      compress (default mode)\n");
 	printf(" -d      use decompress mode\n");
 	printf(" -h      show usage\n");
@@ -55,6 +56,9 @@ void usage(void)
 #define MODE_COMPRESS    1
 #define MODE_DECOMPRESS  2
 
+/* for the -i option */
+#define MAX_ITERATIONS   60000
+
 void do_compress(int threads, int level, int fdin, int fdout)
 {
 	/* 1) create compression context */
@@ -64,12 +68,8 @@ void do_compress(int threads, int level, int fdin, int fdout)
 
 	/* 2) get pointer for input buffer, this is constant */
 	void *inbuf = ZSTDMT_GetInBufferCCtx(ctx);
-	printf("ctx->buffer_in @ main = %p\n", ctx->buffer_in);
-	for (int t=0; t<threads; t++) {
-		printf("ctx->outbuf[%d] = %p\n", t, ctx->outbuf[t]);
-	}
-
-	void *outbuf;
+	if (!inbuf)
+		perror_exit("Input buffer has Zero Size?!");
 
 	/* 3) get optimal size for the input data */
 	int insize = ZSTDMT_GetInSizeCCtx(ctx);
@@ -82,24 +82,31 @@ void do_compress(int threads, int level, int fdin, int fdout)
 			break;
 
 		/* 5) start threaded compression */
-		printf("ZSTDMT_CompressCCtx()\n");
 		ZSTDMT_CompressCCtx(ctx, ret);
-		printf("ZSTDMT_CompressCCtx() 22\n");
 
 		for (t = 0; t < threads; t++) {
+			void *outbuf;
 			size_t len;
-			/* 6) read the compressed data and write them
+
+			/**
+			 * 6) read the compressed data and write them
 			 * -> the order is important here!
 			 */
 			outbuf = ZSTDMT_GetCompressedCCtx(ctx, t, &len);
 			if (len == 0)
 				break;
+
 			/* write data */
 			ret = write_loop(fdout, outbuf, len);
 		}
 	}
 
-	printf("insize=%zu outsize=%zu frames=%zu\n", ctx->insize, ctx->outsize, ctx->frames);
+	printf("insize=%zu outsize=%zu frames=%zu\n",
+	       ZSTDMT_GetCurrentInsizeCCtx(ctx),
+	       ZSTDMT_GetCurrentOutsizeCCtx(ctx),
+	       ZSTDMT_GetCurrentFrameCCtx(ctx));
+
+	ZSTDMT_freeCCtx(ctx);
 }
 
 void do_decompress(int threads, int fdin, int fdout)
@@ -107,6 +114,43 @@ void do_decompress(int threads, int fdin, int fdout)
 	ZSTDMT_DCtx *ctx = ZSTDMT_createDCtx(threads);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
+
+	/* 2) get pointer for input buffer, this is constant */
+	void *inbuf = ZSTDMT_GetInBufferDCtx(ctx);
+	if (!inbuf)
+		perror_exit("Input buffer has Zero Size?!");
+
+	/* 3) get optimal size for the input data */
+	int insize = ZSTDMT_GetInSizeDCtx(ctx);
+	int t;
+
+	for (;;) {
+		/* 4) read input */
+		ssize_t ret = read_loop(fdin, inbuf, insize);
+		if (ret == 0)
+			break;
+
+		/* 5) start threaded compression */
+		ZSTDMT_DecompressDCtx(ctx, ret);
+
+		for (t = 0; t < threads; t++) {
+			size_t len;
+			void *outbuf;
+
+			/**
+			 * 6) read the compressed data and write them
+			 * -> the order is important here!
+			 */
+			outbuf = ZSTDMT_GetDecompressedDCtx(ctx, t, &len);
+			if (len == 0)
+				break;
+
+			/* write data */
+			ret = write_loop(fdout, outbuf, len);
+		}
+	}
+
+	ZSTDMT_freeDCtx(ctx);
 }
 
 int main(int argc, char **argv)
@@ -114,8 +158,9 @@ int main(int argc, char **argv)
 	/* default options: */
 	int opt, opt_threads = 2, opt_level = 3;
 	int opt_mode = MODE_COMPRESS, fdin, fdout;
+	int opt_iterations = 1;
 
-	while ((opt = getopt(argc, argv, "vhl:t:dc")) != -1) {
+	while ((opt = getopt(argc, argv, "vhl:t:i:dc")) != -1) {
 		switch (opt) {
 		case 'v':	/* version */
 			version();
@@ -126,6 +171,9 @@ int main(int argc, char **argv)
 			break;
 		case 't':	/* threads */
 			opt_threads = atoi(optarg);
+			break;
+		case 'i':	/* iterations */
+			opt_iterations = atoi(optarg);
 			break;
 		case 'd':	/* mode = decompress */
 			opt_mode = MODE_DECOMPRESS;
@@ -158,6 +206,12 @@ int main(int argc, char **argv)
 	else if (opt_threads > ZSTDMT_THREADMAX)
 		opt_threads = ZSTDMT_THREADMAX;
 
+	/* opt_iterations = 1..MAX_ITERATIONS */
+	if (opt_iterations < 1)
+		opt_iterations = 1;
+	else if (opt_iterations > MAX_ITERATIONS)
+		opt_iterations = MAX_ITERATIONS;
+
 	/* file names */
 	fdin = open_read(argv[optind]);
 	if (fdin == -1)
@@ -167,10 +221,19 @@ int main(int argc, char **argv)
 	if (fdout == -1)
 		perror_exit("Opening outfile failed");
 
-	if (opt_mode == MODE_COMPRESS) {
-		do_compress(opt_threads, opt_level, fdin, fdout);
-	} else {
-		do_decompress(opt_threads, fdin, fdout);
+	for (;;) {
+		if (opt_mode == MODE_COMPRESS) {
+			do_compress(opt_threads, opt_level, fdin, fdout);
+		} else {
+			do_decompress(opt_threads, fdin, fdout);
+		}
+
+		opt_iterations--;
+		if (opt_iterations == 0)
+			break;
+
+		lseek(fdin, 0, SEEK_SET);
+		lseek(fdout, 0, SEEK_SET);
 	}
 
 	/* exit should flush stdout */

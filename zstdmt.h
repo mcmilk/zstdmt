@@ -17,17 +17,18 @@
 #include <zbuff.h>
 
 /* **************************************
-*  Thread functions
-****************************************/
+ *  Thread functions
+ ****************************************/
 
 /**
  * Format Definition
  *
  * 2 bytes format header:
  * - 2^14 bits: threads count
+ * - 2^2 bits: reserved
  *
  * 4 bytes chunk header:
- * - 2^14 bits: for thread count
+ * - 2^14 bits: for current thread id
  * - 2^18 bits: for compressed length
  */
 
@@ -35,64 +36,11 @@
 #define ZSTDMT_HDR_CHUNK  4
 #define ZSTDMT_THREADMAX  16384
 
-/* XXX - todo */
-#define ZSTDMT_STATE_NONE      1
-#define ZSTDMT_STATE_INIT      2
-#define ZSTDMT_STATE_READING   3
-#define ZSTDMT_STATE_COMPRESS  4
-#define ZSTDMT_STATE_WRITE     5
-#define ZSTDMT_STATE_FINISH    6
-
-typedef struct {
-	int threads;
-	int level;
-	int state;
-
-	/* complete buffers */
-	size_t buffer_in_len;
-	size_t buffer_out_len;
-	void *buffer_in;
-	void *buffer_out;
-	
-	/* number of frames done */
-	size_t frames;
-	size_t insize;
-	size_t outsize;
-
-	/**
-	 * arrays, fixed to thread count
-	 * - get allocated via ZSTDMT_createCCtx()
-	 */
-	ZBUFF_CCtx **cctx;
-	void **inbuf;		/* buffers for decompressed data */
-	void **outbuf;		/* buffers for compressed data */
-	size_t *inlen;		/* length of decompressed data */
-	size_t *outlen;		/* length of compressed data */
-} ZSTDMT_CCtx;
-
-typedef struct {
-	int threads;
-
-	/* complete buffers */
-	void *buffer_in;
-	void *buffer_out;
-	size_t buffer_in_len;
-	size_t buffer_out_len;
-
-	/**
-	 * arrays, fixed to thread count
-	 * - get allocated via ZSTDMT_createDCtx()
-	 */
-	ZBUFF_DCtx **dctx;
-	void **dbuf;		/* buffers for decompressed data */
-	void **cbuf;		/* buffers for compressed data */
-	size_t *dlen;		/* length of decompressed data */
-	size_t *clen;		/* length of compressed data */
-} ZSTDMT_DCtx;
-
 /* **************************************
-*  Compression
-****************************************/
+ *  Compression
+ ****************************************/
+
+typedef struct ZSTDMT_CCtx_s ZSTDMT_CCtx;
 
 /**
  * 1) allocate new cctx
@@ -108,22 +56,39 @@ void *ZSTDMT_GetInBufferCCtx(ZSTDMT_CCtx * ctx);
 size_t ZSTDMT_GetInSizeCCtx(ZSTDMT_CCtx * ctx);
 
 /* 4) compressing */
-void ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t srcsize);
+size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t srcsize);
 
-/* 5) returns pointer to compressed output buffer of stream */
-void *ZSTDMT_GetCompressedCCtx(ZSTDMT_CCtx * ctx, int stream, size_t * len);
+/* 5) returns pointer to compressed output buffer of thread */
+void *ZSTDMT_GetCompressedCCtx(ZSTDMT_CCtx * ctx, int thread, size_t * len);
+
+/* statistic */
+size_t ZSTDMT_GetCurrentFrameCCtx(ZSTDMT_CCtx * ctx);
+size_t ZSTDMT_GetCurrentInsizeCCtx(ZSTDMT_CCtx * ctx);
+size_t ZSTDMT_GetCurrentOutsizeCCtx(ZSTDMT_CCtx * ctx);
 
 /* 6) free cctx */
 void ZSTDMT_freeCCtx(ZSTDMT_CCtx * ctx);
 
 /* **************************************
-*  Decompression
-****************************************/
+ *  Decompression
+ ****************************************/
 
-/* returns new dctx or zero on error */
+typedef struct ZSTDMT_DCtx_s ZSTDMT_DCtx;
+
+/* 1) returns new dctx or zero on error */
 ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads);
 
-/* XXX - add function definitions for decompression */
+/* 2) returns pointer to input buffer, should be used for reading data */
+void *ZSTDMT_GetInBufferDCtx(ZSTDMT_DCtx * ctx);
+
+/* 3) returns the length of the input buffer */
+size_t ZSTDMT_GetInSizeDCtx(ZSTDMT_DCtx * ctx);
+
+/* 4) decompressing */
+size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, size_t srcsize);
+
+/* 5) returns pointer to decompressed output buffer of thread */
+void *ZSTDMT_GetDecompressedDCtx(ZSTDMT_DCtx * ctx, int thread, size_t * len);
 
 /* free dctx */
 void ZSTDMT_freeDCtx(ZSTDMT_DCtx * ctx);
