@@ -44,10 +44,10 @@ static void usage(void)
 	printf("Usage: zstd-mt [options] infile outfile\n\n");
 	printf("Otions:\n");
 	printf(" -l N    set level of compression (default: 3)\n");
-	printf(" -t N    set number of threads (default: 2)\n");
+	printf(" -t N    set number of compression threads (default: 2)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -c      compress (default mode)\n");
-	printf(" -d      use decompress mode\n");
+	printf(" -d      use decompress mode (threads are set to stream count!)\n");
 	printf(" -h      show usage\n");
 	printf(" -v      show version\n");
 
@@ -114,12 +114,13 @@ static void do_compress(int threads, int level, int fdin, int fdout)
 	ZSTDMT_freeCCtx(ctx);
 }
 
-static void do_decompress(int threads, int fdin, int fdout)
+static void do_decompress(int fdin, int fdout)
 {
 	unsigned char buf[4];
 	ssize_t ret;
 	size_t len, t;
 	void *outbuf;
+	unsigned int threads;
 
 	/* 1) read 2 Byte Format Header */
 	ret = read_loop(fdin, buf, 2);
@@ -127,9 +128,13 @@ static void do_decompress(int threads, int fdin, int fdout)
 		perror_exit("Reading input failed!");
 
 	/* 2) allocate ctx, give the 2 byte header for calculating the streams */
-	ZSTDMT_DCtx *ctx = ZSTDMT_createDCtx(threads, buf);
+	ZSTDMT_DCtx *ctx = ZSTDMT_createDCtx(buf);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
+	
+	threads = ZSTDMT_GetThreadsDCtx(ctx);
+	if (!threads)
+		perror_exit("Thread count?!!");
 
 	for (;;) {
 		for (t = 0; t < threads; t++) {
@@ -168,9 +173,6 @@ static void do_decompress(int threads, int fdin, int fdout)
 		ret = write_loop(fdout, outbuf, len);
 		if (ret != len)
 			perror_exit("Writing output failed!");
-
-		if (ZSTDMT_IsEndOfStreamDCtx(ctx))
-			break;
 	}
 
 	ZSTDMT_freeDCtx(ctx);
@@ -248,7 +250,7 @@ int main(int argc, char **argv)
 		if (opt_mode == MODE_COMPRESS) {
 			do_compress(opt_threads, opt_level, fdin, fdout);
 		} else {
-			do_decompress(opt_threads, fdin, fdout);
+			do_decompress(fdin, fdout);
 		}
 
 		opt_iterations--;

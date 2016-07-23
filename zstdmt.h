@@ -75,17 +75,15 @@ void ZSTDMT_freeCCtx(ZSTDMT_CCtx * ctx);
 typedef struct ZSTDMT_DCtx_s ZSTDMT_DCtx;
 
 /* 1) returns new dctx or zero on error */
-ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, unsigned char hdr[2]);
+ZSTDMT_DCtx *ZSTDMT_createDCtx(unsigned char hdr[2]);
+unsigned int ZSTDMT_GetThreadsDCtx(ZSTDMT_DCtx *ctx);
 
 /* 2) returns pointer to input buffer, should be used for reading data */
 void *ZSTDMT_GetNextBufferDCtx(ZSTDMT_DCtx * ctx, unsigned char hdr[4],
 			       int thread, size_t * len);
 
-/* 4) threaded decompression */
+/* 3) threaded decompression */
 void *ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, size_t * len);
 
-/* returns 1, if end of streams is reached @ctx */
-int ZSTDMT_IsEndOfStreamDCtx(ZSTDMT_DCtx * ctx);
-
-/* free dctx */
+/* 4) free dctx */
 void ZSTDMT_freeDCtx(ZSTDMT_DCtx * ctx);

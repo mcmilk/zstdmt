@@ -1,20 +1,20 @@
 
 CC	= gcc
 
-CFLAGS	= -pthread -O -Wall -pipe -fomit-frame-pointer
+CFLAGS	= -pthread -O3 -Wall -pipe -fomit-frame-pointer
 LDFLAGS	= -lzstd -lpthread
 
-CFLAGS += -Wno-unused-but-set-variable
-CFLAGS += -Wno-unused-variable
+#CFLAGS += -Wno-unused-but-set-variable
+#CFLAGS += -Wno-unused-variable
 
 # lib objects
 ZSTDMT	= zstdmt.o workq.o
 
 # testing stuff
 OBJ_MT   = $(ZSTDMT) util.o zstd-mt.o
-OBJS     = $(OBJ_ST) $(OBJ_MT)
+OBJS     = $(ZSTDMT) $(OBJ_MT)
 
-PRGS	= zstd-st zstd-mt
+PRGS	= zstd-mt
 
 all:	$(PRGS)
 again:	clean $(PRGS)

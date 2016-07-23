@@ -16,15 +16,26 @@
 
 #include "zstdmt.h"
 
-#define DEBUGME
+//#define DEBUGME
 
 #ifdef DEBUGME
 #include <stdio.h>
+
+void die_msg(const char *msg)
+{
+	printf("die_msg: %s\n", (char *)msg);
+	exit(0);
+}
 #endif
 
 struct ZSTDMT_CCtx_s {
-	int threads;
+
+	/**
+	 * number of threads, which are used for compressing
+	 */
 	int level;
+	int threads;
+	workq_t *tp;
 
 	/* complete buffers */
 	size_t buffer_in_len;
@@ -49,27 +60,17 @@ struct ZSTDMT_CCtx_s {
 };
 
 struct ZSTDMT_DCtx_s {
+
 	/**
-	 * number of threads, which can be used for decompressing
+	 * number of threads, which are used for decompressing
 	 */
 	int threads;
+	workq_t *tp;
 
 	/**
 	 * how much work is loaded into the input buffers
 	 */
 	int work;
-
-	/**
-	 * number of threads used when compressing
-	 * - now called streams here
-	 */
-	int streams;
-	int eof;
-
-	/* number of frames done */
-	size_t frames;
-	size_t insize;
-	size_t outsize;
 
 	/* complete buffers */
 	size_t buffer_in_len;
@@ -212,6 +213,8 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level)
 		hdr[1] = tid;
 	}
 
+	tp = workq_init(ctx->thread, 1, 4, );
+
 	return ctx;
 }
 
@@ -234,7 +237,7 @@ size_t ZSTDMT_GetInSizeCCtx(ZSTDMT_CCtx * ctx)
 
 size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t insize)
 {
-	size_t todo = insize, t, ret;
+	size_t t, ret;
 
 	if (!ctx)
 		return 0;
@@ -385,7 +388,7 @@ void ZSTDMT_freeCCtx(ZSTDMT_CCtx * ctx)
  *  Decompression
  ****************************************/
 
-ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, unsigned char hdr[2])
+ZSTDMT_DCtx *ZSTDMT_createDCtx(unsigned char hdr[2])
 {
 	ZSTDMT_DCtx *ctx;
 	int t;
@@ -395,36 +398,28 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, unsigned char hdr[2])
 		return 0;
 	}
 
-	ctx->threads = threads;
-	ctx->streams = hdr[0] + ((hdr[1] & 0x3f) << 8);
-
+	ctx->threads = hdr[0] + ((hdr[1] & 0x3f) << 8);
 	ctx->work = 0;
-	ctx->eof = 0;
 
 	/* complete buffers */
 	ctx->buffer_in_len = ZBUFF_recommendedDInSize();
 	ctx->buffer_out_len = ZBUFF_recommendedDOutSize();
-	ctx->buffer_in = malloc(ctx->buffer_in_len * threads);
+	ctx->buffer_in = malloc(ctx->buffer_in_len * ctx->threads);
 	if (!ctx->buffer_in) {
 		free(ctx);
 		return 0;
 	}
 
 	/* 2 bytes format header + 4 bytes chunk header per thread */
-	ctx->buffer_out = malloc(ctx->buffer_out_len * threads);
+	ctx->buffer_out = malloc(ctx->buffer_out_len * ctx->threads);
 	if (!ctx->buffer_out) {
 		free(ctx->buffer_in);
 		free(ctx);
 		return 0;
 	}
 
-	/* number of frames done */
-	ctx->frames = 0;
-	ctx->insize = 0;
-	ctx->outsize = 0;
-
 	/* arrays */
-	ctx->dctx = malloc(sizeof(void *) * threads);
+	ctx->dctx = malloc(sizeof(void *) * ctx->threads);
 	if (!ctx->dctx) {
 		free(ctx->buffer_out);
 		free(ctx->buffer_in);
@@ -432,7 +427,7 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, unsigned char hdr[2])
 		return 0;
 	}
 
-	ctx->inbuf = malloc(sizeof(void *) * threads);
+	ctx->inbuf = malloc(sizeof(void *) * ctx->threads);
 	if (!ctx->inbuf) {
 		free(ctx->dctx);
 		free(ctx->buffer_out);
@@ -441,7 +436,7 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, unsigned char hdr[2])
 		return 0;
 	}
 
-	ctx->outbuf = malloc(sizeof(void *) * threads);
+	ctx->outbuf = malloc(sizeof(void *) * ctx->threads);
 	if (!ctx->outbuf) {
 		free(ctx->inbuf);
 		free(ctx->dctx);
@@ -452,7 +447,7 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, unsigned char hdr[2])
 	}
 
 	/* these are dynamic */
-	ctx->inlen = (size_t *) malloc(sizeof(size_t) * threads);
+	ctx->inlen = (size_t *) malloc(sizeof(size_t) * ctx->threads);
 	if (!ctx->inlen) {
 		free(ctx->outbuf);
 		free(ctx->inbuf);
@@ -463,7 +458,7 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, unsigned char hdr[2])
 		return 0;
 	}
 
-	ctx->outlen = (size_t *) malloc(sizeof(size_t) * threads);
+	ctx->outlen = (size_t *) malloc(sizeof(size_t) * ctx->threads);
 	if (!ctx->outlen) {
 		free(ctx->inlen);
 		free(ctx->outbuf);
@@ -475,7 +470,7 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, unsigned char hdr[2])
 		return 0;
 	}
 
-	for (t = 0; t < threads; t++) {
+	for (t = 0; t < ctx->threads; t++) {
 		ctx->dctx[t] = ZBUFF_createDCtx();
 		if (!ctx->dctx[t]) {
 			free(ctx->outlen);
@@ -500,12 +495,17 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, unsigned char hdr[2])
 	 */
 	{
 		unsigned char *hdr = ctx->buffer_out;
-		unsigned int tid = threads;
+		unsigned int tid = ctx->threads;
 		hdr[0] = tid; tid >>= 8;
 		hdr[1] = tid;
 	}
 
 	return ctx;
+}
+
+unsigned int ZSTDMT_GetThreadsDCtx(ZSTDMT_DCtx *ctx)
+{
+	return ctx->threads;
 }
 
 void *ZSTDMT_GetNextBufferDCtx(ZSTDMT_DCtx * ctx, unsigned char hdr[4],
@@ -523,7 +523,7 @@ void *ZSTDMT_GetNextBufferDCtx(ZSTDMT_DCtx * ctx, unsigned char hdr[4],
 #endif
 
 	/* input failure */
-	if (tid > ctx->streams)
+	if (tid > ctx->threads)
 		return 0;
 
 	/* input failure */
@@ -541,8 +541,8 @@ void *ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, size_t * len)
 	size_t t;
 
 #ifdef DEBUGME
-		printf("*ZSTDMT_DecompressDCtx() streams=%u threads=%u work=%u\n",
-		     ctx->streams, ctx->threads, ctx->work);
+		printf("*ZSTDMT_DecompressDCtx() threads=%u work=%u\n",
+		     ctx->threads, ctx->work);
 #endif
 
 	*len = 0;
@@ -563,18 +563,13 @@ void *ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, size_t * len)
 		     t, ret, ctx->outlen[t], ctx->inlen[t]);
 #endif
 		if (ZSTD_isError(ret))
-			return 0;
+			die_msg(ZSTD_getErrorName(ret));
+			// return 0;
 
 		*len += ctx->outlen[t];
 	}
 
 	return ctx->buffer_out;
-}
-
-/* returns 1, if end of streams is reached @ctx */
-int ZSTDMT_IsEndOfStreamDCtx(ZSTDMT_DCtx * ctx)
-{
-	return ctx->eof;
 }
 
 /* free dctx */
