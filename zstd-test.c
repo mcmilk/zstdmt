@@ -118,10 +118,6 @@ static void do_decompress(int threads, int fdin, int fdout)
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
-	/* 2) get pointer for input buffer, this is constant */
-	void *inbuf = ZSTDMT_GetInBufferDCtx(ctx);
-	if (!inbuf)
-		perror_exit("Input buffer has Zero Size?!");
 
 	ZSTDMT_freeDCtx(ctx);
 }

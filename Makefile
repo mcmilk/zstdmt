@@ -7,15 +7,21 @@ LDFLAGS	= -lzstd
 CFLAGS += -Wno-unused-but-set-variable
 CFLAGS += -Wno-unused-variable
 
-SRC	= $(shell ls *.c)
-OBJS	= $(SRC:.c=.o)
-PRGS	= zstd-mt
+ZSTDMT	= zstdmt.o
+PRGS	= zstd-mt zstd-test
 
 all:	$(PRGS)
 again:	clean $(PRGS)
 
-zstd-mt: $(OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJS)
+OBJ_MT   = $(ZSTDMT) util.o zstd-mt.o
+OBJ_TEST = $(ZSTDMT) util.o zstd-test.o
+OBJS     = $(OBJ_MT) $(OBJ_TEST)
+
+zstd-mt: $(OBJ_MT)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJ_MT)
+
+zstd-test: $(OBJ_TEST)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJ_TEST)
 
 clean:
 	rm -rf $(OBJS) $(PRGS)
