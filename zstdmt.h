@@ -25,7 +25,6 @@
  *
  * 2 bytes format header:
  * - 2^14 bits: threads count
- * - 2^2 bits: reserved
  *
  * 4 bytes chunk header:
  * - 2^14 bits: for current thread id

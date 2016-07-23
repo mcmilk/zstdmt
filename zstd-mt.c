@@ -101,6 +101,8 @@ static void do_compress(int threads, int level, int fdin, int fdout)
 
 			/* write data */
 			ret = write_loop(fdout, outbuf, len);
+			if (ret != len)
+				perror_exit("Writing output failed!");
 		}
 	}
 
@@ -135,6 +137,12 @@ static void do_decompress(int threads, int fdin, int fdout)
 
 			/* 3) read chunk header */
 			ret = read_loop(fdin, buf, 4);
+			if (ret == 0) {
+				/* eof */
+				len = 0;
+				break;
+			}
+
 			if (ret != 4)
 				perror_exit("Reading input failed!");
 
@@ -148,6 +156,9 @@ static void do_decompress(int threads, int fdin, int fdout)
 			if (ret != len)
 				perror_exit("Reading input failed!");
 		}
+
+		if (len == 0)
+			break;
 
 		/* threaded decompression */
 		outbuf = ZSTDMT_DecompressDCtx(ctx, &len);
