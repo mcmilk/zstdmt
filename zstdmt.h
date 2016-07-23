@@ -34,7 +34,7 @@
 
 #define ZSTDMT_HDR_FORMAT 2
 #define ZSTDMT_HDR_CHUNK  4
-#define ZSTDMT_THREADMAX  16384
+#define ZSTDMT_THREADMAX  16384 - 1
 
 /* **************************************
  *  Compression
@@ -76,19 +76,17 @@ void ZSTDMT_freeCCtx(ZSTDMT_CCtx * ctx);
 typedef struct ZSTDMT_DCtx_s ZSTDMT_DCtx;
 
 /* 1) returns new dctx or zero on error */
-ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads);
+ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, unsigned char hdr[2]);
 
 /* 2) returns pointer to input buffer, should be used for reading data */
-void *ZSTDMT_GetInBufferDCtx(ZSTDMT_DCtx * ctx);
+void *ZSTDMT_GetNextBufferDCtx(ZSTDMT_DCtx * ctx, unsigned char hdr[4],
+			       int thread, size_t * len);
 
-/* 3) returns the length of the input buffer */
-size_t ZSTDMT_GetInSizeDCtx(ZSTDMT_DCtx * ctx);
+/* 4) threaded decompression */
+void *ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, size_t * len);
 
-/* 4) decompressing */
-size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, size_t srcsize);
-
-/* 5) returns pointer to decompressed output buffer of thread */
-void *ZSTDMT_GetDecompressedDCtx(ZSTDMT_DCtx * ctx, int thread, size_t * len);
+/* returns 1, if end of streams is reached @ctx */
+int ZSTDMT_IsEndOfStreamDCtx(ZSTDMT_DCtx * ctx);
 
 /* free dctx */
 void ZSTDMT_freeDCtx(ZSTDMT_DCtx * ctx);

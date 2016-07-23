@@ -62,19 +62,21 @@ static void usage(void)
 
 static void do_compress(int threads, int level, int fdin, int fdout)
 {
+	size_t insize, t;
+	void *inbuf;
+
 	/* 1) create compression context */
 	ZSTDMT_CCtx *ctx = ZSTDMT_createCCtx(threads, level);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 2) get pointer for input buffer, this is constant */
-	void *inbuf = ZSTDMT_GetInBufferCCtx(ctx);
+	inbuf = ZSTDMT_GetInBufferCCtx(ctx);
 	if (!inbuf)
 		perror_exit("Input buffer has Zero Size?!");
 
 	/* 3) get optimal size for the input data */
-	int insize = ZSTDMT_GetInSizeCCtx(ctx);
-	int t;
+	insize = ZSTDMT_GetInSizeCCtx(ctx);
 
 	for (;;) {
 		/* 4) read input */
@@ -113,15 +115,52 @@ static void do_compress(int threads, int level, int fdin, int fdout)
 static void do_decompress(int threads, int fdin, int fdout)
 {
 	unsigned char buf[4];
+	ssize_t ret;
+	size_t len, t;
+	void *outbuf;
 
-	ZSTDMT_DCtx *ctx = ZSTDMT_createDCtx(threads);
+	/* 1) read 2 Byte Format Header */
+	ret = read_loop(fdin, buf, 2);
+	if (ret != 2)
+		perror_exit("Reading input failed!");
+
+	/* 2) allocate ctx, give the 2 byte header for calculating the streams */
+	ZSTDMT_DCtx *ctx = ZSTDMT_createDCtx(threads, buf);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
-	/* 2) get pointer for input buffer, this is constant */
-	void *inbuf = ZSTDMT_GetInBufferDCtx(ctx);
-	if (!inbuf)
-		perror_exit("Input buffer has Zero Size?!");
+	for (;;) {
+		for (t = 0; t < threads; t++) {
+			void *inbuf;
+
+			/* 3) read chunk header */
+			ret = read_loop(fdin, buf, 4);
+			if (ret != 4)
+				perror_exit("Reading input failed!");
+
+			/* 4) get input buffer for next chunk */
+			inbuf = ZSTDMT_GetNextBufferDCtx(ctx, buf, t, &len);
+			if (len == 0)
+				break;
+
+			/* 5) read chunk */
+			ret = read_loop(fdin, inbuf, len);
+			if (ret != len)
+				perror_exit("Reading input failed!");
+		}
+
+		/* threaded decompression */
+		outbuf = ZSTDMT_DecompressDCtx(ctx, &len);
+		if (len == 0)
+			break;
+
+		ret = write_loop(fdout, outbuf, len);
+		if (ret != len)
+			perror_exit("Writing output failed!");
+
+		if (ZSTDMT_IsEndOfStreamDCtx(ctx))
+			break;
+	}
 
 	ZSTDMT_freeDCtx(ctx);
 }
