@@ -97,11 +97,13 @@ static void do_compress(int threads, int level, int fdin, int fdout)
 			 * -> the order is important here!
 			 */
 			outbuf = ZSTDMT_GetCompressedCCtx(ctx, t, &len);
-			if (len == 0)
+			if (outbuf == 0)
 				break;
 
 			/* write data */
 			ret = write_loop(fdout, outbuf, len);
+			printf("write_loop(fdout,outbuf,%zu) t=%zu\n", len, t);
+			fflush(stdout);
 			if (ret != len)
 				perror_exit("Writing output failed!");
 		}
@@ -122,6 +124,7 @@ static void do_decompress(int fdin, int fdout)
 	size_t len, t;
 	void *outbuf;
 	unsigned int threads;
+	int eof = 0;
 
 	/* 1) read 2 Byte Format Header */
 	ret = read_loop(fdin, buf, 2);
@@ -143,9 +146,12 @@ static void do_decompress(int fdin, int fdout)
 
 			/* 3) read chunk header */
 			ret = read_loop(fdin, buf, 4);
+			printf("read_loop(fdin,buf,4)=%zd\n", ret);
+			fflush(stdout);
+
 			if (ret == 0) {
 				/* eof */
-				len = 0;
+				eof = 1;
 				break;
 			}
 
@@ -159,12 +165,12 @@ static void do_decompress(int fdin, int fdout)
 
 			/* 5) read chunk */
 			ret = read_loop(fdin, inbuf, len);
+			printf("read_loop(fdin,inbuf,len)=%zd\n", ret);
+			fflush(stdout);
+
 			if (ret != len)
 				perror_exit("Reading input failed!");
 		}
-
-		if (len == 0)
-			break;
 
 		/* threaded decompression */
 		outbuf = ZSTDMT_DecompressDCtx(ctx, &len);
@@ -174,6 +180,11 @@ static void do_decompress(int fdin, int fdout)
 		ret = write_loop(fdout, outbuf, len);
 		if (ret != len)
 			perror_exit("Writing output failed!");
+
+		printf("write_loop(fdout,outbuf,%zu)\n", len);
+		fflush(stdout);
+		
+		if (eof) break;
 	}
 
 	ZSTDMT_freeDCtx(ctx);
