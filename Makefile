@@ -4,7 +4,7 @@ CC	= gcc
 CFLAGS	= -pthread -O3 -Wall -pipe -fomit-frame-pointer
 LDFLAGS	= -lzstd -lpthread
 
-CFLAGS += -DDEBUGME
+#CFLAGS += -DDEBUGME
 #CFLAGS += -Wno-unused-but-set-variable
 #CFLAGS += -Wno-unused-variable
 

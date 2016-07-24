@@ -27,9 +27,6 @@
 #include "zstdmt.h"
 #include "util.h"
 
-/* timing */
-#include "get_cycles.h"
-
 /**
  * program for testing threaded stuff on zstd
  */
@@ -68,7 +65,7 @@ static void usage(void)
 static void headline(void)
 {
 	printf
-	    ("Level,Threads,InSize,OutSize,Frames,Cycles,Real,User,Sys,MaxMem\n");
+	    ("Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
 	exit(0);
 }
 
@@ -126,7 +123,7 @@ static void do_compress(int threads, int level, int fdin, int fdout)
 	}
 
 	if (first) {
-		printf("%d,%d,%zu,%zu,%zu",
+		printf("%d;%d;%zu;%zu;%zu",
 		       level, threads,
 		       ZSTDMT_GetCurrentInsizeCCtx(ctx),
 		       ZSTDMT_GetCurrentOutsizeCCtx(ctx),
@@ -222,8 +219,7 @@ int main(int argc, char **argv)
 	/* default options: */
 	int opt, opt_threads = 2, opt_level = 3;
 	int opt_mode = MODE_COMPRESS, fdin, fdout;
-	int opt_iterations = 1, iterations;
-	cycles_t ts, te;
+	int opt_iterations = 1;
 	struct rusage ru;
 	struct timeval tms, tme, tm;
 
@@ -280,7 +276,6 @@ int main(int argc, char **argv)
 		opt_iterations = 1;
 	else if (opt_iterations > MAX_ITERATIONS)
 		opt_iterations = MAX_ITERATIONS;
-	iterations = opt_iterations;
 
 	/* file names */
 	fdin = open_read(argv[optind]);
@@ -292,7 +287,6 @@ int main(int argc, char **argv)
 		perror_exit("Opening outfile failed");
 
 	/* begin timing */
-	ts = get_cycles();
 	gettimeofday(&tms, NULL);
 
 	for (;;) {
@@ -311,14 +305,10 @@ int main(int argc, char **argv)
 	}
 
 	/* end of timing */
-	te = get_cycles();
 	gettimeofday(&tme, NULL);
 	timersub(&tme, &tms, &tm);
-
 	getrusage(RUSAGE_SELF, &ru);
-	/* real,user,sys, */
-	printf(",%llu,%ld.%ld,%ld.%ld,%ld.%ld,%ld\n",
-	       (te - ts) / iterations,
+	printf(";%ld.%ld;%ld.%ld;%ld.%ld;%ld\n",
 	       tm.tv_sec, tm.tv_usec / 1000,
 	       ru.ru_utime.tv_sec, ru.ru_utime.tv_usec / 1000,
 	       ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 1000, ru.ru_maxrss);
