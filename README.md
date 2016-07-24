@@ -27,7 +27,11 @@ WaitForMultipleObjects() / WaitForSingleObject() later...
  - [zstd Extremely Fast Compression algorithm](https://github.com/Cyan4973/zstd)
  - [7-Zip with zstd support](https://github.com/mcmilk/7-Zip-Zstd)
 
-## Tables
+## Tables with some first testing...
+
+ - System: Arch Linux, Kernel 4.3.6-ck
+ - Intel(R) Core(TM) i7-3632QM, limited to 1,2 .. 1,8 GHz
+ - data.tar contains the tarred silesia directory
 
 Level|Threads|InSize|OutSize|Frames|Real|User|Sys|MaxMem
 -----|-------|------|-------|------|----|----|---|-------
