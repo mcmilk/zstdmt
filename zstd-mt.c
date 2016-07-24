@@ -12,6 +12,10 @@
  * GNU General Public License for more details.
  */
 
+/* getrusage */
+#include <sys/resource.h>
+#include <sys/time.h>
+
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -39,7 +43,7 @@ static void perror_exit(const char *msg)
 
 static void version(void)
 {
-	printf("zstd-mt version 0.1\n");
+	printf("zstd-XX version 0.1\n");
 
 	exit(0);
 }
@@ -54,9 +58,17 @@ static void usage(void)
 	printf(" -c      compress (default mode)\n");
 	printf
 	    (" -d      use decompress mode (threads are set to stream count!)\n");
+	printf(" -H      print headline for the testing values\n");
 	printf(" -h      show usage\n");
 	printf(" -v      show version\n");
 
+	exit(0);
+}
+
+static void headline(void)
+{
+	printf
+	    ("Level,Threads,InSize,OutSize,Frames,Cycles,Real,User,Sys,MaxMem\n");
 	exit(0);
 }
 
@@ -70,6 +82,7 @@ static void do_compress(int threads, int level, int fdin, int fdout)
 {
 	size_t insize, t;
 	void *inbuf;
+	static int first = 1;
 
 	/* 1) create compression context */
 	ZSTDMT_CCtx *ctx = ZSTDMT_createCCtx(threads, level);
@@ -112,11 +125,14 @@ static void do_compress(int threads, int level, int fdin, int fdout)
 		}
 	}
 
-	printf("level=%d threads=%d insize=%zu outsize=%zu frames=%zu\n",
-	       level, threads,
-	       ZSTDMT_GetCurrentInsizeCCtx(ctx),
-	       ZSTDMT_GetCurrentOutsizeCCtx(ctx),
-	       ZSTDMT_GetCurrentFrameCCtx(ctx));
+	if (first) {
+		printf("%d,%d,%zu,%zu,%zu",
+		       level, threads,
+		       ZSTDMT_GetCurrentInsizeCCtx(ctx),
+		       ZSTDMT_GetCurrentOutsizeCCtx(ctx),
+		       ZSTDMT_GetCurrentFrameCCtx(ctx));
+		first = 0;
+	}
 
 	ZSTDMT_freeCCtx(ctx);
 }
@@ -192,20 +208,33 @@ static void do_decompress(int fdin, int fdout)
 	ZSTDMT_freeDCtx(ctx);
 }
 
+#define tsub(a, b, result) \
+do { \
+(result)->tv_sec = (a)->tv_sec - (b)->tv_sec; \
+(result)->tv_nsec = (a)->tv_nsec - (b)->tv_nsec; \
+ if ((result)->tv_nsec < 0) { \
+  --(result)->tv_sec; (result)->tv_nsec += 1000000000; \
+ } \
+} while (0)
+
 int main(int argc, char **argv)
 {
 	/* default options: */
 	int opt, opt_threads = 2, opt_level = 3;
 	int opt_mode = MODE_COMPRESS, fdin, fdout;
-	int opt_iterations = 1;
+	int opt_iterations = 1, iterations;
 	cycles_t ts, te;
+	struct rusage ru;
+	struct timeval tms, tme, tm;
 
-	while ((opt = getopt(argc, argv, "vhl:t:i:dc")) != -1) {
+	while ((opt = getopt(argc, argv, "vhHl:t:i:dc")) != -1) {
 		switch (opt) {
 		case 'v':	/* version */
 			version();
 		case 'h':	/* help */
 			usage();
+		case 'H':	/* headline */
+			headline();
 		case 'l':	/* level */
 			opt_level = atoi(optarg);
 			break;
@@ -251,6 +280,7 @@ int main(int argc, char **argv)
 		opt_iterations = 1;
 	else if (opt_iterations > MAX_ITERATIONS)
 		opt_iterations = MAX_ITERATIONS;
+	iterations = opt_iterations;
 
 	/* file names */
 	fdin = open_read(argv[optind]);
@@ -263,6 +293,7 @@ int main(int argc, char **argv)
 
 	/* begin timing */
 	ts = get_cycles();
+	gettimeofday(&tms, NULL);
 
 	for (;;) {
 		if (opt_mode == MODE_COMPRESS) {
@@ -281,7 +312,16 @@ int main(int argc, char **argv)
 
 	/* end of timing */
 	te = get_cycles();
-	printf("Cycles used: %llu\n", te - ts);
+	gettimeofday(&tme, NULL);
+	timersub(&tme, &tms, &tm);
+
+	getrusage(RUSAGE_SELF, &ru);
+	/* real,user,sys, */
+	printf(",%llu,%ld.%ld,%ld.%ld,%ld.%ld,%ld\n",
+	       (te - ts) / iterations,
+	       tm.tv_sec, tm.tv_usec / 1000,
+	       ru.ru_utime.tv_sec, ru.ru_utime.tv_usec / 1000,
+	       ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 1000, ru.ru_maxrss);
 
 	/* exit should flush stdout */
 	exit(0);
