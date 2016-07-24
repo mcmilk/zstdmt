@@ -4,11 +4,11 @@ CC	= gcc
 CFLAGS	= -pthread -O3 -Wall -pipe -fomit-frame-pointer
 LDFLAGS	= -lzstd -lpthread
 
-#CFLAGS += -Wno-unused-but-set-variable
-#CFLAGS += -Wno-unused-variable
+CFLAGS += -Wno-unused-but-set-variable
+CFLAGS += -Wno-unused-variable
 
 # lib objects
-ZSTDMT	= zstdmt.o workq.o
+ZSTDMT	= zstdmt.o
 
 # testing stuff
 OBJ_MT   = $(ZSTDMT) util.o zstd-mt.o

@@ -47,7 +47,8 @@ static void usage(void)
 	printf(" -t N    set number of compression threads (default: 2)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -c      compress (default mode)\n");
-	printf(" -d      use decompress mode (threads are set to stream count!)\n");
+	printf
+	    (" -d      use decompress mode (threads are set to stream count!)\n");
 	printf(" -h      show usage\n");
 	printf(" -v      show version\n");
 
@@ -131,7 +132,7 @@ static void do_decompress(int fdin, int fdout)
 	ZSTDMT_DCtx *ctx = ZSTDMT_createDCtx(buf);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
-	
+
 	threads = ZSTDMT_GetThreadsDCtx(ctx);
 	if (!threads)
 		perror_exit("Thread count?!!");

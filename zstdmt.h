@@ -76,7 +76,7 @@ typedef struct ZSTDMT_DCtx_s ZSTDMT_DCtx;
 
 /* 1) returns new dctx or zero on error */
 ZSTDMT_DCtx *ZSTDMT_createDCtx(unsigned char hdr[2]);
-unsigned int ZSTDMT_GetThreadsDCtx(ZSTDMT_DCtx *ctx);
+unsigned int ZSTDMT_GetThreadsDCtx(ZSTDMT_DCtx * ctx);
 
 /* 2) returns pointer to input buffer, should be used for reading data */
 void *ZSTDMT_GetNextBufferDCtx(ZSTDMT_DCtx * ctx, unsigned char hdr[4],
