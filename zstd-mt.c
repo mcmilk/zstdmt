@@ -23,7 +23,12 @@
 #include "zstdmt.h"
 #include "util.h"
 
-/* program for testing threaded stuff on zstd */
+/* timing */
+#include "get_cycles.h"
+
+/**
+ * program for testing threaded stuff on zstd
+ */
 
 static void perror_exit(const char *msg)
 {
@@ -102,14 +107,13 @@ static void do_compress(int threads, int level, int fdin, int fdout)
 
 			/* write data */
 			ret = write_loop(fdout, outbuf, len);
-			printf("write_loop(fdout,outbuf,%zu) t=%zu\n", len, t);
-			fflush(stdout);
 			if (ret != len)
 				perror_exit("Writing output failed!");
 		}
 	}
 
-	printf("insize=%zu outsize=%zu frames=%zu\n",
+	printf("level=%d threads=%d insize=%zu outsize=%zu frames=%zu\n",
+	       level, threads,
 	       ZSTDMT_GetCurrentInsizeCCtx(ctx),
 	       ZSTDMT_GetCurrentOutsizeCCtx(ctx),
 	       ZSTDMT_GetCurrentFrameCCtx(ctx));
@@ -146,8 +150,6 @@ static void do_decompress(int fdin, int fdout)
 
 			/* 3) read chunk header */
 			ret = read_loop(fdin, buf, 4);
-			printf("read_loop(fdin,buf,4)=%zd\n", ret);
-			fflush(stdout);
 
 			if (ret == 0) {
 				/* eof */
@@ -165,9 +167,6 @@ static void do_decompress(int fdin, int fdout)
 
 			/* 5) read chunk */
 			ret = read_loop(fdin, inbuf, len);
-			printf("read_loop(fdin,inbuf,len)=%zd\n", ret);
-			fflush(stdout);
-
 			if (ret != len)
 				perror_exit("Reading input failed!");
 		}
@@ -181,10 +180,13 @@ static void do_decompress(int fdin, int fdout)
 		if (ret != len)
 			perror_exit("Writing output failed!");
 
+#if 0
 		printf("write_loop(fdout,outbuf,%zu)\n", len);
 		fflush(stdout);
-		
-		if (eof) break;
+#endif
+
+		if (eof)
+			break;
 	}
 
 	ZSTDMT_freeDCtx(ctx);
@@ -196,6 +198,7 @@ int main(int argc, char **argv)
 	int opt, opt_threads = 2, opt_level = 3;
 	int opt_mode = MODE_COMPRESS, fdin, fdout;
 	int opt_iterations = 1;
+	cycles_t ts, te;
 
 	while ((opt = getopt(argc, argv, "vhl:t:i:dc")) != -1) {
 		switch (opt) {
@@ -258,6 +261,9 @@ int main(int argc, char **argv)
 	if (fdout == -1)
 		perror_exit("Opening outfile failed");
 
+	/* begin timing */
+	ts = get_cycles();
+
 	for (;;) {
 		if (opt_mode == MODE_COMPRESS) {
 			do_compress(opt_threads, opt_level, fdin, fdout);
@@ -272,6 +278,10 @@ int main(int argc, char **argv)
 		lseek(fdin, 0, SEEK_SET);
 		lseek(fdout, 0, SEEK_SET);
 	}
+
+	/* end of timing */
+	te = get_cycles();
+	printf("Cycles used: %llu\n", te - ts);
 
 	/* exit should flush stdout */
 	exit(0);

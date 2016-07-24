@@ -17,16 +17,14 @@
 
 #include "zstdmt.h"
 
-#define DEBUGME
+/**
+ * simple multi threaded zstd
+ */
+
+//#define DEBUGME
 
 #ifdef DEBUGME
 #include <stdio.h>
-
-void die_msg(const char *msg)
-{
-	printf("die_msg: %s\n", (char *)msg);
-	exit(0);
-}
 #endif
 
 /* thread work */
@@ -198,7 +196,8 @@ static void *pt_compress(void *arg)
 		return 0;
 
 #ifdef DEBUGME
-	printf("ZBUFF_compressContinue()[%zu] ret=%zu inlen=%zu outlen=%zu\n", work->tid, ret, work->inlen, work->outlen);
+	printf("ZBUFF_compressContinue()[%zu] ret=%zu inlen=%zu outlen=%zu\n",
+	       work->tid, ret, work->inlen, work->outlen);
 #endif
 
 	if (ret != work->inlen) {
@@ -209,12 +208,13 @@ static void *pt_compress(void *arg)
 					ZSTDMT_HDR_CHUNK, &work->outlen);
 
 #ifdef DEBUGME
-	printf("ZBUFF_compressFlush()[%zu] ret=%zu inlen=%zu outlen=%zu\n", work->tid, ret, work->inlen, work->outlen);
+		printf
+		    ("ZBUFF_compressFlush()[%zu] ret=%zu inlen=%zu outlen=%zu\n",
+		     work->tid, ret, work->inlen, work->outlen);
 #endif
 
 		if (ZSTD_isError(ret))
 			return 0;
-
 
 	}
 
@@ -242,7 +242,7 @@ static void *pt_compress(void *arg)
 
 size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t insize)
 {
-	size_t t, ret, nthreads;
+	size_t t, nthreads;
 
 	if (!ctx)
 		return 0;
@@ -260,10 +260,7 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t insize)
 			work[t].inlen = insize;
 		insize -= ctx->work[t].inlen;
 
-
-		ret =
-		    pthread_create(&ctx->th[t], NULL, pt_compress,
-				   &ctx->work[t]);
+		pthread_create(&ctx->th[t], NULL, pt_compress, &ctx->work[t]);
 	}
 
 	nthreads = t;
@@ -276,7 +273,8 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t insize)
 		pthread_join(ctx->th[t], NULL);
 
 #ifdef DEBUGME
-		printf("pthread_create()[%zu] outlen=%zu\n", t, ctx->work[t].outlen);
+		printf("pthread_create()[%zu] outlen=%zu\n", t,
+		       ctx->work[t].outlen);
 #endif
 
 		ctx->outsize += ctx->work[t].outlen + 4;
@@ -285,11 +283,12 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t insize)
 	/* no outlen in the next threads, if there */
 	while (t < ctx->threads) {
 #ifdef DEBUGME
-		printf("pthread_create()[%zu] reset out=%zu\n", t, ctx->work[t].outlen);
+		printf("pthread_create()[%zu] reset out=%zu\n", t,
+		       ctx->work[t].outlen);
 #endif
-	 	ctx->work[t].outlen = 0;
-	 	t++;
-	 }
+		ctx->work[t].outlen = 0;
+		t++;
+	}
 
 	return 0;
 }
@@ -486,16 +485,17 @@ static void *pt_decompress(void *arg)
 	size_t ret;
 
 #ifdef DEBUGME
-	printf("ZBUFF_decompressContinueA[%zu] inlen=%zu outlen=%zu\n", work->tid, work->outlen, work->inlen);
+	printf("ZBUFF_decompressContinueA[%zu] inlen=%zu outlen=%zu\n",
+	       work->tid, work->outlen, work->inlen);
 #endif
 	ret = ZBUFF_decompressContinue(work->ctx,
 				       work->outbuf,
 				       &work->outlen,
-				       work->inbuf,
-				       &work->inlen);
+				       work->inbuf, &work->inlen);
 
 #ifdef DEBUGME
-	printf("ZBUFF_decompressContinueB[%zu] inlen=%zu outlen=%zu\n", work->tid, work->outlen, work->inlen);
+	printf("ZBUFF_decompressContinueB[%zu] inlen=%zu outlen=%zu\n",
+	       work->tid, work->outlen, work->inlen);
 #endif
 
 	if (ZSTD_isError(ret))
