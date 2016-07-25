@@ -1,0 +1,19 @@
+#!/bin/bash
+
+######################################################################
+# configuration:
+# - Intel(R) Core(TM) i7-3632QM, limited to 1,2 .. 1,8 GHz
+# - data.tar contains the tarred silesia directory
+######################################################################
+
+../zstd-st -H > ./zstd-st.log
+../zstd-mt -H > ./zstd-mt.log
+
+for l in 1 5; do
+ for i in 1; do
+  for t in 1 16; do
+   ../zstd-st -l $l -i $i -t $t data.tar /dev/null >> ./zstd-st.log
+   ../zstd-mt -l $l -i $i -t $t data.tar /dev/null >> ./zstd-mt.log
+  done
+ done
+done

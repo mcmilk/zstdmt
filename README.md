@@ -33,8 +33,8 @@ WaitForMultipleObjects() / WaitForSingleObject() later...
  - Intel(R) Core(TM) i7-3632QM, limited to 1,2 .. 1,8 GHz
  - data.tar contains the tarred silesia directory
 
-Level|Threads|InSize|OutSize|Frames|Real|User|Sys|MaxMem
------|-------|------|-------|------|----|----|---|-------
+Level|Threads|InSize|OutSize|FrameSet|Real|User|Sys|MaxMem
+-----|-------|------|-------|--------|----|----|---|-------
 ST-L1|1|211957760|73662797|1618|2,8|1,964|0,39|2524
 MT-L1|1|211957760|73662797|1618|2,114|1,332|0,2|2644
 ST-L1|2|211957760|74127590|809|2,14|1,975|0,34|3768
