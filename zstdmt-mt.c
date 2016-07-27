@@ -250,7 +250,6 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t insize)
 	if (ctx->frames == 1)
 		ctx->outsize += 2;
 
-	ctx->frames++;
 	ctx->insize += insize;
 
 	for (t = 0; t < ctx->threads && insize != 0; t++) {
@@ -266,6 +265,7 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t insize)
 	for (t = 0; t < nthreads; t++) {
 		pthread_join(ctx->th[t], NULL);
 		ctx->outsize += ctx->work[t].outlen + 4;
+		ctx->frames++;
 	}
 
 	/* no outlen in the next threads, if there */

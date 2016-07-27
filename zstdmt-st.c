@@ -239,7 +239,6 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t insize)
 	if (ctx->frames == 1)
 		ctx->outsize += 2;
 
-	ctx->frames++;
 	ctx->insize += insize;
 
 	for (t = 0; t < ctx->threads && insize != 0; t++) {
@@ -299,6 +298,7 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t insize)
 
 		ctx->outsize += ctx->outlen[t] + 4;
 		insize -= ctx->inlen[t];
+		ctx->frames++;
 	}
 
 	/* no outlen in the next threads */

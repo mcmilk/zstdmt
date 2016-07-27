@@ -6,16 +6,21 @@
 # - data.tar contains the tarred silesia directory
 ######################################################################
 
-#../zstd-st -H > ./zstd-st.log
+../zstd-st -H > ./zstd.log
 #../zstd-mt -H > ./zstd-mt.log
-../zstd-mt2 -H > ./zstd-mt2.log
+#../zstd-mt2 -H > ./zstd-mt2.log
 
-for l in 1 5 10 15; do
+for l in 1 5 10; do
  for i in 1; do
   for t in 1 2 4 8 16; do
-   #../zstd-st -l $l -i $i -t $t data.tar /dev/null >> ./zstd-st.log
-   #../zstd-mt -l $l -i $i -t $t data.tar /dev/null >> ./zstd-mt.log
-   ../zstd-mt2 -l $l -i $i -t $t data.tar /dev/null >> ./zstd-mt2.log
+   echo -n "ST-L" >> zstd.log
+   ../zstd-st -l $l -i $i -t $t data.tar /dev/null >> ./zstd.log
+
+   echo -n "MT-L" >> zstd.log
+   ../zstd-mt -l $l -i $i -t $t data.tar /dev/null >> ./zstd.log
+
+   echo -n "MT2-L" >> zstd.log
+   ../zstd-mt2 -l $l -i $i -t $t data.tar /dev/null >> ./zstd.log
   done
  done
 done

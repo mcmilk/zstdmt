@@ -1,7 +1,7 @@
 
 CC	= gcc
 
-CFLAGS	= -g -pthread -O3 -Wall -pipe -fomit-frame-pointer
+CFLAGS	= -pthread -O3 -Wall -pipe -fomit-frame-pointer
 LDFLAGS	= -lzstd -lpthread
 
 #CFLAGS += -DDEBUGME

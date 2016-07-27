@@ -64,7 +64,7 @@ static void usage(void)
 
 static void headline(void)
 {
-	printf("Level;Threads;InSize;OutSize;FrameSet;Real;User;Sys;MaxMem\n");
+	printf("Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
 	exit(0);
 }
 
