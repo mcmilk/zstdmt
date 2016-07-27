@@ -1,14 +1,14 @@
 
 CC	= gcc
 
-CFLAGS	= -pthread -O3 -Wall -pipe -fomit-frame-pointer
+CFLAGS	= -g -pthread -O3 -Wall -pipe -fomit-frame-pointer
 LDFLAGS	= -lzstd -lpthread
 
 #CFLAGS += -DDEBUGME
 #CFLAGS += -Wno-unused-but-set-variable
 #CFLAGS += -Wno-unused-variable
 
-PRGS	= zstd-st zstd-mt zstd-tp
+PRGS	= zstd-st zstd-mt zstd-tp zstd-mt2
 
 all:	$(PRGS)
 again:	clean $(PRGS)
@@ -24,6 +24,10 @@ zstd-mt: zstdmt-mt.o util.o zstd-mt.o
 # multithreaded via thread pool
 zstd-tp: zstdmt-tp.o util.o zstd-mt.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ zstd-mt.o zstdmt-tp.o util.o
+
+# better multi threaded testing (each thread reads/writes itself)
+zstd-mt2: zstdmt-mt2.o util.o zstd-mt2.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ zstd-mt2.o zstdmt-mt2.o util.o
 
 clean:
 	rm -rf $(PRGS) util.o zstd-*.o zstdmt-*.o

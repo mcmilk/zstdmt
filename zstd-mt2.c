@@ -24,7 +24,7 @@
 #include <zstd.h>
 #include <zbuff.h>
 
-#include "zstdmt.h"
+#include "zstdmt-mt2.h"
 #include "util.h"
 
 /**
@@ -40,14 +40,14 @@ static void perror_exit(const char *msg)
 
 static void version(void)
 {
-	printf("zstd-XX version 0.1\n");
+	printf("zstd-mt2 version 0.1\n");
 
 	exit(0);
 }
 
 static void usage(void)
 {
-	printf("Usage: zstd-mt [options] infile outfile\n\n");
+	printf("Usage: zstd-mt2 [options] infile outfile\n\n");
 	printf("Otions:\n");
 	printf(" -l N    set level of compression (default: 3)\n");
 	printf(" -t N    set number of compression threads (default: 2)\n");
@@ -64,7 +64,7 @@ static void usage(void)
 
 static void headline(void)
 {
-	printf("Level;Threads;InSize;OutSize;FrameSet;Real;User;Sys;MaxMem\n");
+	printf("Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
 	exit(0);
 }
 
@@ -74,52 +74,27 @@ static void headline(void)
 /* for the -i option */
 #define MAX_ITERATIONS   1000
 
+ssize_t my_read_loop(int fd, void *buffer, size_t count)
+{
+	//printf("read_loop(fd=%d, buffer=%p,count=%zu)\n", fd, buffer, count);
+	return read_loop(fd, buffer, count);
+}
+
+ssize_t my_write_loop(int fd, const void *buffer, size_t count)
+{
+	//printf("write_loop(fd=%d, buffer=%p,count=%zu)\n", fd, buffer, count);
+	return write_loop(fd, buffer, count);
+}
+
 static void do_compress(int threads, int level, int fdin, int fdout)
 {
-	size_t insize, t;
-	void *inbuf;
 	static int first = 1;
 
 	/* 1) create compression context */
 	ZSTDMT_CCtx *ctx = ZSTDMT_createCCtx(threads, level);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
-
-	/* 2) get pointer for input buffer, this is constant */
-	inbuf = ZSTDMT_GetInBufferCCtx(ctx);
-	if (!inbuf)
-		perror_exit("Input buffer has Zero Size?!");
-
-	/* 3) get optimal size for the input data */
-	insize = ZSTDMT_GetInSizeCCtx(ctx);
-
-	for (;;) {
-		/* 4) read input */
-		ssize_t ret = read_loop(fdin, inbuf, insize);
-		if (ret == 0)
-			break;
-
-		/* 5) start threaded compression */
-		ZSTDMT_CompressCCtx(ctx, ret);
-
-		for (t = 0; t < threads; t++) {
-			void *outbuf;
-			size_t len;
-
-			/**
-			 * 6) read the compressed data and write them
-			 * -> the order is important here!
-			 */
-			outbuf = ZSTDMT_GetCompressedCCtx(ctx, t, &len);
-			if (outbuf == 0)
-				break;
-
-			/* write data */
-			ret = write_loop(fdout, outbuf, len);
-			if (ret != len)
-				perror_exit("Writing output failed!");
-		}
-	}
+	ZSTDMT_CompressCCtx(ctx, my_read_loop, my_write_loop, fdin, fdout);
 
 	if (first) {
 		printf("%d;%d;%zu;%zu;%zu",
@@ -137,10 +112,6 @@ static void do_decompress(int fdin, int fdout)
 {
 	unsigned char buf[4];
 	ssize_t ret;
-	size_t len, t;
-	void *outbuf;
-	unsigned int threads;
-	int eof = 0;
 
 	/* 1) read 2 Byte Format Header */
 	ret = read_loop(fdin, buf, 2);
@@ -152,55 +123,7 @@ static void do_decompress(int fdin, int fdout)
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
-	threads = ZSTDMT_GetThreadsDCtx(ctx);
-	if (!threads)
-		perror_exit("Thread count?!!");
-
-	for (;;) {
-		for (t = 0; t < threads; t++) {
-			void *inbuf;
-
-			/* 3) read chunk header */
-			ret = read_loop(fdin, buf, 4);
-
-			if (ret == 0) {
-				/* eof */
-				eof = 1;
-				break;
-			}
-
-			if (ret != 4)
-				perror_exit("Reading input failed!");
-
-			/* 4) get input buffer for next chunk */
-			inbuf = ZSTDMT_GetNextBufferDCtx(ctx, buf, t, &len);
-			if (len == 0)
-				break;
-
-			/* 5) read chunk */
-			ret = read_loop(fdin, inbuf, len);
-			if (ret != len)
-				perror_exit("Reading input failed!");
-		}
-
-		/* threaded decompression */
-		outbuf = ZSTDMT_DecompressDCtx(ctx, &len);
-		if (len == 0)
-			break;
-
-		ret = write_loop(fdout, outbuf, len);
-		if (ret != len)
-			perror_exit("Writing output failed!");
-
-#if 0
-		printf("write_loop(fdout,outbuf,%zu)\n", len);
-		fflush(stdout);
-#endif
-
-		if (eof)
-			break;
-	}
-
+	ZSTDMT_DecompressDCtx(ctx, read_loop, write_loop, fdin, fdout);
 	ZSTDMT_freeDCtx(ctx);
 }
 

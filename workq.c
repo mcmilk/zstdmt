@@ -45,7 +45,7 @@ static void work_queue_push(work_queue_t * work_q, void *data)
 		return;
 	}
 
-	work_item = (work_item_t*)malloc(sizeof(work_item_t));
+	work_item = (work_item_t *) malloc(sizeof(work_item_t));
 	work_item->next = NULL;
 	work_item->data = data;
 
@@ -154,13 +154,13 @@ static void *work_queue_worker(void *arg)
 workq_t *workq_init(int thr_max, int queue_max, int idle_timeout,
 		    void (*fun) (void *))
 {
-	workq_t *tp = (workq_t*)malloc(sizeof(workq_t));
+	workq_t *tp = (workq_t *) malloc(sizeof(workq_t));
 	int r;
 
 	if (unlikely(thr_max <= 0))
 		die_pthread();
 
-	tp->queue = (work_queue_t*)malloc(sizeof(work_queue_t));
+	tp->queue = (work_queue_t *) malloc(sizeof(work_queue_t));
 	tp->queue->head = tp->queue->tail = NULL;
 	tp->queue->item_count = 0;
 
