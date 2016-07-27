@@ -18,19 +18,21 @@
 #include "zstdmt-mt2.h"
 
 /**
- * multi threaded zstd
+ * multi threaded zstd - multiple workers version
  *
  * - each thread works on his own
  * - no main thread which does reading and then starting the work
- * - needs sth like an callback for reading content to compress
- * - needs als a callback for writing result
- * - when compression finished, the next block will be read and compressed
- *   -> each thread needs two input and output buffers (so no barrier is needed)
+ * - needs a callback for reading / writing
+ * - each worker does his:
+ *   1) get read mutex and read some input
+ *   2) release read mutex and do compression
+ *   3) get write mutex and write result
+ *   4) begin with step 1 again, until no input
  */
 
-//#define DEBUGME
+//#define DEBUGME2
 
-#ifdef DEBUGME
+#ifdef DEBUGME2
 #include <stdio.h>
 #endif
 
@@ -75,10 +77,10 @@ struct ZSTDMT_CCtx_s {
 	int threads;
 
 	/* statistic */
-	size_t frames; /* frames read @ input */
-	size_t insize;  /* current read size @ input */
-	size_t outsize;  /* current written size to output */
-	size_t curframe; /* current frame @ output */
+	size_t frames;		/* frames read @ input */
+	size_t insize;		/* current read size @ input */
+	size_t outsize;		/* current written size to output */
+	size_t curframe;	/* current frame @ output */
 
 	/* fdin and fdout, each with func and mutex */
 	int fdin;
@@ -169,23 +171,70 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level)
 	return ctx;
 }
 
-static void WriteCompressedData(ZSTDMT_CCtx *ctx, int tid, size_t frame, void *buf, size_t len)
+static void WriteCompressedData(ZSTDMT_CCtx * ctx, int thread, size_t frame,
+				void *buf, size_t length)
 {
-	struct worklist *head = &ctx->worklist, *wl;
-	struct worklist *cur = (struct worklist*)malloc(sizeof(struct worklist));
+	struct worklist *head = &ctx->worklist, *wl, *cur;
 
-	if (!cur) die_nomem();
+	/**
+	 * the very first frame gets its header
+	 * -> 2^14 thread id
+	 */
+	if (frame == 0) {
+		unsigned char hdr[2];
+		unsigned int tid = ctx->threads;
+		hdr[0] = tid;
+		tid >>= 8;
+		hdr[1] = tid;
+		ctx->writefn(ctx->fdout, hdr, 2);
+		ctx->outsize += 2;
+	}
 
-	cur->frame = frame;
-	cur->buf = buf;
-	cur->len = len;
-	cur->tid = tid;
+	if (frame == ctx->curframe) {
 
-	/* add new data */
-	wl = head;
-	cur->next = wl->next;
-	wl->next = cur;
+		/**
+		 * 2^14 thread id  (max = 0x3f ff)
+		 * 2^18 compressed length (max = 3 ff ff)
+		 *
+		 * TTTT:TTTT TTTT:TTLL LLLL:LLLL LLLL:LLLL
+		 */
+		unsigned char hdr[4];
+		unsigned int len = length, tid = thread;
 
+		hdr[0] = tid;
+		tid >>= 8;
+		hdr[3] = len;
+		len >>= 8;
+		hdr[2] = len;
+		len >>= 8;
+		hdr[1] = tid | (len << 6);
+		ctx->writefn(ctx->fdout, hdr, 4);
+
+		/* new not written buffer found */
+		ctx->writefn(ctx->fdout, buf, len);
+		ctx->outsize += length + 4;
+		ctx->curframe++;
+		free(buf);
+
+#ifdef DEBUGME2
+		printf("WRITE1(%d), frame=%zu len=%zu\n", thread, frame,
+		       length);
+#endif
+
+	} else {
+		cur = (struct worklist *)malloc(sizeof(struct worklist));
+		if (!cur)
+			die_nomem();
+		cur->frame = frame;
+		cur->buf = buf;
+		cur->len = length;
+		cur->tid = thread;
+
+		/* add new data */
+		wl = head;
+		cur->next = wl->next;
+		wl->next = cur;
+	}
 
 	/* check, for elements we have to write */
 	for (wl = head; wl->next; wl = wl->next) {
@@ -193,23 +242,6 @@ static void WriteCompressedData(ZSTDMT_CCtx *ctx, int tid, size_t frame, void *b
 
 		if (cur->frame != ctx->curframe)
 			continue;
-
-		/**
-		 * 2^14 thread id
-		 */
-		if (frame == 0) {
-			unsigned char hdr[2];
-			unsigned int tid = ctx->threads;
-			hdr[0] = tid; tid >>= 8;
-			hdr[1] = tid;
-			ctx->writefn(ctx->fdout, hdr, 2);
-			ctx->outsize += 2;
-
-#ifdef DEBUGME
-	printf("WRITE(HDR), frame=%zu threads=%d\n", cur->frame, ctx->threads);
-	fflush(stdout);
-#endif
-		}
 
 		/**
 		 * 2^14 thread id  (max = 0x3f ff)
@@ -237,9 +269,9 @@ static void WriteCompressedData(ZSTDMT_CCtx *ctx, int tid, size_t frame, void *b
 		ctx->curframe++;
 		free(cur->buf);
 
-#ifdef DEBUGME
-	printf("WRITE(%d), frame=%zu len=%zu\n", cur->tid, cur->frame, cur->len);
-	fflush(stdout);
+#ifdef DEBUGME2
+		printf("WRITE2(%d), frame=%zu len=%zu\n", cur->tid, cur->frame,
+		       cur->len);
 #endif
 
 		/* remove then */
@@ -284,7 +316,8 @@ static void *pt_compress(void *arg)
 
 		pthread_mutex_lock(&ctx->read_mutex);
 		len = ctx->readfn(ctx->fdin, work->inbuf, work->inlen);
-		if (len > 0) ctx->insize += len;
+		if (len > 0)
+			ctx->insize += len;
 		frame = ctx->frames;
 		ctx->frames++;
 		//printf("read(%d) frame=%zu, len=%zd\n", work->tid, frame, len);
@@ -328,7 +361,8 @@ static void *pt_compress(void *arg)
 		}
 
 		pthread_mutex_lock(&ctx->write_mutex);
-		WriteCompressedData(ctx, work->tid, frame, work->outbuf, work->outlen);
+		WriteCompressedData(ctx, work->tid, frame, work->outbuf,
+				    work->outlen);
 		pthread_mutex_unlock(&ctx->write_mutex);
 	}
 
@@ -389,7 +423,7 @@ size_t ZSTDMT_GetCurrentFrameCCtx(ZSTDMT_CCtx * ctx)
 	if (!ctx)
 		return 0;
 
-	return ctx->frames;
+	return ctx->frames - 1;
 }
 
 /* returns current uncompressed data size */

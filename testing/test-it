@@ -10,11 +10,11 @@
 #../zstd-mt -H > ./zstd-mt.log
 #../zstd-mt2 -H > ./zstd-mt2.log
 
-for l in 1 5 10; do
+for l in 1 5; do
  for i in 1; do
-  for t in 1 2 4 8 16; do
-   echo -n "ST-L" >> zstd.log
-   ../zstd-st -l $l -i $i -t $t data.tar /dev/null >> ./zstd.log
+  for t in 1 2 4 6 8 12; do
+   #echo -n "ST-L" >> zstd.log
+   #../zstd-st -l $l -i $i -t $t data.tar /dev/null >> ./zstd.log
 
    echo -n "MT-L" >> zstd.log
    ../zstd-mt -l $l -i $i -t $t data.tar /dev/null >> ./zstd.log

@@ -16,9 +16,9 @@
 #include <zstd.h>
 #include <zbuff.h>
 
-/* **************************************
- *  Thread functions
- ****************************************/
+/* ********************************************************
+ *  Thread functions - This Interface is a bit to complex!
+ **********************************************************/
 
 /**
  * Format Definition
@@ -41,11 +41,7 @@
 
 typedef struct ZSTDMT_CCtx_s ZSTDMT_CCtx;
 
-/**
- * 1) allocate new cctx
- * - return cctx on success
- * - return zero on error
- */
+/* 1) allocate new cctx */
 ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level);
 
 /* 2) returns pointer to input buffer, should be used for reading data */
@@ -57,7 +53,7 @@ size_t ZSTDMT_GetInSizeCCtx(ZSTDMT_CCtx * ctx);
 /* 4) compressing */
 size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t srcsize);
 
-/* 5) returns pointer to compressed output buffer of thread */
+/* 5) returns pointer to compressed output buffer of thread X */
 void *ZSTDMT_GetCompressedCCtx(ZSTDMT_CCtx * ctx, int thread, size_t * len);
 
 /* statistic */

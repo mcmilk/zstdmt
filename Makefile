@@ -17,15 +17,11 @@ again:	clean $(PRGS)
 zstd-st: zstdmt-st.o util.o zstd-mt.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ zstd-mt.o zstdmt-st.o util.o
 
-# simple multi threaded testing (create threads as needed)
+# multi threaded testing (simple create/join)
 zstd-mt: zstdmt-mt.o util.o zstd-mt.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ zstd-mt.o zstdmt-mt.o util.o
 
-# multithreaded via thread pool
-zstd-tp: zstdmt-tp.o util.o zstd-mt.o
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ zstd-mt.o zstdmt-tp.o util.o
-
-# better multi threaded testing (each thread reads/writes itself)
+# multi threaded testing (each thread reads/writes itself - async)
 zstd-mt2: zstdmt-mt2.o util.o zstd-mt2.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ zstd-mt2.o zstdmt-mt2.o util.o
 

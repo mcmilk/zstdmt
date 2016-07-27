@@ -18,7 +18,14 @@
 #include "zstdmt.h"
 
 /**
- * simple multi threaded zstd
+ * multi threaded zstd - simple phread create/join version
+ *
+ * 1) the main thread reads input for all threads
+ * 2) when input is read, X threads gets created
+ * 3) each thread starts then compression
+ * 4) the main thread waits for all compr. threads to finish
+ * 5) then writes the result
+ * 6) begin with step 1 again, until no input
  */
 
 //#define DEBUGME
@@ -440,7 +447,11 @@ void *ZSTDMT_GetNextBufferDCtx(ZSTDMT_DCtx * ctx, unsigned char hdr[4],
 
 	ctx->worker = thread + 1;
 
-	/* input failure */
+	/**
+	 * the thread id of the chunk headers are unsed in the simple mt version
+	 * - the order is always 0-1-2-X, then again 0-1-2-X
+	 * - we could check if thread == tid-of-hdr
+	 */
 	if (tid > ctx->threads)
 		return 0;
 
