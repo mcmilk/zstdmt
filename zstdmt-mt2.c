@@ -30,9 +30,8 @@
  *   4) begin with step 1 again, until no input
  */
 
-//#define DEBUGME2
-
-#ifdef DEBUGME2
+//#define DEBUGME
+#ifdef DEBUGME
 #include <stdio.h>
 #endif
 
@@ -101,14 +100,18 @@ struct ZSTDMT_DCtx_s {
 	/* number of threads, which are used for decompressing */
 	int threads;
 
-	/* how much work is loaded into the input buffers */
-	int worker;
+	/* fdin and fdout, each with func and mutex */
+	int fdin;
+	int fdout;
+	fn_read *readfn;
+	fn_write *writefn;
+	pthread_mutex_t read_mutex;
+	pthread_mutex_t write_mutex;
+	struct worklist worklist;
 
-	/* complete buffers */
-	size_t optimal_inlen;
-	size_t optimal_outlen;
-	void *buffer_in;
-	void *buffer_out;
+	// pthread_cond_wait
+	// pthread_mutex_lock
+	pthread_cond_t wait;
 
 	/* threading */
 	pthread_t *th;
@@ -211,7 +214,7 @@ static void WriteCompressedData(ZSTDMT_CCtx * ctx, int thread, size_t frame,
 		ctx->writefn(ctx->fdout, hdr, 4);
 
 		/* new not written buffer found */
-		ctx->writefn(ctx->fdout, buf, len);
+		ctx->writefn(ctx->fdout, buf, length);
 		ctx->outsize += length + 4;
 		ctx->curframe++;
 		free(buf);
@@ -288,11 +291,6 @@ static void WriteCompressedData(ZSTDMT_CCtx * ctx, int thread, size_t frame,
 
 /**
  * compression worker
- * - each worker reads input itself
- * - after this, it compresses the thing
- * - when done with compression, the result is given to one special writing thread
- * - this writing thread reads all compressed stuff
- * - reading new input then ... by who?
  */
 static void *pt_compress(void *arg)
 {
@@ -306,7 +304,7 @@ static void *pt_compress(void *arg)
 	for (;;) {
 		size_t frame;
 
-		/* allocate space for new input */
+		/* allocate space for new output */
 		work->outlen = ZBUFF_recommendedCOutSize();
 		work->outbuf = (void *)malloc(work->outlen);
 		if (!work->inbuf)
@@ -314,13 +312,13 @@ static void *pt_compress(void *arg)
 		if (!work->outbuf)
 			die_nomem();
 
+		/* read new input */
 		pthread_mutex_lock(&ctx->read_mutex);
 		len = ctx->readfn(ctx->fdin, work->inbuf, work->inlen);
 		if (len > 0)
 			ctx->insize += len;
 		frame = ctx->frames;
 		ctx->frames++;
-		//printf("read(%d) frame=%zu, len=%zd\n", work->tid, frame, len);
 		pthread_mutex_unlock(&ctx->read_mutex);
 
 		if (len == 0) {
@@ -329,6 +327,7 @@ static void *pt_compress(void *arg)
 			break;
 		}
 
+		/* compressing */
 		ret =
 		    ZBUFF_compressContinue(work->zctx,
 					   work->outbuf,
@@ -360,6 +359,7 @@ static void *pt_compress(void *arg)
 
 		}
 
+		/* write result */
 		pthread_mutex_lock(&ctx->write_mutex);
 		WriteCompressedData(ctx, work->tid, frame, work->outbuf,
 				    work->outlen);
@@ -423,7 +423,7 @@ size_t ZSTDMT_GetCurrentFrameCCtx(ZSTDMT_CCtx * ctx)
 	if (!ctx)
 		return 0;
 
-	return ctx->frames - 1;
+	return ctx->curframe;
 }
 
 /* returns current uncompressed data size */
@@ -450,6 +450,127 @@ size_t ZSTDMT_GetCurrentOutsizeCCtx(ZSTDMT_CCtx * ctx)
 
 ZSTDMT_DCtx *ZSTDMT_createDCtx(unsigned char hdr[2])
 {
+	ZSTDMT_DCtx *ctx;
+	int t;
+
+	ctx = (ZSTDMT_DCtx *) malloc(sizeof(ZSTDMT_DCtx));
+	if (!ctx) {
+		return 0;
+	}
+
+	ctx->threads = hdr[0] + ((hdr[1] & 0x3f) << 8);
+
+	ctx->work = (work_t *) malloc(sizeof(work_t) * ctx->threads);
+	if (!ctx->work) {
+		free(ctx);
+		return 0;
+	}
+
+	ctx->th = (pthread_t *) malloc(sizeof(pthread_t) * ctx->threads);
+	if (!ctx->th) {
+		free(ctx->work);
+		free(ctx);
+		return 0;
+	}
+
+	pthread_mutex_init(&ctx->read_mutex, NULL);
+	pthread_mutex_init(&ctx->write_mutex, NULL);
+
+	for (t = 0; t < ctx->threads; t++) {
+		work_t *work = &ctx->work[t];
+		work->ctx = ctx;
+		work->zctx = ZBUFF_createDCtx();
+		if (!work->zctx) {
+			free(ctx->work);
+			free(ctx->th);
+			free(ctx);
+			return 0;
+		}
+
+		ZBUFF_decompressInit(work->zctx);
+		work->tid = t;
+	}
+
+	return 0;
+}
+
+/**
+ * decompression worker
+ */
+static void *pt_decompress(void *arg)
+{
+	work_t *work = (work_t *) arg;
+	ZSTDMT_CCtx *ctx = work->ctx;
+	ssize_t ret, len;
+
+	/* inbuf is constant */
+	work->inlen = ZBUFF_recommendedDInSize();
+	work->inbuf = (void *)malloc(work->inlen);
+	for (;;) {
+		size_t frame;
+
+		/* allocate space for new output */
+		work->outlen = ZBUFF_recommendedDOutSize();
+		work->outbuf = (void *)malloc(work->outlen);
+		if (!work->inbuf)
+			die_nomem();
+		if (!work->outbuf)
+			die_nomem();
+
+		/* read new input */
+		pthread_mutex_lock(&ctx->read_mutex);
+		len = ctx->readfn(ctx->fdin, work->inbuf, work->inlen);
+		if (len > 0)
+			ctx->insize += len;
+		frame = ctx->frames;
+		ctx->frames++;
+		pthread_mutex_unlock(&ctx->read_mutex);
+
+		if (len == 0) {
+			free(work->outbuf);
+			free(work->inbuf);
+			break;
+		}
+
+		/* compressing */
+		ret =
+		    ZBUFF_compressContinue(work->zctx,
+					   work->outbuf,
+					   &work->outlen, work->inbuf,
+					   &work->inlen);
+		if (ZSTD_isError(ret))
+			return 0;
+
+#ifdef DEBUGME
+		printf
+		    ("ZBUFF_compressContinue()[%2d] ret=%zu inlen=%zu outlen=%zu\n",
+		     work->tid, ret, work->inlen, work->outlen);
+#endif
+
+		if (ret != work->inlen) {
+			work->outlen = ZBUFF_recommendedCOutSize();
+			ret =
+			    ZBUFF_compressFlush(work->zctx,
+						work->outbuf, &work->outlen);
+
+#ifdef DEBUGME
+			printf
+			    ("ZBUFF_compressFlush()[%2d] ret=%zu inlen=%zu outlen=%zu\n",
+			     work->tid, ret, work->inlen, work->outlen);
+#endif
+
+			if (ZSTD_isError(ret))
+				return 0;
+
+		}
+
+		/* write result */
+		pthread_mutex_lock(&ctx->write_mutex);
+		WriteCompressedData(ctx, work->tid, frame, work->outbuf,
+				    work->outlen);
+		pthread_mutex_unlock(&ctx->write_mutex);
+	}
+
 	return 0;
 }
 
@@ -457,11 +578,48 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(unsigned char hdr[2])
 ssize_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, fn_read readfn,
 			      fn_write writefn, int fdin, int fdout)
 {
+	size_t t;
+
+	if (!ctx)
+		return 0;
+
+	/* init reading and writing functions */
+	ctx->fdin = fdin;
+	ctx->fdout = fdout;
+	ctx->readfn = readfn;
+	ctx->writefn = writefn;
+
+	/* start all workers */
+	for (t = 0; t < ctx->threads; t++) {
+		work_t *w = &ctx->work[t];
+		w->ctx = ctx;
+		pthread_create(&ctx->th[t], NULL, pt_decompress, w);
+	}
+
+	/* wait for all workers */
+	for (t = 0; t < ctx->threads; t++) {
+		pthread_join(ctx->th[t], NULL);
+	}
+
 	return 0;
 }
 
 /* 3) free dctx */
 void ZSTDMT_freeDCtx(ZSTDMT_DCtx * ctx)
 {
+	size_t t;
+
+	if (!ctx)
+		return;
+
+	for (t = 0; t < ctx->threads; t++) {
+		ZBUFF_freeDCtx(ctx->work[t].zctx);
+	}
+
+	free(ctx->work);
+	free(ctx->th);
+	free(ctx);
+	ctx = 0;
+
 	return;
 }

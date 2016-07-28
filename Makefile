@@ -8,10 +8,14 @@ LDFLAGS	= -lzstd -lpthread
 #CFLAGS += -Wno-unused-but-set-variable
 #CFLAGS += -Wno-unused-variable
 
-PRGS	= zstd-st zstd-mt zstd-tp zstd-mt2
+PRGS	= zstd-st zstd-mt zstd-mt2 zstd-zstd
 
 all:	$(PRGS)
 again:	clean $(PRGS)
+
+# zstd standard version
+zstd-zstd: zstd-zstd.o util.o
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ zstd-zstd.o util.o
 
 # single threaded testing
 zstd-st: zstdmt-st.o util.o zstd-mt.o
