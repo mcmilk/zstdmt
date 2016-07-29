@@ -31,7 +31,7 @@ WaitForMultipleObjects() / WaitForSingleObject() later...
 ## Tables with some first testing...
 
  - System: Arch Linux, Kernel 4.3.6-ck
- - Intel(R) Core(TM) i7-3632QM, limited to 1,2 .. 1,8 GHz
+ - Intel(R) Core(TM) i7-3632QM, limited to 1,2 .. 1,8 GHz (4 Cores, 8 Threads)
  - data.tar contains the tarred silesia directory
 
 Level|Threads|InSize|OutSize|Frames|Real|User|Sys|MaxMem
