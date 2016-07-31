@@ -64,7 +64,7 @@ static void usage(void)
 
 static void headline(void)
 {
-	printf("Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
+	printf("Type;Level;Threads;InSize;OutSize;Blocks;Real;User;Sys;MaxMem\n");
 	exit(0);
 }
 
@@ -89,19 +89,23 @@ ssize_t my_write_loop(int fd, const void *buffer, size_t count)
 static void do_compress(int threads, int level, int fdin, int fdout)
 {
 	static int first = 1;
+	ssize_t ret;
 
 	/* 1) create compression context */
 	ZSTDMT_CCtx *ctx = ZSTDMT_createCCtx(threads, level);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
-	ZSTDMT_CompressCCtx(ctx, my_read_loop, my_write_loop, fdin, fdout);
+
+	ret = ZSTDMT_CompressCCtx(ctx, my_read_loop, my_write_loop, fdin, fdout);
+	if (ret == -1)
+		perror_exit("ZSTDMT_CompressCCtx() failed!");
 
 	if (first) {
 		printf("%d;%d;%zu;%zu;%zu",
 		       level, threads,
 		       ZSTDMT_GetCurrentInsizeCCtx(ctx),
 		       ZSTDMT_GetCurrentOutsizeCCtx(ctx),
-		       ZSTDMT_GetCurrentFrameCCtx(ctx));
+		       ZSTDMT_GetCurrentBlockCCtx(ctx));
 		first = 0;
 	}
 
@@ -123,7 +127,10 @@ static void do_decompress(int fdin, int fdout)
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
-	ZSTDMT_DecompressDCtx(ctx, read_loop, write_loop, fdin, fdout);
+	ret = ZSTDMT_DecompressDCtx(ctx, read_loop, write_loop, fdin, fdout);
+	if (ret == -1)
+		perror_exit("ZSTDMT_DecompressCCtx() failed!");
+
 	ZSTDMT_freeDCtx(ctx);
 }
 

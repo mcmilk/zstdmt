@@ -56,7 +56,7 @@ struct ZSTDMT_CCtx_s {
 	void *buffer_out;
 
 	/* statistic */
-	size_t frames;
+	size_t blocks;
 	size_t insize;
 	size_t outsize;
 
@@ -100,7 +100,7 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level)
 	/* integer */
 	ctx->threads = threads;
 	ctx->level = level;
-	ctx->frames = 0;
+	ctx->blocks = 0;
 	ctx->insize = 0;
 	ctx->outsize = 0;
 
@@ -253,9 +253,6 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t insize)
 	if (!ctx)
 		return 0;
 
-	if (ctx->frames == 1)
-		ctx->outsize += 2;
-
 	ctx->insize += insize;
 
 	for (t = 0; t < ctx->threads && insize != 0; t++) {
@@ -270,8 +267,6 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t insize)
 	nthreads = t;
 	for (t = 0; t < nthreads; t++) {
 		pthread_join(ctx->th[t], NULL);
-		ctx->outsize += ctx->work[t].outlen + 4;
-		ctx->frames++;
 	}
 
 	/* no outlen in the next threads, if there */
@@ -295,22 +290,27 @@ void *ZSTDMT_GetCompressedCCtx(ZSTDMT_CCtx * ctx, int thread, size_t * len)
 	ret = ctx->work[thread].outbuf;
 	*len = ctx->work[thread].outlen + 4;
 
-	if (thread == 0 && ctx->frames == 1) {
+	/* update output counter */
+	ctx->outsize += ctx->work[thread].outlen + 4;
+	ctx->blocks++;
+
+	if (thread == 0 && ctx->blocks == 1) {
 		/* special case, return the format header */
 		*len += 2;
+		ctx->outsize += 2;
 		ret = ctx->buffer_out;
 	}
 
 	return ret;
 }
 
-/* returns current frame number */
-size_t ZSTDMT_GetCurrentFrameCCtx(ZSTDMT_CCtx * ctx)
+/* returns current block number */
+size_t ZSTDMT_GetCurrentBlockCCtx(ZSTDMT_CCtx * ctx)
 {
 	if (!ctx)
 		return 0;
 
-	return ctx->frames;
+	return ctx->blocks;
 }
 
 /* returns current uncompressed data size */

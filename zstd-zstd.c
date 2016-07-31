@@ -12,15 +12,13 @@
  * GNU General Public License for more details.
  */
 
+/* getrusage */
 #include <sys/resource.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/time.h>
 
-#include <stdlib.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <stdio.h>
-#include <fcntl.h>
 
 #define ZSTD_STATIC_LINKING_ONLY
 #include <zstd.h>
@@ -29,9 +27,6 @@
 #include "util.h"
 
 //#define DEBUGME
-#ifdef DEBUGME
-#include <stdio.h>
-#endif
 
 /**
  * zstd default, for benchmarking
@@ -69,7 +64,7 @@ static void usage(void)
 
 static void headline(void)
 {
-	printf("Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
+	printf("Type;Level;Threads;InSize;OutSize;Blocks;Real;User;Sys;MaxMem\n");
 	exit(0);
 }
 
@@ -83,15 +78,18 @@ static void do_compress(int level, int fdin, int fdout)
 {
 	ZBUFF_CCtx *ctx;
 	void *src, *dst;
-	size_t inlen = 0, outlen = 0, frames = 0;
+	size_t inlen = 0, outlen = 0, blocks = 0;
 	static int first = 1;
 
 	ctx = ZBUFF_createCCtx();
 	src = malloc(ZBUFF_recommendedCInSize());
 	dst = malloc(ZBUFF_recommendedCOutSize());
-	if (!ctx) perror_exit("ZBUFF_createCCtx() failed");
-	if (!src) perror_exit("Space for source buffer");
-	if (!src) perror_exit("Space for dest buffer");
+	if (!ctx)
+		perror_exit("ZBUFF_createCCtx() failed");
+	if (!src)
+		perror_exit("Space for source buffer");
+	if (!src)
+		perror_exit("Space for dest buffer");
 
 	ZBUFF_compressInit(ctx, level);
 	for (;;) {
@@ -131,17 +129,17 @@ static void do_compress(int level, int fdin, int fdout)
 			write_loop(fdout, dst, dstlen);
 			outlen += dstlen;
 		}
-
 #ifdef DEBUGME
-	printf("ZBUFF_decompressContinue ret=%zu srclen=%zu dstlen=%zu\n",
-	       ret, srclen, dstlen);
+		printf
+		    ("ZBUFF_decompressContinue ret=%zu srclen=%zu dstlen=%zu\n",
+		     ret, srclen, dstlen);
 #endif
 
-		frames++;
+		blocks++;
 	}
 
 	if (first) {
-		printf("%d;%d;%zu;%zu;%zu", level, 1, inlen, outlen, frames);
+		printf("%d;%d;%zu;%zu;%zu", level, 1, inlen, outlen, blocks);
 		first = 0;
 	}
 

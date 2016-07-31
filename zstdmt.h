@@ -57,7 +57,7 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, size_t srcsize);
 void *ZSTDMT_GetCompressedCCtx(ZSTDMT_CCtx * ctx, int thread, size_t * len);
 
 /* statistic */
-size_t ZSTDMT_GetCurrentFrameCCtx(ZSTDMT_CCtx * ctx);
+size_t ZSTDMT_GetCurrentBlockCCtx(ZSTDMT_CCtx * ctx);
 size_t ZSTDMT_GetCurrentInsizeCCtx(ZSTDMT_CCtx * ctx);
 size_t ZSTDMT_GetCurrentOutsizeCCtx(ZSTDMT_CCtx * ctx);
 

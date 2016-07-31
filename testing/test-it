@@ -7,26 +7,42 @@
 ######################################################################
 
 ../zstd-st -H > ./zstd.log
+../zstd-st -H > ./zstdD.log
 #../zstd-mt -H > ./zstd-mt.log
 #../zstd-mt2 -H > ./zstd-mt2.log
 
-for l in 1 5 10 15 20; do
+for l in 1 5 10; do
  for i in 1; do
 
   # single stream zstd
-  echo -n "ZSTD-L" >> zstd.log
-  ../zstd-zstd -l $l -i $i data.tar /dev/null >> ./zstd.log
+  echo -n "zstd default;" >> zstd.log
+  echo -n "zstd default;" >> zstdD.log
+  rm -f data.tar.zstd
+  ../zstd-zstd -l $l -i $i data.tar data.tar.zstd >> ./zstd.log
+  #../zstd-zstd -d data.tar.zstd data.tar.zstdD >> ./zstdD.log
+  #cmp data.tar data.tar.zstdD || exit 111
 
   # multi stream
   for t in 1 2 4 6 8 12; do
-   echo -n "ST-L" >> zstd.log
-   ../zstd-st -l $l -i $i -t $t data.tar /dev/null >> ./zstd.log
+   echo -n "ST;" >> zstd.log
+   echo -n "ST;" >> zstdD.log
+   rm -f data.tar.zstd
+   ../zstd-st -l $l -i $i -t $t data.tar data.tar.zstd >> ./zstd.log
+   #../zstd-st -d data.tar.zstd data.tar.zstdD >> ./zstdD.log
+   #cmp data.tar data.tar.zstdD || exit 111
 
-   echo -n "MT-L" >> zstd.log
-   ../zstd-mt -l $l -i $i -t $t data.tar /dev/null >> ./zstd.log
+   rm -f data.tar.zstd
+   echo -n "MT, barrier;" >> zstd.log
+   ../zstd-mt -l $l -i $i -t $t data.tar data.tar.zstd  >> ./zstd.log
+   #../zstd-mt -d data.tar.zstd data.tar.zstdD >> ./zstdD.log
+   #cmp data.tar data.tar.zstdD || exit 111
 
-   echo -n "MT2-L" >> zstd.log
-   ../zstd-mt2 -l $l -i $i -t $t data.tar /dev/null >> ./zstd.log
+   echo -n "MT, workers;" >> zstd.log
+   rm -f data.tar.zstd
+   ../zstd-mt2 -l $l -i $i -t $t data.tar data.tar.zstd  >> ./zstd.log
+   #../zstd-mt2 -d data.tar.zstd data.tar.zstdD >> ./zstdD.log
+   #cmp data.tar data.tar.zstdD || exit 111
+
   done
  done
 done

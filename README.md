@@ -17,16 +17,20 @@ WaitForMultipleObjects() / WaitForSingleObject() later...
 
 ## Overview
 
- - three tools:
-   - `./zstd-st` - single threaded multi stram mode
-   - `./zstd-mt` - multi threaded via phread_create / pthread_join
-   - `./zstd-mt2` - multi threaded via X workers that read/compress/write
-     (decompress has to be changed a bit)
+ - `./zstd-zstd` - single threaded single stream mode (normal zstd stream)
+ - `./zstd-st` - single threaded multi stram mode
+ - `./zstd-mt` - multi threaded via phread_create / pthread_join
+ - `./zstd-mt2` - multi threaded via workers that read/compress/write
+
+## Todo
+
+ - add support for windows
+ - fix and document return codes in own mini libraries
 
 ## See also
 
  - [zstd Extremely Fast Compression algorithm](https://github.com/Cyan4973/zstd)
- - [7-Zip with zstd support](https://github.com/mcmilk/7-Zip-Zstd)
+ - [7-Zip with zstd support](https://github.com/mcmilk/7-Zip-zstd)
 
 ## Tables with some first testing...
 

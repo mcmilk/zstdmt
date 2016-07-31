@@ -64,7 +64,7 @@ static void usage(void)
 
 static void headline(void)
 {
-	printf("Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
+	printf("Type;Level;Threads;InSize;OutSize;Blocks;Real;User;Sys;MaxMem\n");
 	exit(0);
 }
 
@@ -126,7 +126,7 @@ static void do_compress(int threads, int level, int fdin, int fdout)
 		       level, threads,
 		       ZSTDMT_GetCurrentInsizeCCtx(ctx),
 		       ZSTDMT_GetCurrentOutsizeCCtx(ctx),
-		       ZSTDMT_GetCurrentFrameCCtx(ctx));
+		       ZSTDMT_GetCurrentBlockCCtx(ctx));
 		first = 0;
 	}
 
@@ -191,11 +191,6 @@ static void do_decompress(int fdin, int fdout)
 		ret = write_loop(fdout, outbuf, len);
 		if (ret != len)
 			perror_exit("Writing output failed!");
-
-#if 0
-		printf("write_loop(fdout,outbuf,%zu)\n", len);
-		fflush(stdout);
-#endif
 
 		if (eof)
 			break;

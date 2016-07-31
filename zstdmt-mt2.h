@@ -10,6 +10,9 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
+ *
+ * You can contact the author at:
+ * - zstdmt source repository: https://github.com/mcmilk/zstdmt
  */
 
 #define ZSTD_STATIC_LINKING_ONLY
@@ -69,7 +72,7 @@ ssize_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, fn_read, fn_write, int fdin,
 void ZSTDMT_freeCCtx(ZSTDMT_CCtx * ctx);
 
 /* statistic */
-size_t ZSTDMT_GetCurrentFrameCCtx(ZSTDMT_CCtx * ctx);
+size_t ZSTDMT_GetCurrentBlockCCtx(ZSTDMT_CCtx * ctx);
 size_t ZSTDMT_GetCurrentInsizeCCtx(ZSTDMT_CCtx * ctx);
 size_t ZSTDMT_GetCurrentOutsizeCCtx(ZSTDMT_CCtx * ctx);
 
