@@ -33,7 +33,7 @@
  *   4) begin with step 1 again, until no input
  */
 
-//#define DEBUGME
+#define DEBUGME
 #ifdef DEBUGME
 #include <stdio.h>
 #endif
@@ -94,6 +94,60 @@ struct ZSTDMT_CCtx_s {
 	pthread_t *th;
 	work_t *work;
 };
+
+typedef struct work_item_tag {
+	struct work_item_tag *next;
+	void *data;
+} work_item_t;
+
+typedef struct {
+	work_item_t *head;
+	work_item_t *tail;
+	int item_count;
+} work_queue_t;
+
+static void work_queue_push(work_queue_t * work_q, void *data)
+{
+	work_item_t *work_item;
+
+	if (!work_q)
+		return;
+
+	work_item = malloc(sizeof(work_item_t));
+	work_item->next = NULL;
+	work_item->data = data;
+
+	if (work_q->head == NULL) {
+		work_q->head = work_q->tail = work_item;
+		work_q->item_count = 1;
+	} else {
+		work_q->tail->next = work_item;
+		work_q->tail = work_item;
+		work_q->item_count++;
+	}
+
+	return;
+}
+
+static void *work_queue_pop(work_queue_t * work_q)
+{
+	work_item_t *work_item;
+	void *data;
+
+	if (!work_q || !work_q->head)
+		return 0;
+
+	work_item = work_q->head;
+	data = work_item->data;
+	work_q->head = work_item->next;
+	if (work_q->head == NULL) {
+		work_q->tail = NULL;
+	}
+	free(work_item);
+	work_q->item_count--;
+
+	return data;
+}
 
 /* **************************************
  *  Compression
@@ -259,7 +313,9 @@ static void *pt_compress(void *arg)
 			free(work->outbuf);
 			free(work->inbuf);
 #ifdef DEBUGME
-			printf("ZBUFF_compress()[%2d] ENDE blocks=%zu curblock=%zu\n", work->tid, ctx->blocks, ctx->curblock);
+			printf
+			    ("ZBUFF_compress()[%2d] ENDE blocks=%zu curblock=%zu\n",
+			     work->tid, ctx->blocks, ctx->curblock);
 #endif
 			pthread_mutex_unlock(&ctx->read_mutex);
 			return 0;
@@ -423,8 +479,9 @@ typedef struct {
 #define DTH_STATE_WORK 1
 #define DTH_STATE_EXIT 2
 	int state;
-	pthread_cond_t cond;
-	pthread_mutex_t mutex;	/* cond mutex */
+	pthread_cond_t work; /* signal from main to worker, work */
+	pthread_cond_t done; /* signal from worker to main, done */
+	pthread_mutex_t mutex;
 } dwork_t;
 
 struct ZSTDMT_DCtx_s {
@@ -446,7 +503,9 @@ struct ZSTDMT_DCtx_s {
 
 	/* all decompression threads can write */
 	pthread_mutex_t write_mutex;
+	// struct worklist worklist;
 
+	work_queue_t *queue;
 
 	/* threading */
 	pthread_t *th;
@@ -500,10 +559,66 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(unsigned char hdr[2])
 		}
 		ZBUFF_decompressInit(work->zctx);
 		pthread_mutex_init(&work->mutex, NULL);
-		pthread_cond_init(&work->cond, NULL);
+		pthread_cond_init(&work->done, NULL);
+		pthread_cond_init(&work->work, NULL);
 	}
 
 	return ctx;
+}
+
+static void WriteDecompressedData(ZSTDMT_DCtx * ctx, int thread, size_t block,
+				void *buf, size_t length)
+{
+	//struct worklist *head = &ctx->worklist, *wl, *cur;
+
+	printf("writing[%d] len=%zu\n", thread, length);
+
+#if 0
+	if (block == ctx->curblock) {
+		/* new not written buffer found */
+		ctx->writefn(ctx->fdout, buf, length);
+		ctx->outsize += length;
+		ctx->curblock++;
+		free(buf);
+	} else {
+		cur = (struct worklist *)malloc(sizeof(struct worklist));
+		if (!cur)
+			die_nomem();
+		cur->block = block;
+		cur->buf = buf;
+		cur->len = length;
+		cur->tid = thread;
+
+		/* add new data to queue */
+		wl = head;
+		cur->next = wl->next;
+		wl->next = cur;
+	}
+
+	/* check, for elements we have to write */
+	for (wl = head; wl->next; wl = wl->next) {
+		cur = wl->next;
+
+		if (cur->block != ctx->curblock)
+			continue;
+
+		/* new not written buffer found */
+		ctx->writefn(ctx->fdout, cur->buf, cur->len);
+		ctx->outsize += cur->len + 4;
+		ctx->curblock++;
+		free(cur->buf);
+
+		/* remove then */
+		if (wl != head) {
+			wl->next = cur->next;
+			free(cur);
+			/* back to the root */
+			wl = head;
+		}
+	}
+#endif
+
+	return;
 }
 
 /**
@@ -518,29 +633,26 @@ static void *pt_decompress(void *arg)
 		pthread_mutex_lock(&work->mutex);
 
 		for (;;) {
-			//printf("Thread %d waiting... len=%zu\n", work->tid, work->inlen);
-			int r = pthread_cond_wait(&work->cond, &work->mutex);
-			//printf("pthread_cond_wait() thread %d  r=%d check=%d\n", work->tid, r, work->check);
+			printf(" thread[%d] oldlen=%zu WAIT\n", work->tid, work->inlen);
+			int r = pthread_cond_wait(&work->work, &work->mutex);
+			printf(" thread[%d] len=%zu TODO\n", work->tid, work->inlen);
 			if (r)
 				die_nomem();
-			switch (work->state) {
-			case DTH_STATE_WAIT:
-				continue;
-			case DTH_STATE_WORK:
-				break;
-			case DTH_STATE_EXIT:
+
+			if (work->state == DTH_STATE_EXIT)
 				return 0;
-			}
+
+			if (work->state == DTH_STATE_WORK)
+				break;
 		}
 
 		work->state = DTH_STATE_WAIT;
-
 		work->outlen = ZBUFF_recommendedDInSize();
 		work->outbuf = malloc(work->outlen);
 		if (!work->outbuf)
 			die_nomem();
 
-#ifdef DEBUGME
+#ifdef DEBUGME2
 		printf
 		    ("ZBUFF_decompressContinueBefore[%d] outlen=%zu inlen=%zu\n",
 		     work->tid, work->outlen, work->inlen);
@@ -551,20 +663,26 @@ static void *pt_decompress(void *arg)
 					       &work->outlen,
 					       work->inbuf, &work->inlen);
 
-#ifdef DEBUGME
-		printf
-		    ("ZBUFF_decompressContinue[%d] outlen=%zu inlen=%zu sleep4()\n",
-		     work->tid, work->outlen, work->inlen);
+#ifdef DEBUGME2
+		printf ("ZBUFF_decompressContinue[%d] outlen=%zu inlen=%zu sleep4()\n", work->tid, work->outlen, work->inlen);
 #endif
 		if (ZSTD_isError(ret)) {
 #ifdef DEBUGME
-			printf(ZSTD_getErrorName(ret));
+			printf(" thread[%d] len=%zu ZStd Error: %s\n", work->tid, work->inlen, ZSTD_getErrorName(ret));
 			fflush(stdout);
 #endif
 			die_nomem();
 			return 0;
 		}
 
+		pthread_mutex_lock(&work->ctx->write_mutex);
+		//work->ctx->writefn(work->ctx->fdout, work->outbuf, work->outlen);
+		WriteDecompressedData(work->ctx, work->tid, 0, work->outbuf, work->outlen);
+		pthread_mutex_unlock(&work->ctx->write_mutex);
+
+		printf(" thread[%d] len=%zu DONE\n", work->tid, work->inlen);
+
+		pthread_cond_signal(&work->done);
 		pthread_mutex_unlock(&work->mutex);
 	}
 
@@ -622,11 +740,11 @@ ssize_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, fn_read readfn,
 		/* get tid and length */
 		tid = hdr[0] + ((hdr[1] & 0x3f) << 8);
 		len = hdr[3] + (hdr[2] << 8) + (((hdr[1] & 0xc0) << 16) >> 6);
-		#ifdef DEBUGME
-			ssize_t off = lseek(ctx->fdin, 0, SEEK_CUR);
-			printf("tid(%u) len(%u) off=%zd block=%zu\n", tid,
-			len, off, ctx->blocks);
-		#endif
+#ifdef DEBUGME
+		ssize_t off = lseek(ctx->fdin, 0, SEEK_CUR);
+		printf("main[%u] len(%u) off=%zd block=%zu\n", tid,
+		       len, off, ctx->blocks);
+#endif
 		if (tid >= ctx->threads) {
 			return -1;
 		}
@@ -655,7 +773,7 @@ ssize_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, fn_read readfn,
 
 		/* size_t block; void *buf; size_t len; int tid; */
 		work->state = DTH_STATE_WORK;
-		rv = pthread_cond_signal(&work->cond);
+		rv = pthread_cond_signal(&work->work);
 		if (rv)
 			die_nomem();
 		rv = pthread_mutex_unlock(&work->mutex);
@@ -667,7 +785,8 @@ ssize_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, fn_read readfn,
 	for (t = 0; t < ctx->threads; t++) {
 		work = &ctx->work[t];
 		work->state = DTH_STATE_EXIT;
-		pthread_cond_signal(&work->cond);
+		//pthread_cond_signal(&work->work);
+		//int r = pthread_cond_wait(&work->work, &work->mutex);
 		pthread_join(ctx->th[t], NULL);
 	}
 

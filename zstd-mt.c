@@ -64,7 +64,8 @@ static void usage(void)
 
 static void headline(void)
 {
-	printf("Type;Level;Threads;InSize;OutSize;Blocks;Real;User;Sys;MaxMem\n");
+	printf
+	    ("Type;Level;Threads;InSize;OutSize;Blocks;Real;User;Sys;MaxMem\n");
 	exit(0);
 }
 

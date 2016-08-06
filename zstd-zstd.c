@@ -32,6 +32,9 @@
  * zstd default, for benchmarking
  */
 
+#define MODE_COMPRESS    1
+#define MODE_DECOMPRESS  2
+
 static void perror_exit(const char *msg)
 {
 	perror(msg);
@@ -62,14 +65,16 @@ static void usage(void)
 	exit(0);
 }
 
-static void headline(void)
+static void headline(int mode)
 {
-	printf("Type;Level;Threads;InSize;OutSize;Blocks;Real;User;Sys;MaxMem\n");
+	if (mode == MODE_COMPRESS)
+		printf
+		    ("Type;Level;Threads;InSize;OutSize;Blocks;Real;User;Sys;MaxMem\n");
+	else
+		printf
+		    ("Type;Threads;InSize;OutSize;Blocks;Real;User;Sys;MaxMem\n");
 	exit(0);
 }
-
-#define MODE_COMPRESS    1
-#define MODE_DECOMPRESS  2
 
 /* for the -i option */
 #define MAX_ITERATIONS   1000
@@ -107,7 +112,9 @@ static void do_compress(int level, int fdin, int fdout)
 				perror_exit(ZSTD_getErrorName(ret));
 
 			write_loop(fdout, dst, dstlen);
-			outlen += dstlen;
+
+			if (first)
+				outlen += dstlen;
 
 			dstlen = ZBUFF_recommendedCOutSize();
 			ret = ZBUFF_compressEnd(ctx, dst, &dstlen);
@@ -115,7 +122,9 @@ static void do_compress(int level, int fdin, int fdout)
 				perror_exit(ZSTD_getErrorName(ret));
 
 			write_loop(fdout, dst, dstlen);
-			outlen += dstlen;
+
+			if (first)
+				outlen += dstlen;
 
 			break;
 		}
@@ -127,7 +136,8 @@ static void do_compress(int level, int fdin, int fdout)
 
 		if (dstlen) {
 			write_loop(fdout, dst, dstlen);
-			outlen += dstlen;
+			if (first)
+				outlen += dstlen;
 		}
 #ifdef DEBUGME
 		printf
@@ -150,6 +160,66 @@ static void do_compress(int level, int fdin, int fdout)
 
 static void do_decompress(int fdin, int fdout)
 {
+	ZBUFF_DCtx *ctx;
+	void *src, *dst;
+	size_t srclen, dstlen, ret, cursize, pos;
+
+	srclen = ZBUFF_recommendedDInSize();
+	dstlen = ZBUFF_recommendedDOutSize();
+
+	ctx = ZBUFF_createDCtx();
+	src = malloc(srclen);
+	dst = malloc(dstlen);
+	if (!ctx)
+		perror_exit("ZBUFF_createDCtx() failed");
+	if (!src)
+		perror_exit("Space for source buffer");
+	if (!dst)
+		perror_exit("Space for dest buffer");
+
+	ZBUFF_decompressInit(ctx);
+	pos = 0;
+	cursize = 0;
+	for (;;) {
+		/* read input */
+		if (cursize == 0 || pos == ZBUFF_recommendedDInSize()) {
+			ret = read_loop(fdin, src, ZBUFF_recommendedDInSize());
+
+			/* eof reached */
+			if (ret == 0) {
+				printf("done");
+				break;
+			}
+
+			srclen = ret;
+			pos = 0;
+		}
+
+		cursize = srclen - pos;
+		// printf ("ZBUFF1: srclen=%zu dstlen=%zu cursize=%zu pos=%zu\n", srclen, dstlen, cursize, pos);
+		ret =
+		    ZBUFF_decompressContinue(ctx, dst, &dstlen, src + pos,
+					     &cursize);
+		if (ZSTD_isError(ret))
+			perror_exit(ZSTD_getErrorName(ret));
+		// printf ("ZBUFF2: srclen=%zu dstlen=%zu cursize=%zu pos=%zu\n\n", srclen, dstlen, cursize, pos);
+
+		if (dstlen) {
+			write_loop(fdout, dst, dstlen);
+		}
+
+		if (cursize) {
+			pos += cursize;
+		}
+
+		/* end of frame */
+		if (ret == 0)
+			break;
+	}
+
+	free(dst);
+	free(src);
+	free(ctx);
 }
 
 #define tsub(a, b, result) \
@@ -176,7 +246,7 @@ int main(int argc, char **argv)
 		case 'h':	/* help */
 			usage();
 		case 'H':	/* headline */
-			headline();
+			headline(opt_mode);
 		case 'l':	/* level */
 			opt_level = atoi(optarg);
 			break;

@@ -22,8 +22,9 @@ ZCOMMON	+= \
 	zstd/lib/decompress/zstd_decompress.c
 
 #CFLAGS += -DDEBUGME
-#CFLAGS += -Wno-unused-but-set-variable
-#CFLAGS += -Wno-unused-variable
+CFLAGS += -Wno-unused-but-set-variable
+CFLAGS += -Wno-unused-variable
+CFLAGS += -Wno-unused-function
 
 PRGS	= zstd-st zstd-mt zstd-mt2 zstd-zstd
 

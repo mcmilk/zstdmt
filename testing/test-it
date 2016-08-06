@@ -17,11 +17,12 @@ for l in 1 5 10; do
   # single stream zstd
   echo -n "zstd default;" >> zstd.log
   echo -n "zstd default;" >> zstdD.log
-  rm -f data.tar.zstd
-  ../zstd-zstd -l $l -i $i data.tar data.tar.zstd >> ./zstd.log
-  #../zstd-zstd -d data.tar.zstd data.tar.zstdD >> ./zstdD.log
-  #cmp data.tar data.tar.zstdD || exit 111
+  #rm -f data.tar.zstd
+  #../zstd-zstd -l $l -i $i data.tar data.tar.zstd >> ./zstd.log
+  ../zstd-zstd -d data.tar.zstd data.tar.zstdD >> ./zstdD.log
+  cmp data.tar data.tar.zstdD || exit 111
 
+  continue
   # multi stream
   for t in 1 2 4 6 8 12; do
    echo -n "ST;" >> zstd.log

@@ -64,7 +64,8 @@ static void usage(void)
 
 static void headline(void)
 {
-	printf("Type;Level;Threads;InSize;OutSize;Blocks;Real;User;Sys;MaxMem\n");
+	printf
+	    ("Type;Level;Threads;InSize;OutSize;Blocks;Real;User;Sys;MaxMem\n");
 	exit(0);
 }
 
@@ -96,7 +97,8 @@ static void do_compress(int threads, int level, int fdin, int fdout)
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
-	ret = ZSTDMT_CompressCCtx(ctx, my_read_loop, my_write_loop, fdin, fdout);
+	ret =
+	    ZSTDMT_CompressCCtx(ctx, my_read_loop, my_write_loop, fdin, fdout);
 	if (ret == -1)
 		perror_exit("ZSTDMT_CompressCCtx() failed!");
 
