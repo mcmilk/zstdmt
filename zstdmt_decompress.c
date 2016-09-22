@@ -1,6 +1,6 @@
 
 /**
- * Copyright © 2016 Tino Reichardt
+ * Copyright (c) 2016 Tino Reichardt
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
