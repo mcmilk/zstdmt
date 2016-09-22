@@ -1,5 +1,5 @@
 
-# zstdmt
+# zstdmt multistream testing, obsolete
 
 zstdmt depends currently on posix threads for multi-threading and is
 only tested on linux

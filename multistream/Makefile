@@ -38,7 +38,6 @@ again:	clean $(PRGS)
 zstd-zstd: zstd-zstd.o util.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ zstd-zstd.o util.o
 
-
 # single threaded testing
 zstd-st: zstdmt-st.o util.o zstd-mt.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ zstd-mt.o zstdmt-st.o util.o
