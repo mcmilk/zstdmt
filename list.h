@@ -43,11 +43,6 @@ extern "C" {
 #define inline __inline
 #endif
 
-#ifndef CONTAINING_RECORD
-#define CONTAINING_RECORD(ptr, type, field) \
-	((type*)((char*)(ptr) - (char*)(&((type*)0)->field)))
-#endif
-
 struct list_head {
 	struct list_head *prev;
 	struct list_head *next;
@@ -57,9 +52,9 @@ static inline void INIT_LIST_HEAD(struct list_head *head)
 {
 	head->prev = head;
 	head->next = head;
-} static inline struct list_head *list_first(const struct list_head
+}
 
-					     *head)
+static inline struct list_head *list_first(const struct list_head *head)
 {
 	return head->next;
 }
@@ -74,9 +69,8 @@ static inline struct list_head *list_next(const struct list_head *node)
 	return node->next;
 }
 
-static inline void
-__list_add_between(struct list_head *prev, struct list_head *node,
-		   struct list_head *next)
+static inline void __list_add_between(struct list_head *prev,
+	struct list_head *node, struct list_head *next)
 {
 	prev->next = node;
 	node->prev = prev;
@@ -99,6 +93,11 @@ static inline void list_del(struct list_head *entry)
 	entry->prev->next = entry->next;
 	entry->next->prev = entry->prev;
 }
+
+#ifndef CONTAINING_RECORD
+#define CONTAINING_RECORD(ptr, type, field) \
+	((type*)((char*)(ptr) - (char*)(&((type*)0)->field)))
+#endif
 
 #define list_entry(ptr, type, member)	CONTAINING_RECORD(ptr, type, member)
 #define	list_for_each(var, head) \
