@@ -5,7 +5,7 @@
 - does the same as the pzstd from the contrib directory of ZStandard
 - works with skippables frame id 0x184D2A50 (12 bytes per compressed frame)
 - three small test utils, which only work @ linux
-- the library itself work also nice on windows, an multithreaded 7-Zip ZS is currently in testing
+- the library itself works on windows already (multithreaded 7-Zip ZS is currently in testing)
 
 ## zstdmt, usage
 ```
@@ -17,7 +17,7 @@ Options:
  -i N    set number of iterations for testing (default: 1)
  -b N    set input chunksize to N MiB (default: auto)
  -c      compress (default mode)
- -d      use decompress mode (XXX, not done)
+ -d      use decompress mode
  -H      print headline for the testing values
  -h      show usage
  -v      show version
@@ -28,11 +28,10 @@ Options:
 Usage: lz4mt [options] infile outfile
 
 Otions:
- -l N    set level of compression (default: 3)
+ -l N    set level of compression (default: 1)
  -t N    set number of (de)compression threads (default: 2)
  -i N    set number of iterations for testing (default: 1)
  -b N    set input chunksize to N MiB (default: auto)
- -B N    set blocksize 1=64K 2=256K 3=1MB 4=4MB (default: 2)
  -c      compress (default mode)
  -d      use decompress mode (XXX, not done)
  -H      print headline for the testing values
@@ -45,11 +44,10 @@ Otions:
 Usage: lz5mt [options] infile outfile
 
 Otions:
- -l N    set level of compression (default: 3)
+ -l N    set level of compression (default: 1)
  -t N    set number of (de)compression threads (default: 2)
  -i N    set number of iterations for testing (default: 1)
  -b N    set input chunksize to N MiB (default: auto)
- -B N    set blocksize 1=64K 2=256K 3=1MB 4=4MB 5=16MB 6=64MB 7=256MB (def:2)
  -c      compress (default mode)
  -d      use decompress mode (XXX, not done)
  -H      print headline for the testing values
