@@ -17,7 +17,7 @@ Options:
  -i N    set number of iterations for testing (default: 1)
  -b N    set input chunksize to N MiB (default: auto)
  -c      compress (default mode)
- -d      use decompress mode
+ -d      use decompress mode (XXX, not done)
  -H      print headline for the testing values
  -h      show usage
  -v      show version
@@ -33,7 +33,7 @@ Otions:
  -i N    set number of iterations for testing (default: 1)
  -b N    set input chunksize to N MiB (default: auto)
  -c      compress (default mode)
- -d      use decompress mode (XXX, not done)
+ -d      use decompress mode
  -H      print headline for the testing values
  -h      show usage
  -v      show version
@@ -49,7 +49,7 @@ Otions:
  -i N    set number of iterations for testing (default: 1)
  -b N    set input chunksize to N MiB (default: auto)
  -c      compress (default mode)
- -d      use decompress mode (XXX, not done)
+ -d      use decompress mode
  -H      print headline for the testing values
  -h      show usage
  -v      show version
