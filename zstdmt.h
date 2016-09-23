@@ -30,7 +30,7 @@ extern "C" {
 
 typedef struct {
 	void *buf;		/* ptr to data */
-	int size;		/* length of buf */
+	size_t size;		/* length of buf */
 } ZSTDMT_Buffer;
 
 /**

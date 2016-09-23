@@ -31,7 +31,8 @@ extern "C" {
 
 typedef struct {
 	void *buf;		/* ptr to data */
-	size_t size;		/* length of buf */
+	size_t size;		/* current filled in buf */
+	size_t allocated;	/* length of buf */
 } LZ4MT_Buffer;
 
 /**
@@ -65,8 +66,7 @@ typedef struct LZ4MT_CCtx_s LZ4MT_CCtx;
  * @inputsize - if zero, becomes some optimal value for the level
  *            - if nonzero, the given value is taken
  */
-LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize,
-			     int blockSizeID);
+LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize);
 
 /**
  * 2) threaded compression
@@ -101,8 +101,9 @@ typedef struct LZ4MT_DCtx_s LZ4MT_DCtx;
  * @threads - 1 .. LZ4MT_THREAD_MAX
  * @srclen  - the max size of src for LZ4MT_CompressCCtx()
  * @dstlen  - the min size of dst
+ * @ inputsize - used for single threaded standard lz4 format without skippable frames
  */
-LZ4MT_DCtx *LZ4MT_createDCtx(int threads);
+LZ4MT_DCtx *LZ4MT_createDCtx(int threads, int inputsize);
 
 /**
  * 2) threaded compression

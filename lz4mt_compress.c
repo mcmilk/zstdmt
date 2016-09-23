@@ -97,11 +97,10 @@ struct LZ4MT_CCtx_s {
 };
 
 /* **************************************
- *  Compression
+ * Compression
  ****************************************/
 
-LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize,
-			     int blockSizeID)
+LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize)
 {
 	LZ4MT_CCtx *ctx;
 	int t;
@@ -122,23 +121,8 @@ LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize,
 	/* calculate chunksize for one thread */
 	if (inputsize)
 		ctx->inputsize = inputsize;
-	else {
-		switch (blockSizeID) {
-		case LZ4F_max64KB:
-			ctx->inputsize = 64 * 1024;
-			break;
-		case LZ4F_max256KB:
-			ctx->inputsize = 256 * 1024;
-			break;
-		case LZ4F_max1MB:
-			ctx->inputsize = 1024 * 1024;
-			break;
-		case LZ4F_max4MB:
-			ctx->inputsize = 1024 * 1024 * 4;
-			break;
-		}
-		ctx->inputsize *= 4;
-	}
+	else
+		ctx->inputsize = 64 * 1024;
 
 	/* setup ctx */
 	ctx->level = level;
@@ -162,7 +146,6 @@ LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize,
 
 		/* setup preferences for that thread */
 		w->zpref.compressionLevel = level;
-		w->zpref.frameInfo.blockSizeID = blockSizeID;
 		w->zpref.frameInfo.blockMode = LZ4F_blockLinked;
 		w->zpref.frameInfo.contentChecksumFlag =
 		    LZ4F_contentChecksumEnabled;

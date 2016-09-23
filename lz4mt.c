@@ -44,14 +44,12 @@ static void usage(void)
 {
 	printf("Usage: lz4mt [options] infile outfile\n\n");
 	printf("Otions:\n");
-	printf(" -l N    set level of compression (default: 3)\n");
+	printf(" -l N    set level of compression (default: 1)\n");
 	printf(" -t N    set number of (de)compression threads (default: 2)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -b N    set input chunksize to N MiB (default: auto)\n");
-	printf
-	    (" -B N    set blocksize 1=64K 2=256K 3=1MB 4=4MB (default: 2)\n");
 	printf(" -c      compress (default mode)\n");
-	printf(" -d      use decompress mode (XXX, not done)\n");
+	printf(" -d      use decompress mode\n");
 	printf(" -H      print headline for the testing values\n");
 	printf(" -h      show usage\n");
 	printf(" -v      show version\n");
@@ -75,10 +73,9 @@ static void headline(void)
 int my_read_loop(void *arg, LZ4MT_Buffer * in)
 {
 	int *fd = (int *)arg;
-	int done = read_loop(*fd, in->buf, in->size);
+	ssize_t done = read_loop(*fd, in->buf, in->size);
 
-	//printf("read_loop(fd=%d, buffer=%p,count=%d)\n", *fd, in->buf,
-	//       in->size);
+	//printf("read_loop(fd=%d, buffer=%p,count=%zu)\n", *fd, in->buf, in->size);
 	//fflush(stdout);
 	in->size = done;
 
@@ -88,17 +85,17 @@ int my_read_loop(void *arg, LZ4MT_Buffer * in)
 int my_write_loop(void *arg, LZ4MT_Buffer * out)
 {
 	int *fd = (int *)arg;
-	int done = write_loop(*fd, out->buf, out->size);
+	ssize_t done = write_loop(*fd, out->buf, out->size);
 
-	//printf("write_loop(fd=%d, buffer=%p,count=%d)\n", *fd, out->buf,
-	//       out->size);
-	//fflush(stdout);
+	printf("write_loop(fd=%d, buffer=%p,count=%zu)\n", *fd, out->buf,
+	       out->size);
+	fflush(stdout);
 	out->size = done;
 
 	return done;
 }
 
-static void do_compress(int threads, int level, int bufsize, int blockSizeID,
+static void do_compress(int threads, int level, int bufsize,
 			int fdin, int fdout)
 {
 	static int first = 1;
@@ -112,8 +109,7 @@ static void do_compress(int threads, int level, int bufsize, int blockSizeID,
 	rdwr.arg_write = (void *)&fdout;
 
 	/* 2) create compression context */
-	LZ4MT_CCtx *ctx =
-	    LZ4MT_createCCtx(threads, level, bufsize, blockSizeID);
+	LZ4MT_CCtx *ctx = LZ4MT_createCCtx(threads, level, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
@@ -135,8 +131,7 @@ static void do_compress(int threads, int level, int bufsize, int blockSizeID,
 	LZ4MT_freeCCtx(ctx);
 }
 
-#if 0
-static void do_decompress(int threads, int fdin, int fdout)
+static void do_decompress(int threads, int bufsize, int fdin, int fdout)
 {
 	static int first = 1;
 	LZ4MT_RdWr_t rdwr;
@@ -149,7 +144,7 @@ static void do_decompress(int threads, int fdin, int fdout)
 	rdwr.arg_write = (void *)&fdout;
 
 	/* 2) create compression context */
-	LZ4MT_DCtx *ctx = LZ4MT_createDCtx(threads);
+	LZ4MT_DCtx *ctx = LZ4MT_createDCtx(threads, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
@@ -170,7 +165,6 @@ static void do_decompress(int threads, int fdin, int fdout)
 	/* 5) free resources */
 	LZ4MT_freeDCtx(ctx);
 }
-#endif
 
 #define tsub(a, b, result) \
 do { \
@@ -186,7 +180,7 @@ int main(int argc, char **argv)
 	/* default options: */
 	int opt, opt_threads = 2, opt_level = 1;
 	int opt_mode = MODE_COMPRESS, fdin, fdout;
-	int opt_iterations = 1, opt_bufsize = 0, opt_bsid = 1;
+	int opt_iterations = 1, opt_bufsize = 0;
 	struct rusage ru;
 	struct timeval tms, tme, tm;
 
@@ -215,9 +209,6 @@ int main(int argc, char **argv)
 			break;
 		case 'b':	/* input buffer in MB */
 			opt_bufsize = atoi(optarg);
-			break;
-		case 'B':	/* Blocksize Enum */
-			opt_bsid = atoi(optarg);
 			break;
 		default:
 			usage();
@@ -250,25 +241,6 @@ int main(int argc, char **argv)
 	else if (opt_iterations > MAX_ITERATIONS)
 		opt_iterations = MAX_ITERATIONS;
 
-	/* opt_bsid = 1,2,3,4 */
-	switch (opt_bsid) {
-	case 1:
-		opt_bsid = 4;
-		break;		/* LZ4F_max64KB */
-	case 2:
-		opt_bsid = 5;
-		break;		/* LZ4F_max256KB */
-	case 3:
-		opt_bsid = 6;
-		break;		/* LZ4F_max1MB */
-	case 4:
-		opt_bsid = 7;
-		break;		/* LZ4F_max4MB */
-	default:
-		opt_bsid = 4;
-		break;		/* LZ4F_max64KB */
-	}
-
 	/* opt_bufsize is in MB */
 	if (opt_bufsize > 0)
 		opt_bufsize *= 1024 * 1024;
@@ -288,9 +260,9 @@ int main(int argc, char **argv)
 	for (;;) {
 		if (opt_mode == MODE_COMPRESS) {
 			do_compress(opt_threads, opt_level, opt_bufsize,
-				    opt_bsid, fdin, fdout);
+				    fdin, fdout);
 		} else {
-			//do_decompress(opt_threads, fdin, fdout);
+			do_decompress(opt_threads, opt_bufsize, fdin, fdout);
 		}
 
 		opt_iterations--;

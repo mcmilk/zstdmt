@@ -97,7 +97,7 @@ struct ZSTDMT_CCtx_s {
 };
 
 /* **************************************
- *  Compression
+ * Compression
  ****************************************/
 
 ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize)

@@ -48,8 +48,6 @@ static void usage(void)
 	printf(" -t N    set number of (de)compression threads (default: 2)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -b N    set input chunksize to N MiB (default: auto)\n");
-	printf
-	    (" -B N    set blocksize 1=64K 2=256K 3=1MB 4=4MB 5=16MB 6=64MB 7=256MB (def:2)\n");
 	printf(" -c      compress (default mode)\n");
 	printf(" -d      use decompress mode (XXX, not done)\n");
 	printf(" -H      print headline for the testing values\n");
@@ -98,7 +96,7 @@ int my_write_loop(void *arg, LZ5MT_Buffer * out)
 	return done;
 }
 
-static void do_compress(int threads, int level, int bufsize, int blockSizeID,
+static void do_compress(int threads, int level, int bufsize,
 			int fdin, int fdout)
 {
 	static int first = 1;
@@ -112,8 +110,7 @@ static void do_compress(int threads, int level, int bufsize, int blockSizeID,
 	rdwr.arg_write = (void *)&fdout;
 
 	/* 2) create compression context */
-	LZ5MT_CCtx *ctx =
-	    LZ5MT_createCCtx(threads, level, bufsize, blockSizeID);
+	LZ5MT_CCtx *ctx = LZ5MT_createCCtx(threads, level, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
@@ -186,7 +183,7 @@ int main(int argc, char **argv)
 	/* default options: */
 	int opt, opt_threads = 2, opt_level = 1;
 	int opt_mode = MODE_COMPRESS, fdin, fdout;
-	int opt_iterations = 1, opt_bufsize = 0, opt_bsid = 1;
+	int opt_iterations = 1, opt_bufsize = 0;
 	struct rusage ru;
 	struct timeval tms, tme, tm;
 
@@ -215,9 +212,6 @@ int main(int argc, char **argv)
 			break;
 		case 'b':	/* input buffer in MB */
 			opt_bufsize = atoi(optarg);
-			break;
-		case 'B':	/* Blocksize Enum */
-			opt_bsid = atoi(optarg);
 			break;
 		default:
 			usage();
@@ -250,12 +244,6 @@ int main(int argc, char **argv)
 	else if (opt_iterations > MAX_ITERATIONS)
 		opt_iterations = MAX_ITERATIONS;
 
-	/* opt_bsid = 1..7 */
-	if (opt_bsid < 1)
-		opt_bsid = 1;
-	else if (opt_bsid > 7)
-		opt_bsid = 7;
-
 	/* opt_bufsize is in MB */
 	if (opt_bufsize > 0)
 		opt_bufsize *= 1024 * 1024;
@@ -275,7 +263,7 @@ int main(int argc, char **argv)
 	for (;;) {
 		if (opt_mode == MODE_COMPRESS) {
 			do_compress(opt_threads, opt_level, opt_bufsize,
-				    opt_bsid, fdin, fdout);
+				    fdin, fdout);
 		} else {
 			//do_decompress(opt_threads, fdin, fdout);
 		}

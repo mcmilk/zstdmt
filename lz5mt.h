@@ -65,8 +65,7 @@ typedef struct LZ5MT_CCtx_s LZ5MT_CCtx;
  * @inputsize - if zero, becomes some optimal value for the level
  *            - if nonzero, the given value is taken
  */
-LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize,
-			     int blockSizeID);
+LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize);
 
 /**
  * 2) threaded compression

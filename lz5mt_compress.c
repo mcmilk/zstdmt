@@ -97,11 +97,10 @@ struct LZ5MT_CCtx_s {
 };
 
 /* **************************************
- *  Compression
+ * Compression
  ****************************************/
 
-LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize,
-			     int blockSizeID)
+LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize)
 {
 	LZ5MT_CCtx *ctx;
 	int t;
@@ -122,32 +121,8 @@ LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize,
 	/* calculate chunksize for one thread */
 	if (inputsize)
 		ctx->inputsize = inputsize;
-	else {
-		switch (blockSizeID) {
-		case LZ5F_max64KB:
-			ctx->inputsize = 64 * 1024;
-			break;
-		case LZ5F_max256KB:
-			ctx->inputsize = 256 * 1024;
-			break;
-		case LZ5F_max1MB:
-			ctx->inputsize = 1024 * 1024;
-			break;
-		case LZ5F_max4MB:
-			ctx->inputsize = 1024 * 1024 * 4;
-			break;
-		case LZ5F_max16MB:
-			ctx->inputsize = 1024 * 1024 * 16;
-			break;
-		case LZ5F_max64MB:
-			ctx->inputsize = 1024 * 1024 * 64;
-			break;
-		case LZ5F_max256MB:
-			ctx->inputsize = 1024 * 1024 * 256;
-			break;
-		}
-		ctx->inputsize *= 4;
-	}
+	else
+		ctx->inputsize = 64 * 1024;
 
 	/* setup ctx */
 	ctx->level = level;
@@ -171,7 +146,6 @@ LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize,
 
 		/* setup preferences for that thread */
 		w->zpref.compressionLevel = level;
-		w->zpref.frameInfo.blockSizeID = blockSizeID;
 		w->zpref.frameInfo.blockMode = LZ5F_blockLinked;
 		w->zpref.frameInfo.contentChecksumFlag =
 		    LZ5F_contentChecksumEnabled;

@@ -87,7 +87,7 @@ struct ZSTDMT_DCtx_s {
 };
 
 /* **************************************
- *  de-Compression
+ * Decompression
  ****************************************/
 
 /**
@@ -285,6 +285,62 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads)
 	return 0;
 }
 
+st_decompress()
+{
+	size_t result;
+	UInt32 const toRead = static_cast < const UInt32 > (_buffInSize);
+	for (;;) {
+		UInt32 read;
+
+		/* read input */
+		RINOK(inStream->Read(_buffIn, toRead, &read));
+		size_t InSize = static_cast < size_t > (read);
+		_processedIn += InSize;
+
+		if (InSize == 0)
+			return S_OK;
+
+		/* decompress input */
+		ZSTD_inBuffer input = { _buffIn, InSize, 0 };
+		for (;;) {
+			ZSTD_outBuffer output = { _buffOut, _buffOutSize, 0 };
+			result =
+			    ZSTD_decompressStream(_dstream, &output, &input);
+#if 0
+			printf
+			    ("%s in=%d out=%d result=%d in.pos=%d in.size=%d\n",
+			     __FUNCTION__, InSize, output.pos, result,
+			     input.pos, input.size);
+			fflush(stdout);
+#endif
+			if (ZSTD_isError(result))
+				return ErrorOut(result);
+
+			/* write decompressed stream and update progress */
+			RINOK(WriteStream(outStream, _buffOut, output.pos));
+			_processedOut += output.pos;
+			RINOK(progress->
+			      SetRatioInfo(&_processedIn, &_processedOut));
+
+			/* one more round */
+			if ((input.pos == input.size) && (result == 1)
+			    && output.pos)
+				continue;
+
+			/* finished */
+			if (input.pos == input.size)
+				break;
+
+			/* end of frame */
+			if (result == 0) {
+				result = ZSTD_initDStream(_dstream);
+				if (ZSTD_isError(result))
+					return ErrorOut(result);
+			}
+		}
+	}
+}
+
 int ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 {
 	ZSTDMT_Buffer in;
@@ -300,15 +356,16 @@ int ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 	ctx->arg_read = rdwr->arg_read;
 	ctx->arg_write = rdwr->arg_write;
 
-	/* check for multithreading stream, id 0x184D2A50 */
+	/* check for 0x184D2A50 (multithreading stream) */
 	in.size = 4;
 	in.buf = buf;
 	rv = ctx->fn_read(ctx->arg_read, &in);
 	if (rv == -1)
 		return -1;
-
-	/* multithreading found ... */
-	if (read_le32(buf) == 0x184D2A50) {
+	if (read_le32(buf) != 0x184D2A50) {
+		/* single threading fallback */
+		st_decompress(&in);
+		return 0;
 	}
 
 	/* start all workers */
