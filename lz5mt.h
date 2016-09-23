@@ -24,6 +24,7 @@ extern "C" {
 
 /* current maximum the library will accept */
 #define LZ5MT_THREAD_MAX 128
+#define LZ5MT_LEVEL_MAX   16
 
 /* **************************************
  * Structures
@@ -61,7 +62,7 @@ typedef struct LZ5MT_CCtx_s LZ5MT_CCtx;
  * 1) allocate new cctx
  * - return cctx or zero on error
  *
- * @level   - 1 .. 9
+ * @level   - 1 .. 16
  * @threads - 1 .. LZ5MT_THREAD_MAX
  * @inputsize - if zero, becomes some optimal value for the level
  *            - if nonzero, the given value is taken

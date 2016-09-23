@@ -44,7 +44,7 @@ static void usage(void)
 {
 	printf("Usage: lz4mt [options] infile outfile\n\n");
 	printf("Otions:\n");
-	printf(" -l N    set level of compression (default: 1)\n");
+	printf(" -l N    set level (1..16) of compression (default: 1)\n");
 	printf(" -t N    set number of (de)compression threads (default: 2)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -b N    set input chunksize to N MiB (default: auto)\n");
@@ -227,8 +227,8 @@ int main(int argc, char **argv)
 	/* opt_level = 1..22 */
 	if (opt_level < 1)
 		opt_level = 1;
-	else if (opt_level > 9)
-		opt_level = 9;
+	else if (opt_level > LZ4MT_LEVEL_MAX)
+		opt_level = LZ4MT_LEVEL_MAX;
 
 	/* opt_threads = 1..LZ4MT_THREADMAX */
 	if (opt_threads < 1)

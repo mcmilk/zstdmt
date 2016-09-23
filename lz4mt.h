@@ -24,6 +24,7 @@ extern "C" {
 
 /* current maximum the library will accept */
 #define LZ4MT_THREAD_MAX 128
+#define LZ4MT_LEVEL_MAX   16
 
 /* **************************************
  * Structures
