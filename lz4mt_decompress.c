@@ -20,6 +20,7 @@
 #include "threading.h"
 #include "list.h"
 #include "lz4mt.h"
+#include "error_private.h"
 
 /**
  * multi threaded lz4 - multiple workers version
@@ -232,6 +233,7 @@ static int pt_read(LZ4MT_DCtx * ctx, LZ4MT_Buffer * in, size_t * frame)
 		if (read_le32(hdr.buf + 0) != 0x184D2A50)
 			goto error_data;
 	}
+	ctx->insize += 12;
 
 	/* check header data */
 	if (read_le32(hdr.buf + 4) != 4)
@@ -374,8 +376,6 @@ static void *pt_decompress(void *arg)
 		errmsg = "No memory!";
 	out->buf = errmsg;
 	out->size = 0;
-	//printf("error: %s\n", errmsg);
-	//fflush(stdout);
 	return (void *)-1;
 }
 

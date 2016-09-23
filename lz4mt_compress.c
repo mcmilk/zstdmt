@@ -19,6 +19,7 @@
 #include "threading.h"
 #include "list.h"
 #include "lz4mt.h"
+#include "error_private.h"
 
 /**
  * multi threaded lz4 - multiple workers version
@@ -122,7 +123,7 @@ LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize)
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else
-		ctx->inputsize = 64 * 1024;
+		ctx->inputsize = 1024 * 1024 * 2;
 
 	/* setup ctx */
 	ctx->level = level;
@@ -286,6 +287,7 @@ int LZ4MT_CompressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr)
 
 	if (!ctx)
 		return -1;
+		//return ERROR(compressionParameter_unsupported);
 
 	/* init reading and writing functions */
 	ctx->fn_read = rdwr->fn_read;
@@ -305,7 +307,7 @@ int LZ4MT_CompressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr)
 		void *p;
 		pthread_join(w->pthread, &p);
 		if (p)
-			return -1;
+			return (size_t)p;
 	}
 
 	return 0;

@@ -19,6 +19,7 @@
 #include "threading.h"
 #include "list.h"
 #include "lz5mt.h"
+#include "error_private.h"
 
 /**
  * multi threaded lz4 - multiple workers version
@@ -122,7 +123,7 @@ LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize)
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else
-		ctx->inputsize = 64 * 1024;
+		ctx->inputsize = 1024 * 1024 * 2;
 
 	/* setup ctx */
 	ctx->level = level;

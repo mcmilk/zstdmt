@@ -20,6 +20,7 @@
 #include "threading.h"
 #include "list.h"
 #include "lz5mt.h"
+#include "error_private.h"
 
 /**
  * multi threaded lz5 - multiple workers version
@@ -232,6 +233,7 @@ static int pt_read(LZ5MT_DCtx * ctx, LZ5MT_Buffer * in, size_t * frame)
 		if (read_le32(hdr.buf + 0) != 0x184D2A50)
 			goto error_data;
 	}
+	ctx->insize += 12;
 
 	/* check header data */
 	if (read_le32(hdr.buf + 4) != 4)

@@ -18,6 +18,8 @@
 #ifndef LZ4MT_H
 #define LZ4MT_H
 
+#include "error_public.h"
+
 #if defined (__cplusplus)
 extern "C" {
 #endif

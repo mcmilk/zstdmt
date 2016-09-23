@@ -19,6 +19,7 @@
 #include "threading.h"
 #include "list.h"
 #include "zstdmt.h"
+#include "error_private.h"
 
 /**
 
