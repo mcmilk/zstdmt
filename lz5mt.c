@@ -44,12 +44,12 @@ static void usage(void)
 {
 	printf("Usage: lz5mt [options] infile outfile\n\n");
 	printf("Otions:\n");
-	printf(" -l N    set level of compression (default: 3)\n");
+	printf(" -l N    set level of compression (default: 1)\n");
 	printf(" -t N    set number of (de)compression threads (default: 2)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -b N    set input chunksize to N MiB (default: auto)\n");
 	printf(" -c      compress (default mode)\n");
-	printf(" -d      use decompress mode (XXX, not done)\n");
+	printf(" -d      use decompress mode\n");
 	printf(" -H      print headline for the testing values\n");
 	printf(" -h      show usage\n");
 	printf(" -v      show version\n");
@@ -73,26 +73,18 @@ static void headline(void)
 int my_read_loop(void *arg, LZ5MT_Buffer * in)
 {
 	int *fd = (int *)arg;
-	int done = read_loop(*fd, in->buf, in->size);
+	size_t done = read_loop(*fd, in->buf, in->size);
 
-	//printf("read_loop(fd=%d, buffer=%p,count=%d)\n", *fd, in->buf,
-	//       in->size);
-	//fflush(stdout);
 	in->size = done;
-
 	return done;
 }
 
 int my_write_loop(void *arg, LZ5MT_Buffer * out)
 {
 	int *fd = (int *)arg;
-	int done = write_loop(*fd, out->buf, out->size);
+	size_t done = write_loop(*fd, out->buf, out->size);
 
-	//printf("write_loop(fd=%d, buffer=%p,count=%d)\n", *fd, out->buf,
-	//       out->size);
-	//fflush(stdout);
 	out->size = done;
-
 	return done;
 }
 

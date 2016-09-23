@@ -34,7 +34,7 @@
  *   4) begin with step 1 again, until no input
  */
 
-#define DEBUGME
+//#define DEBUGME
 #ifdef DEBUGME
 #include <stdio.h>
 #endif
@@ -270,18 +270,18 @@ static int pt_read(LZ4MT_DCtx * ctx, LZ4MT_Buffer * in, size_t * frame)
 
 	/* xxx, add errno meaning */
  error_data:
-	printf("pt_read err data (size=%zu)\n", in->size);
-	fflush(stdout);
+	//printf("pt_read err data (size=%zu)\n", in->size);
+	//fflush(stdout);
 	pthread_mutex_unlock(&ctx->read_mutex);
 	return -1;
  error_read:
-	printf("pt_read error read (size=%zu)\n", in->size);
-	fflush(stdout);
+	//printf("pt_read error read (size=%zu)\n", in->size);
+	//fflush(stdout);
 	pthread_mutex_unlock(&ctx->read_mutex);
 	return -1;
  error_nomem:
-	printf("pt_read nomem\n");
-	fflush(stdout);
+	//printf("pt_read nomem\n");
+	//fflush(stdout);
 	pthread_mutex_unlock(&ctx->read_mutex);
 	return -1;
 }
@@ -541,8 +541,6 @@ int LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
 		cwork_t *w = &ctx->cwork[t];
 		void *p;
 		pthread_join(w->pthread, &p);
-		printf("pthread_join()\n");
-		fflush(stdout);
 		if (p)
 			return -1;
 	}

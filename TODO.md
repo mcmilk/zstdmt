@@ -1,5 +1,5 @@
 
 # TODO
 
-- threaded decompression is not done yet, will come in some days
-- better error handling
+- threaded decompression for zstd not ready
+- error handling

@@ -75,10 +75,11 @@ int my_read_loop(void *arg, LZ4MT_Buffer * in)
 	int *fd = (int *)arg;
 	ssize_t done = read_loop(*fd, in->buf, in->size);
 
-	//printf("read_loop(fd=%d, buffer=%p,count=%zu)\n", *fd, in->buf, in->size);
-	//fflush(stdout);
-	in->size = done;
+	printf("read_loop(fd=%d, buffer=%p,count=%zu)\n", *fd, in->buf,
+	       in->size);
+	fflush(stdout);
 
+	in->size = done;
 	return done;
 }
 
@@ -90,8 +91,8 @@ int my_write_loop(void *arg, LZ4MT_Buffer * out)
 	printf("write_loop(fd=%d, buffer=%p,count=%zu)\n", *fd, out->buf,
 	       out->size);
 	fflush(stdout);
-	out->size = done;
 
+	out->size = done;
 	return done;
 }
 
