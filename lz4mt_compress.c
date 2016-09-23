@@ -270,7 +270,7 @@ static void *pt_compress(void *arg)
 
 	return 0;
  error:
-#if 1
+#if 0
 	if (!out.buf)
 		out.buf = "Allocation error : not enough memory";
 	printf("ERR @ pt_compress() = %s\n", (char *)out.buf);

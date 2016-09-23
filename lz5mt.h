@@ -31,7 +31,8 @@ extern "C" {
 
 typedef struct {
 	void *buf;		/* ptr to data */
-	int size;		/* length of buf */
+	size_t size;		/* current filled in buf */
+	size_t allocated;	/* length of buf */
 } LZ5MT_Buffer;
 
 /**
@@ -101,7 +102,7 @@ typedef struct LZ5MT_DCtx_s LZ5MT_DCtx;
  * @srclen  - the max size of src for LZ5MT_CompressCCtx()
  * @dstlen  - the min size of dst
  */
-LZ5MT_DCtx *LZ5MT_createDCtx(int threads);
+LZ5MT_DCtx *LZ5MT_createDCtx(int threads, int inputsize);
 
 /**
  * 2) threaded compression

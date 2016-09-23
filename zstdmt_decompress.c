@@ -21,6 +21,9 @@
 #include "zstdmt.h"
 
 /**
+
+TODO.......
+
  * multi threaded zstd - multiple workers version
  *
  * - each thread works on his own
@@ -319,8 +322,8 @@ st_decompress()
 			/* write decompressed stream and update progress */
 			RINOK(WriteStream(outStream, _buffOut, output.pos));
 			_processedOut += output.pos;
-			RINOK(progress->
-			      SetRatioInfo(&_processedIn, &_processedOut));
+			RINOK(progress->SetRatioInfo
+			      (&_processedIn, &_processedOut));
 
 			/* one more round */
 			if ((input.pos == input.size) && (result == 1)

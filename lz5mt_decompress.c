@@ -14,15 +14,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define LZ4F_DISABLE_OBSOLETE_ENUMS
-#include <lz4frame.h>
+#define LZ5F_DISABLE_OBSOLETE_ENUMS
+#include <lz5frame.h>
 
 #include "threading.h"
 #include "list.h"
-#include "lz4mt.h"
+#include "lz5mt.h"
 
 /**
- * multi threaded lz4 - multiple workers version
+ * multi threaded lz5 - multiple workers version
  *
  * - each thread works on his own
  * - no main thread which does reading and then starting the work
@@ -53,23 +53,23 @@ static inline void write_le32(unsigned char *dst, unsigned int u)
 
 /* worker for compression */
 typedef struct {
-	LZ4MT_DCtx *ctx;
+	LZ5MT_DCtx *ctx;
 	pthread_t pthread;
-	LZ4MT_Buffer in;
-	LZ4MT_Buffer out;
-	LZ4F_decompressionContext_t dctx;
+	LZ5MT_Buffer in;
+	LZ5MT_Buffer out;
+	LZ5F_decompressionContext_t dctx;
 } cwork_t;
 
 struct writelist;
 struct writelist {
 	size_t frame;
-	LZ4MT_Buffer out;
+	LZ5MT_Buffer out;
 	struct list_head node;
 };
 
-struct LZ4MT_DCtx_s {
+struct LZ5MT_DCtx_s {
 
-	/* threads: 1..LZ4MT_THREAD_MAX */
+	/* threads: 1..LZ5MT_THREAD_MAX */
 	int threads;
 
 	/* should be used for read from input */
@@ -108,18 +108,18 @@ static unsigned int read_le32(const unsigned char *x)
 	    (((unsigned int)(x[2])) << 16) | (((unsigned int)(x[3])) << 24);
 }
 
-LZ4MT_DCtx *LZ4MT_createDCtx(int threads, int inputsize)
+LZ5MT_DCtx *LZ5MT_createDCtx(int threads, int inputsize)
 {
-	LZ4MT_DCtx *ctx;
+	LZ5MT_DCtx *ctx;
 	int t;
 
 	/* allocate ctx */
-	ctx = (LZ4MT_DCtx *) malloc(sizeof(LZ4MT_DCtx));
+	ctx = (LZ5MT_DCtx *) malloc(sizeof(LZ5MT_DCtx));
 	if (!ctx)
 		return 0;
 
 	/* check threads value */
-	if (threads < 1 || threads > LZ4MT_THREAD_MAX)
+	if (threads < 1 || threads > LZ5MT_THREAD_MAX)
 		return 0;
 
 	/* setup ctx */
@@ -148,7 +148,7 @@ LZ4MT_DCtx *LZ4MT_createDCtx(int threads, int inputsize)
 		w->ctx = ctx;
 
 		/* setup thread work */
-		LZ4F_createDecompressionContext(&w->dctx, LZ4F_VERSION);
+		LZ5F_createDecompressionContext(&w->dctx, LZ5F_VERSION);
 	}
 
 	return ctx;
@@ -162,7 +162,7 @@ LZ4MT_DCtx *LZ4MT_createDCtx(int threads, int inputsize)
 /**
  * pt_write - queue for decompressed output
  */
-static int pt_write(LZ4MT_DCtx * ctx, size_t frame, LZ4MT_Buffer * out)
+static int pt_write(LZ5MT_DCtx * ctx, size_t frame, LZ5MT_Buffer * out)
 {
 	struct writelist *wl =
 	    (struct writelist *)malloc(sizeof(struct writelist));
@@ -197,10 +197,10 @@ static int pt_write(LZ4MT_DCtx * ctx, size_t frame, LZ4MT_Buffer * out)
 /**
  * pt_read - read compressed output
  */
-static int pt_read(LZ4MT_DCtx * ctx, LZ4MT_Buffer * in, size_t * frame)
+static int pt_read(LZ5MT_DCtx * ctx, LZ5MT_Buffer * in, size_t * frame)
 {
 	unsigned char hdrbuf[12];
-	LZ4MT_Buffer hdr;
+	LZ5MT_Buffer hdr;
 	int rv;
 
 	/* read skippable frame (8 or 12 bytes) */
@@ -289,9 +289,9 @@ static int pt_read(LZ4MT_DCtx * ctx, LZ4MT_Buffer * in, size_t * frame)
 static void *pt_decompress(void *arg)
 {
 	cwork_t *w = (cwork_t *) arg;
-	LZ4MT_Buffer *out = &w->out;
-	LZ4MT_Buffer *in = &w->in;
-	LZ4MT_DCtx *ctx = w->ctx;
+	LZ5MT_Buffer *out = &w->out;
+	LZ5MT_Buffer *in = &w->in;
+	LZ5MT_DCtx *ctx = w->ctx;
 	size_t result = 0;
 	char *errmsg = 0;
 	int rv;
@@ -312,17 +312,26 @@ static void *pt_decompress(void *arg)
 
 			out->size = 0;
 			switch ((bd >> 4) & 0x07) {
-			case LZ4F_max64KB:
+			case LZ5F_max64KB:
 				out->size = 1024 * 64;
 				break;
-			case LZ4F_max256KB:
+			case LZ5F_max256KB:
 				out->size = 1024 * 256;
 				break;
-			case LZ4F_max1MB:
+			case LZ5F_max1MB:
 				out->size = 1024 * 1024;
 				break;
-			case LZ4F_max4MB:
+			case LZ5F_max4MB:
 				out->size = 1024 * 1024 * 4;
+				break;
+			case LZ5F_max16MB:
+				out->size = 1024 * 1024 * 16;
+				break;
+			case LZ5F_max64MB:
+				out->size = 1024 * 1024 * 64;
+				break;
+			case LZ5F_max256MB:
+				out->size = 1024 * 1024 * 256;
 				break;
 			}
 		}
@@ -333,9 +342,9 @@ static void *pt_decompress(void *arg)
 			goto error_nomem;
 
 		result =
-		    LZ4F_decompress(w->dctx, out->buf, &out->size,
+		    LZ5F_decompress(w->dctx, out->buf, &out->size,
 				    in->buf, &in->size, 0);
-		if (LZ4F_isError(result))
+		if (LZ5F_isError(result))
 			goto error_lz4f;
 
 		if (result != 0)
@@ -359,7 +368,7 @@ static void *pt_decompress(void *arg)
 	return 0;
 
  error_lz4f:
-	errmsg = (char *)LZ4F_getErrorName(result);
+	errmsg = (char *)LZ5F_getErrorName(result);
  error_frame:
 	if (!errmsg)
 		errmsg = "Could not decompress frame @once!";
@@ -382,11 +391,11 @@ static void *pt_decompress(void *arg)
 /* single threaded */
 static int st_decompress(void *arg)
 {
-	LZ4MT_DCtx *ctx = (LZ4MT_DCtx *) arg;
-	LZ4F_errorCode_t nextToLoad = 0;
+	LZ5MT_DCtx *ctx = (LZ5MT_DCtx *) arg;
+	LZ5F_errorCode_t nextToLoad = 0;
 	cwork_t *w = &ctx->cwork[0];
-	LZ4MT_Buffer *out = &w->out;
-	LZ4MT_Buffer *in = &w->in;
+	LZ5MT_Buffer *out = &w->out;
+	LZ5MT_Buffer *in = &w->in;
 	void *magic = in->buf;
 	char *errmsg = 0;
 	size_t pos = 0;
@@ -408,8 +417,8 @@ static int st_decompress(void *arg)
 	in->size = 4;
 	memcpy(in->buf, magic, in->size);
 	nextToLoad =
-	    LZ4F_decompress(w->dctx, out->buf, &pos, in->buf, &in->size, 0);
-	if (LZ4F_isError(nextToLoad))
+	    LZ5F_decompress(w->dctx, out->buf, &pos, in->buf, &in->size, 0);
+	if (LZ5F_isError(nextToLoad))
 		goto error_lz4f;
 
 	for (; nextToLoad; pos = 0) {
@@ -433,9 +442,9 @@ static int st_decompress(void *arg)
 
 			/* decompress */
 			nextToLoad =
-			    LZ4F_decompress(w->dctx, out->buf, &out->size,
+			    LZ5F_decompress(w->dctx, out->buf, &out->size,
 					    in->buf + pos, &remaining, NULL);
-			if (LZ4F_isError(nextToLoad))
+			if (LZ5F_isError(nextToLoad))
 				goto error_lz4f;
 
 			/* have some output */
@@ -458,7 +467,7 @@ static int st_decompress(void *arg)
 	return 0;
 
  error_lz4f:
-	errmsg = (char *)LZ4F_getErrorName(nextToLoad);
+	errmsg = (char *)LZ5F_getErrorName(nextToLoad);
  error_read:
 	if (!errmsg)
 		errmsg = "Error while reading input!";
@@ -481,12 +490,12 @@ static int st_decompress(void *arg)
 	return -1;
 }
 
-int LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
+int LZ5MT_DecompressDCtx(LZ5MT_DCtx * ctx, LZ5MT_RdWr_t * rdwr)
 {
 	unsigned char buf[4];
 	int t, rv;
 	cwork_t *w = &ctx->cwork[0];
-	LZ4MT_Buffer *in = &w->in;
+	LZ5MT_Buffer *in = &w->in;
 
 	if (!ctx)
 		return -1;
@@ -510,7 +519,7 @@ int LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
 	if (read_le32(buf) != 0x184D2A50) {
 
 		/* look for correct magic */
-		if (read_le32(buf) != 0x184D2204)
+		if (read_le32(buf) != 0x184D2205)
 			return -1;
 
 		/* decompress single threaded */
@@ -541,8 +550,6 @@ int LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
 		cwork_t *w = &ctx->cwork[t];
 		void *p;
 		pthread_join(w->pthread, &p);
-		printf("pthread_join()\n");
-		fflush(stdout);
 		if (p)
 			return -1;
 	}
@@ -551,7 +558,7 @@ int LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
 }
 
 /* returns current uncompressed data size */
-size_t LZ4MT_GetInsizeDCtx(LZ4MT_DCtx * ctx)
+size_t LZ5MT_GetInsizeDCtx(LZ5MT_DCtx * ctx)
 {
 	if (!ctx)
 		return 0;
@@ -560,7 +567,7 @@ size_t LZ4MT_GetInsizeDCtx(LZ4MT_DCtx * ctx)
 }
 
 /* returns the current compressed data size */
-size_t LZ4MT_GetOutsizeDCtx(LZ4MT_DCtx * ctx)
+size_t LZ5MT_GetOutsizeDCtx(LZ5MT_DCtx * ctx)
 {
 	if (!ctx)
 		return 0;
@@ -569,7 +576,7 @@ size_t LZ4MT_GetOutsizeDCtx(LZ4MT_DCtx * ctx)
 }
 
 /* returns the current compressed frames */
-size_t LZ4MT_GetFramesDCtx(LZ4MT_DCtx * ctx)
+size_t LZ5MT_GetFramesDCtx(LZ5MT_DCtx * ctx)
 {
 	if (!ctx)
 		return 0;
@@ -577,7 +584,7 @@ size_t LZ4MT_GetFramesDCtx(LZ4MT_DCtx * ctx)
 	return ctx->curframe;
 }
 
-void LZ4MT_freeDCtx(LZ4MT_DCtx * ctx)
+void LZ5MT_freeDCtx(LZ5MT_DCtx * ctx)
 {
 	int t;
 
@@ -586,7 +593,7 @@ void LZ4MT_freeDCtx(LZ4MT_DCtx * ctx)
 
 	for (t = 0; t < ctx->threads; t++) {
 		cwork_t *w = &ctx->cwork[t];
-		LZ4F_freeDecompressionContext(w->dctx);
+		LZ5F_freeDecompressionContext(w->dctx);
 	}
 	free(ctx->cwork);
 	free(ctx);

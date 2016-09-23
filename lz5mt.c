@@ -132,8 +132,7 @@ static void do_compress(int threads, int level, int bufsize,
 	LZ5MT_freeCCtx(ctx);
 }
 
-#if 0
-static void do_decompress(int threads, int fdin, int fdout)
+static void do_decompress(int threads, int bufsize, int fdin, int fdout)
 {
 	static int first = 1;
 	LZ5MT_RdWr_t rdwr;
@@ -146,14 +145,14 @@ static void do_decompress(int threads, int fdin, int fdout)
 	rdwr.arg_write = (void *)&fdout;
 
 	/* 2) create compression context */
-	LZ5MT_DCtx *ctx = LZ5MT_createDCtx(threads);
+	LZ5MT_DCtx *ctx = LZ5MT_createDCtx(threads, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
 	ret = LZ5MT_DecompressDCtx(ctx, &rdwr);
 	if (ret == -1)
-		perror_exit("LZ5MT_CompressDCtx() failed!");
+		perror_exit("LZ4MT_CompressDCtx() failed!");
 
 	/* 4) get statistic */
 	if (first) {
@@ -167,7 +166,6 @@ static void do_decompress(int threads, int fdin, int fdout)
 	/* 5) free resources */
 	LZ5MT_freeDCtx(ctx);
 }
-#endif
 
 #define tsub(a, b, result) \
 do { \
@@ -265,7 +263,7 @@ int main(int argc, char **argv)
 			do_compress(opt_threads, opt_level, opt_bufsize,
 				    fdin, fdout);
 		} else {
-			//do_decompress(opt_threads, fdin, fdout);
+			do_decompress(opt_threads, opt_bufsize, fdin, fdout);
 		}
 
 		opt_iterations--;
