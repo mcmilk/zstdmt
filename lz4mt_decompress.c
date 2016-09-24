@@ -52,6 +52,9 @@ static inline void write_le32(unsigned char *dst, unsigned int u)
 	dst[3] = u;
 }
 
+/* will be used for lib errors */
+size_t lz4mt_errcode;
+
 /* worker for compression */
 typedef struct {
 	LZ4MT_DCtx *ctx;
@@ -96,6 +99,16 @@ struct LZ4MT_DCtx_s {
 	fn_write *fn_write;
 	void *arg_write;
 	struct list_head writelist;
+
+	/* lists for writing queue */
+	struct list_head writelist_free;
+	struct list_head writelist_busy;
+	struct list_head writelist_done;
+
+	/* lists for reading queue */
+	struct list_head readlist_free;
+	struct list_head readlist_busy;
+	struct list_head readlist_done;
 };
 
 /* **************************************
@@ -138,7 +151,14 @@ LZ4MT_DCtx *LZ4MT_createDCtx(int threads, int inputsize)
 
 	pthread_mutex_init(&ctx->read_mutex, NULL);
 	pthread_mutex_init(&ctx->write_mutex, NULL);
-	INIT_LIST_HEAD(&ctx->writelist);
+
+	INIT_LIST_HEAD(&ctx->writelist_free);
+	INIT_LIST_HEAD(&ctx->writelist_busy);
+	INIT_LIST_HEAD(&ctx->writelist_done);
+
+	INIT_LIST_HEAD(&ctx->readlist_free);
+	INIT_LIST_HEAD(&ctx->readlist_busy);
+	INIT_LIST_HEAD(&ctx->readlist_done);
 
 	ctx->cwork = (cwork_t *) malloc(sizeof(cwork_t) * threads);
 	if (!ctx->cwork)
@@ -163,31 +183,23 @@ LZ4MT_DCtx *LZ4MT_createDCtx(int threads, int inputsize)
 /**
  * pt_write - queue for decompressed output
  */
-static int pt_write(LZ4MT_DCtx * ctx, size_t frame, LZ4MT_Buffer * out)
+static size_t pt_write(LZ4MT_CCtx * ctx, struct writelist *wl)
 {
-	struct writelist *wl =
-	    (struct writelist *)malloc(sizeof(struct writelist));
 	struct list_head *entry;
 
-	if (!wl)
-		return -1;
-
-	wl->frame = frame;
-	wl->out.buf = out->buf;
-	wl->out.size = out->size;
-	list_add(&wl->node, &ctx->writelist);
-
+	/* move the entry to the done list */
+	list_move(&wl->node, &ctx->writelist_done);
  again:
 	/* check, what can be written ... */
-	list_for_each(entry, &ctx->writelist) {
+	list_for_each(entry, &ctx->writelist_done) {
 		wl = list_entry(entry, struct writelist, node);
 		if (wl->frame == ctx->curframe) {
-			ctx->fn_write(ctx->arg_write, &wl->out);
+			int rv = ctx->fn_write(ctx->arg_write, &wl->out);
+			if (rv == -1)
+				return -1;
 			ctx->outsize += wl->out.size;
 			ctx->curframe++;
-			list_del(entry);
-			free(wl->out.buf);
-			free(wl);
+			list_move(entry, &ctx->writelist_free);
 			goto again;
 		}
 	}
@@ -300,6 +312,10 @@ static void *pt_decompress(void *arg)
 
 	for (;;) {
 		size_t frame = 0;
+
+		struct list_head *entry;
+		struct writelist *wl;
+		int rv;
 
 		/* zero should not happen here! */
 		rv = pt_read(ctx, in, &frame);
@@ -481,7 +497,7 @@ static int st_decompress(void *arg)
 	return -1;
 }
 
-int LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
+size_t LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
 {
 	unsigned char buf[4];
 	int t, rv;

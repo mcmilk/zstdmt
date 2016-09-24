@@ -29,6 +29,12 @@ extern "C" {
 #define LZ4MT_LEVEL_MAX   16
 
 /* **************************************
+ * Error Handling
+ ****************************************/
+
+extern size_t lz4mt_errcode;
+
+/* **************************************
  * Structures
  ****************************************/
 
@@ -42,7 +48,7 @@ typedef struct {
  * reading and writing functions
  * - you can use stdio functions or plain read/write
  * - just write some wrapper on your own
- * - a sample is given in 7-Zip ZS
+ * - a sample is given in 7-Zip ZS or lz4mt.c
  */
 typedef int (fn_read) (void *args, LZ4MT_Buffer * in);
 typedef int (fn_write) (void *args, LZ4MT_Buffer * out);
@@ -73,9 +79,9 @@ LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize);
 
 /**
  * 2) threaded compression
- * - return -1 on error
+ * - errorcheck via 
  */
-int LZ4MT_CompressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr);
+size_t LZ4MT_CompressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr);
 
 /**
  * 3) get some statistic
@@ -112,7 +118,7 @@ LZ4MT_DCtx *LZ4MT_createDCtx(int threads, int inputsize);
  * 2) threaded compression
  * - return -1 on error
  */
-int LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr);
+size_t LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr);
 
 /**
  * 3) get some statistic

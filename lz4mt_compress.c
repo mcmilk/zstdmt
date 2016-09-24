@@ -94,7 +94,11 @@ struct LZ4MT_CCtx_s {
 	pthread_mutex_t write_mutex;
 	fn_write *fn_write;
 	void *arg_write;
-	struct list_head writelist;
+
+	/* lists for writing queue */
+	struct list_head writelist_free;
+	struct list_head writelist_busy;
+	struct list_head writelist_done;
 };
 
 /* **************************************
@@ -135,7 +139,11 @@ LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize)
 
 	pthread_mutex_init(&ctx->read_mutex, NULL);
 	pthread_mutex_init(&ctx->write_mutex, NULL);
-	INIT_LIST_HEAD(&ctx->writelist);
+
+	/* free -> busy -> out -> free -> ... */
+	INIT_LIST_HEAD(&ctx->writelist_free);	/* free, can be used */
+	INIT_LIST_HEAD(&ctx->writelist_busy);	/* busy */
+	INIT_LIST_HEAD(&ctx->writelist_done);	/* can be written */
 
 	ctx->cwork = (cwork_t *) malloc(sizeof(cwork_t) * threads);
 	if (!ctx->cwork)
@@ -164,31 +172,23 @@ LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize)
 /**
  * pt_write - queue for compressed output
  */
-static int pt_write(LZ4MT_CCtx * ctx, size_t frame, LZ4MT_Buffer * out)
+static size_t pt_write(LZ4MT_CCtx * ctx, struct writelist *wl)
 {
-	struct writelist *wl =
-	    (struct writelist *)malloc(sizeof(struct writelist));
 	struct list_head *entry;
 
-	if (!wl)
-		return -1;
-
-	wl->frame = frame;
-	wl->out.buf = out->buf;
-	wl->out.size = out->size;
-	list_add(&wl->node, &ctx->writelist);
-
-	/* check, what can be written ... */
+	/* move the entry to the done list */
+	list_move(&wl->node, &ctx->writelist_done);
  again:
-	list_for_each(entry, &ctx->writelist) {
+	/* check, what can be written ... */
+	list_for_each(entry, &ctx->writelist_done) {
 		wl = list_entry(entry, struct writelist, node);
 		if (wl->frame == ctx->curframe) {
-			ctx->fn_write(ctx->arg_write, &wl->out);
+			int rv = ctx->fn_write(ctx->arg_write, &wl->out);
+			if (rv == -1)
+				return -1;
 			ctx->outsize += wl->out.size;
 			ctx->curframe++;
-			list_del(entry);
-			free(wl->out.buf);
-			free(wl);
+			list_move(entry, &ctx->writelist_free);
 			goto again;
 		}
 	}
@@ -200,94 +200,110 @@ static void *pt_compress(void *arg)
 {
 	cwork_t *w = (cwork_t *) arg;
 	LZ4MT_CCtx *ctx = w->ctx;
-	int result, len;
-
+	size_t result;
 	LZ4MT_Buffer in;
-	LZ4MT_Buffer out;
-
-	/* used for error message */
-	out.buf = 0;
 
 	/* inbuf is constant */
 	in.size = ctx->inputsize;
 	in.buf = malloc(in.size);
 	if (!in.buf)
-		goto error;
+		return (void*)ERROR(memory_allocation);
 
 	for (;;) {
-		size_t frame;
+		struct list_head *entry;
+		struct writelist *wl;
+		int rv;
 
 		/* allocate space for new output */
-		out.size =
-		    LZ4F_compressFrameBound(ctx->inputsize, &w->zpref) + 12;
-		out.buf = malloc(out.size);
-		if (!out.buf)
-			goto error;
+		pthread_mutex_lock(&ctx->write_mutex);
+		if (!list_empty(&ctx->writelist_free)) {
+			/* take unused entry */
+			entry = list_first(&ctx->writelist_free);
+			wl = list_entry(entry, struct writelist, node);
+			wl->out.size =
+			    LZ4F_compressFrameBound(ctx->inputsize,
+						    &w->zpref) + 12;
+			list_move(entry, &ctx->writelist_busy);
+		} else {
+			/* allocate new one */
+			wl = (struct writelist *)
+			    malloc(sizeof(struct writelist));
+			if (!wl) {
+				pthread_mutex_unlock(&ctx->write_mutex);
+				return (void*)ERROR(memory_allocation);
+			}
+			wl->out.size =
+			    LZ4F_compressFrameBound(ctx->inputsize,
+						    &w->zpref) + 12;;
+			wl->out.buf = malloc(wl->out.size);
+			if (!wl->out.buf) {
+				pthread_mutex_unlock(&ctx->write_mutex);
+				return (void*)ERROR(memory_allocation);
+			}
+			list_add(&wl->node, &ctx->writelist_busy);
+		}
+		pthread_mutex_unlock(&ctx->write_mutex);
 
 		/* read new input */
 		pthread_mutex_lock(&ctx->read_mutex);
-		ctx->fn_read(ctx->arg_read, &in);
-		len = in.size;
 		in.size = ctx->inputsize;
-		if (len == -1) {
-			out.buf = "Error while reading input!";
+		rv = ctx->fn_read(ctx->arg_read, &in);
+		if (rv == -1) {
 			pthread_mutex_unlock(&ctx->read_mutex);
-			goto error;
+			return (void*)ERROR(read_fail);
 		}
-		if (len == 0) {
+
+		/* eof */
+		if (in.size == 0) {
 			free(in.buf);
-			free(out.buf);
 			pthread_mutex_unlock(&ctx->read_mutex);
+
+			pthread_mutex_lock(&ctx->write_mutex);
+			list_move(&wl->node, &ctx->writelist_free);
+			pthread_mutex_unlock(&ctx->write_mutex);
+
 			return 0;
 		}
-		ctx->insize += len;
-		frame = ctx->frames++;
+		ctx->insize += in.size;
+		wl->frame = ctx->frames++;
 		pthread_mutex_unlock(&ctx->read_mutex);
 
 		/* compress whole frame */
 		result =
-		    LZ4F_compressFrame(out.buf + 12, out.size - 12, in.buf, len,
-				       &w->zpref);
+		    LZ4F_compressFrame(wl->out.buf + 12, wl->out.size - 12,
+				       in.buf, in.size, &w->zpref);
 		if (LZ4F_isError(result)) {
-			out.buf = (void *)LZ4F_getErrorName(result);
-			goto error;
+			pthread_mutex_lock(&ctx->write_mutex);
+			list_move(&wl->node, &ctx->writelist_free);
+			pthread_mutex_unlock(&ctx->write_mutex);
+			/* user can lookup that code */
+			lz4mt_errcode = result;
+			return (void*)ERROR(compression_library);
 		}
 
 		/* write skippable frame */
-		write_le32(out.buf + 0, 0x184D2A50);
-		write_le32(out.buf + 4, 4);
-		write_le32(out.buf + 8, result);
-		out.size = result + 12;
+		write_le32(wl->out.buf + 0, 0x184D2A50);
+		write_le32(wl->out.buf + 4, 4);
+		write_le32(wl->out.buf + 8, result);
+		wl->out.size = result + 12;
 
 		/* write result */
 		pthread_mutex_lock(&ctx->write_mutex);
-		result = pt_write(ctx, frame, &out);
+		result = pt_write(ctx, wl);
 		pthread_mutex_unlock(&ctx->write_mutex);
-		if (result == -1) {
-			out.buf = "Error while writing output!";
-			goto error;
-		}
+		if (LZ4MT_isError(result))
+			return (void*)result;
 	}
 
 	return 0;
- error:
-#if 0
-	if (!out.buf)
-		out.buf = "Allocation error : not enough memory";
-	printf("ERR @ pt_compress() = %s\n", (char *)out.buf);
-	fflush(stdout);
-#endif
-	out.size = 0;
-	return (void *)-1;
 }
 
-int LZ4MT_CompressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr)
+size_t LZ4MT_CompressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr)
 {
 	int t;
 
 	if (!ctx)
-		return -1;
-		//return ERROR(compressionParameter_unsupported);
+		return ERROR(compressionParameter_unsupported);
 
 	/* init reading and writing functions */
 	ctx->fn_read = rdwr->fn_read;
@@ -307,7 +323,18 @@ int LZ4MT_CompressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr)
 		void *p;
 		pthread_join(w->pthread, &p);
 		if (p)
-			return (size_t)p;
+			return (size_t) p;
+	}
+
+	/* clean up lists */
+	{
+		struct list_head *entry;
+		struct writelist *wl;
+		list_for_each(entry, &ctx->writelist_free) {
+			wl = list_entry(entry, struct writelist, node);
+			free(wl->out.buf);
+			free(wl);
+		}
 	}
 
 	return 0;

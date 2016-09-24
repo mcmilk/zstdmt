@@ -29,6 +29,8 @@ typedef enum {
   ZSTDMT_error_write_fail,
   ZSTDMT_error_data_error,
   ZSTDMT_error_frame_decompress,
+  ZSTDMT_error_compressionParameter_unsupported,
+  ZSTDMT_error_compression_library,
   ZSTDMT_error_maxCode
 } ZSTDMT_ErrorCode;
 
@@ -39,18 +41,26 @@ typedef enum {
 /*! ZSTDMT_isError() :
 *   tells if a return value is an error code */
 extern unsigned ZSTDMT_isError(size_t code);
+#define LZ4MT_isError ZSTDMT_isError
+#define LZ5MT_isError ZSTDMT_isError
 
 /*! ZSTDMT_getErrorName() :
 *   provides error code string from function result (useful for debugging) */
 extern const char* ZSTDMT_getErrorName(size_t code);
+#define LZ4MT_getErrorName ZSTDMT_getErrorName
+#define LZ5MT_getErrorName ZSTDMT_getErrorName
 
 /*! ZSTDMT_getError() :
 *   convert a `size_t` function result into a proper ZSTDMT_errorCode enum */
 extern ZSTDMT_ErrorCode ZSTDMT_getErrorCode(size_t code);
+#define LZ4MT_getErrorCode ZSTDMT_getErrorCode
+#define LZ5MT_getErrorCode ZSTDMT_getErrorCode
 
 /*! ZSTDMT_getErrorString() :
 *   provides error code string from enum */
 extern const char* ZSTDMT_getErrorString(ZSTDMT_ErrorCode code);
+#define LZ4MT_getErrorString ZSTDMT_getErrorString
+#define LZ5MT_getErrorString ZSTDMT_getErrorString
 
 #if defined (__cplusplus)
 }

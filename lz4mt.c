@@ -26,7 +26,7 @@
  * program for testing threaded stuff on zstd
  */
 
-static void perror_exit(char *msg)
+static void perror_exit(const char *msg)
 {
 	printf("%s\n", msg);
 	fflush(stdout);
@@ -75,9 +75,11 @@ int my_read_loop(void *arg, LZ4MT_Buffer * in)
 	int *fd = (int *)arg;
 	ssize_t done = read_loop(*fd, in->buf, in->size);
 
+#if 0
 	printf("read_loop(fd=%d, buffer=%p,count=%zu)\n", *fd, in->buf,
 	       in->size);
 	fflush(stdout);
+#endif
 
 	in->size = done;
 	return done;
@@ -88,9 +90,11 @@ int my_write_loop(void *arg, LZ4MT_Buffer * out)
 	int *fd = (int *)arg;
 	ssize_t done = write_loop(*fd, out->buf, out->size);
 
+#if 0
 	printf("write_loop(fd=%d, buffer=%p,count=%zu)\n", *fd, out->buf,
 	       out->size);
 	fflush(stdout);
+#endif
 
 	out->size = done;
 	return done;
@@ -101,7 +105,7 @@ static void do_compress(int threads, int level, int bufsize,
 {
 	static int first = 1;
 	LZ4MT_RdWr_t rdwr;
-	int ret;
+	size_t ret;
 
 	/* 1) setup read/write functions */
 	rdwr.fn_read = my_read_loop;
@@ -116,8 +120,8 @@ static void do_compress(int threads, int level, int bufsize,
 
 	/* 3) compress */
 	ret = LZ4MT_CompressCCtx(ctx, &rdwr);
-	if (ret == -1)
-		perror_exit("LZ4MT_CompressCCtx() failed!");
+	if (LZ4MT_isError(ret))
+		perror_exit(LZ4MT_getErrorName(ret));
 
 	/* 4) get statistic */
 	if (first) {

@@ -74,6 +74,8 @@ ERR_STATIC const char* ERR_getErrorString(ERR_enum code)
     case PREFIX(write_fail): return "Write failure";
     case PREFIX(data_error): return "Malformed input";
     case PREFIX(frame_decompress): return "Could not decompress Frame at once";
+    case PREFIX(compressionParameter_unsupported): return "Compression parameter is out of bound";
+    case PREFIX(compression_library): return "Call *MT_getErrorString(*mt_errcode)";
     case PREFIX(maxCode):
     default: return notErrorCode;
     }

@@ -15,7 +15,7 @@ CFLAGS += -O
 
 PRGS	= zstdmt lz4mt lz5mt
 
-OBJ	= threading.o util.o
+OBJ	= threading.o util.o zstdmt_common.o
 OBJLZ4	= lz4mt_compress.o lz4mt.o lz4mt_decompress.o
 OBJLZ5	= lz5mt_compress.o lz5mt.o lz5mt_decompress.o
 OBJZSTD	= zstdmt_compress.o zstdmt.o
