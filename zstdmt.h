@@ -18,6 +18,8 @@
 #ifndef ZSTDMT_H
 #define ZSTDMT_H
 
+#include "error_public.h"
+
 #if defined (__cplusplus)
 extern "C" {
 #endif

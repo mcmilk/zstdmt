@@ -18,6 +18,8 @@
 #ifndef LZ5MT_H
 #define LZ5MT_H
 
+#include "error_public.h"
+
 #if defined (__cplusplus)
 extern "C" {
 #endif
@@ -25,6 +27,12 @@ extern "C" {
 /* current maximum the library will accept */
 #define LZ5MT_THREAD_MAX 128
 #define LZ5MT_LEVEL_MAX   16
+
+/* **************************************
+ * Error Handling
+ ****************************************/
+
+extern size_t lz5mt_errcode;
 
 /* **************************************
  * Structures
@@ -73,7 +81,7 @@ LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize);
  * 2) threaded compression
  * - return -1 on error
  */
-int LZ5MT_CompressCCtx(LZ5MT_CCtx * ctx, LZ5MT_RdWr_t * rdwr);
+size_t LZ5MT_CompressCCtx(LZ5MT_CCtx * ctx, LZ5MT_RdWr_t * rdwr);
 
 /**
  * 3) get some statistic
@@ -109,7 +117,7 @@ LZ5MT_DCtx *LZ5MT_createDCtx(int threads, int inputsize);
  * 2) threaded compression
  * - return -1 on error
  */
-int LZ5MT_DecompressDCtx(LZ5MT_DCtx * ctx, LZ5MT_RdWr_t * rdwr);
+size_t LZ5MT_DecompressDCtx(LZ5MT_DCtx * ctx, LZ5MT_RdWr_t * rdwr);
 
 /**
  * 3) get some statistic

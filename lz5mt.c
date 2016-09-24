@@ -26,7 +26,7 @@
  * program for testing threaded stuff on zstd
  */
 
-static void perror_exit(char *msg)
+static void perror_exit(const char *msg)
 {
 	printf("%s\n", msg);
 	fflush(stdout);
@@ -93,7 +93,7 @@ static void do_compress(int threads, int level, int bufsize,
 {
 	static int first = 1;
 	LZ5MT_RdWr_t rdwr;
-	int ret;
+	size_t ret;
 
 	/* 1) setup read/write functions */
 	rdwr.fn_read = my_read_loop;
@@ -108,8 +108,8 @@ static void do_compress(int threads, int level, int bufsize,
 
 	/* 3) compress */
 	ret = LZ5MT_CompressCCtx(ctx, &rdwr);
-	if (ret == -1)
-		perror_exit("LZ5MT_CompressCCtx() failed!");
+	if (LZ5MT_isError(ret))
+		perror_exit(ZSTDMT_getErrorName(ret));
 
 	/* 4) get statistic */
 	if (first) {
@@ -128,7 +128,7 @@ static void do_decompress(int threads, int bufsize, int fdin, int fdout)
 {
 	static int first = 1;
 	LZ5MT_RdWr_t rdwr;
-	int ret;
+	size_t ret;
 
 	/* 1) setup read/write functions */
 	rdwr.fn_read = my_read_loop;
@@ -143,8 +143,8 @@ static void do_decompress(int threads, int bufsize, int fdin, int fdout)
 
 	/* 3) compress */
 	ret = LZ5MT_DecompressDCtx(ctx, &rdwr);
-	if (ret == -1)
-		perror_exit("LZ4MT_CompressDCtx() failed!");
+	if (LZ5MT_isError(ret))
+		perror_exit(ZSTDMT_getErrorName(ret));
 
 	/* 4) get statistic */
 	if (first) {

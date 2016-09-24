@@ -140,7 +140,7 @@ static void do_decompress(int threads, int bufsize, int fdin, int fdout)
 {
 	static int first = 1;
 	LZ4MT_RdWr_t rdwr;
-	int ret;
+	size_t ret;
 
 	/* 1) setup read/write functions */
 	rdwr.fn_read = my_read_loop;
@@ -155,8 +155,8 @@ static void do_decompress(int threads, int bufsize, int fdin, int fdout)
 
 	/* 3) compress */
 	ret = LZ4MT_DecompressDCtx(ctx, &rdwr);
-	if (ret == -1)
-		perror_exit("LZ4MT_CompressDCtx() failed!");
+	if (LZ4MT_isError(ret))
+		perror_exit(LZ4MT_getErrorName(ret));
 
 	/* 4) get statistic */
 	if (first) {

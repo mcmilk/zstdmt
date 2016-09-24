@@ -34,11 +34,6 @@
  *   4) begin with step 1 again, until no input
  */
 
-#define DEBUGME
-#ifdef DEBUGME
-#include <stdio.h>
-#endif
-
 /* could be replaced by MEM_writeLE32() */
 static inline void write_le32(unsigned char *dst, unsigned int u)
 {
@@ -156,6 +151,7 @@ LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize)
 		/* setup preferences for that thread */
 		w->zpref.compressionLevel = level;
 		w->zpref.frameInfo.blockMode = LZ4F_blockLinked;
+		w->zpref.frameInfo.contentSize = 1;
 		w->zpref.frameInfo.contentChecksumFlag =
 		    LZ4F_contentChecksumEnabled;
 
@@ -207,7 +203,7 @@ static void *pt_compress(void *arg)
 	in.size = ctx->inputsize;
 	in.buf = malloc(in.size);
 	if (!in.buf)
-		return (void*)ERROR(memory_allocation);
+		return (void *)ERROR(memory_allocation);
 
 	for (;;) {
 		struct list_head *entry;
@@ -230,7 +226,7 @@ static void *pt_compress(void *arg)
 			    malloc(sizeof(struct writelist));
 			if (!wl) {
 				pthread_mutex_unlock(&ctx->write_mutex);
-				return (void*)ERROR(memory_allocation);
+				return (void *)ERROR(memory_allocation);
 			}
 			wl->out.size =
 			    LZ4F_compressFrameBound(ctx->inputsize,
@@ -238,7 +234,7 @@ static void *pt_compress(void *arg)
 			wl->out.buf = malloc(wl->out.size);
 			if (!wl->out.buf) {
 				pthread_mutex_unlock(&ctx->write_mutex);
-				return (void*)ERROR(memory_allocation);
+				return (void *)ERROR(memory_allocation);
 			}
 			list_add(&wl->node, &ctx->writelist_busy);
 		}
@@ -250,7 +246,7 @@ static void *pt_compress(void *arg)
 		rv = ctx->fn_read(ctx->arg_read, &in);
 		if (rv == -1) {
 			pthread_mutex_unlock(&ctx->read_mutex);
-			return (void*)ERROR(read_fail);
+			return (void *)ERROR(read_fail);
 		}
 
 		/* eof */
@@ -278,7 +274,7 @@ static void *pt_compress(void *arg)
 			pthread_mutex_unlock(&ctx->write_mutex);
 			/* user can lookup that code */
 			lz4mt_errcode = result;
-			return (void*)ERROR(compression_library);
+			return (void *)ERROR(compression_library);
 		}
 
 		/* write skippable frame */
@@ -292,7 +288,7 @@ static void *pt_compress(void *arg)
 		result = pt_write(ctx, wl);
 		pthread_mutex_unlock(&ctx->write_mutex);
 		if (LZ4MT_isError(result))
-			return (void*)result;
+			return (void *)result;
 	}
 
 	return 0;
