@@ -22,8 +22,6 @@
 #include "lz4mt.h"
 #include "error_private.h"
 
-#include <stdio.h>
-
 /**
  * multi threaded lz4 - multiple workers version
  *
@@ -240,7 +238,6 @@ static size_t pt_read(LZ4MT_DCtx * ctx, LZ4MT_Buffer * in, size_t * frame)
 	/* read new inputsize */
 	{
 		size_t toRead = read_le32(hdr.buf + 8);
-		printf("LZ4F_decompress(vor) toRead=%zu\n", toRead);
 		if (in->allocated < toRead) {
 			/* need bigger input buffer */
 			if (in->allocated)
@@ -344,15 +341,9 @@ static void *pt_decompress(void *arg)
 			out->allocated = out->size;
 		}
 
-		printf("LZ4F_decompress(vor) ret=%zu, in=%zu out=%zu\n", result,
-		       in->size, out->size);
-
 		result =
 		    LZ4F_decompress(w->dctx, out->buf, &out->size,
 				    in->buf, &in->size, 0);
-
-		printf("LZ4F_decompress(ret) ret=%zu, in=%zu out=%zu\n", result,
-		       in->size, out->size);
 
 		if (LZ4F_isError(result)) {
 			lz4mt_errcode = result;

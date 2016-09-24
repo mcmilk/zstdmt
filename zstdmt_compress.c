@@ -123,20 +123,12 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize)
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else {
-#if 1
-		const int windowLog[] = {
-			0, 19, 19, 20, 20, 20, 21, 21,
-			21, 21, 21, 22, 22, 22, 22, 22,
-			23, 23, 23, 23, 23, 25, 26, 27
+		const int mb[] = {
+			2, 2, 4, 4, 6, 6, 6, /* 1 - 7 */
+			8, 8, 8, 8, 8, 8, 8, /* 8 - 14 */
+			16, 16, 16, 16, 16, 16, 16, 16 /* 15 - 22 */
 		};
-		ctx->inputsize = 1 << (windowLog[level] + 1);
-#else
-		const int mb[] = { 0, 1, 1, 1, 2, 2, 2,
-			3, 3, 3, 4, 4, 4, 5,
-			5, 5, 5, 5, 5, 5, 5
-		};
-		ctx->inputsize = 1000 * 1000;
-#endif
+		ctx->inputsize = 1024 * 1024 * mb[level-1];
 	}
 
 	/* setup ctx */
