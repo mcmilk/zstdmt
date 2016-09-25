@@ -23,6 +23,8 @@ extern "C" {
 /* POSIX Systems */
 #include <pthread.h>
 
+/* XXX, add here more systems, when required */
+
 #else
 
 /**
@@ -59,4 +61,5 @@ extern int _pthread_join(pthread_t * thread, void **value_ptr);
 #if defined (__cplusplus)
 }
 #endif
+
 #endif				/* PTHREAD_H */

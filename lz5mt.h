@@ -18,11 +18,11 @@
 #ifndef LZ5MT_H
 #define LZ5MT_H
 
-#include "error_public.h"
-
 #if defined (__cplusplus)
 extern "C" {
 #endif
+
+#include "error_public.h"
 
 /* current maximum the library will accept */
 #define LZ5MT_THREAD_MAX 128

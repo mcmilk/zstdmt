@@ -16,6 +16,7 @@
 #define ZSTD_STATIC_LINKING_ONLY
 #include "zstd.h"
 
+#include "mem.h"
 #include "threading.h"
 #include "list.h"
 #include "zstdmt.h"
@@ -390,7 +391,7 @@ static void *pt_compress(void *arg)
 	return (void *)-1;
 }
 
-int ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
+size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 {
 	int t;
 

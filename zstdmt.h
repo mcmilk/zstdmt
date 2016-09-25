@@ -18,13 +18,23 @@
 #ifndef ZSTDMT_H
 #define ZSTDMT_H
 
-#include "error_public.h"
-
 #if defined (__cplusplus)
 extern "C" {
 #endif
 
+#include "error_public.h"
+
 #define ZSTDMT_THREAD_MAX 128
+#define ZSTDMT_LEVEL_MAX   22
+
+#define ZSTDMT_MAGICNUMBER     0xFD2FB528U
+#define ZSTDMT_MAGIC_SKIPPABLE 0x184D2A50U
+
+/* **************************************
+ * Error Handling
+ ****************************************/
+
+extern size_t zstdmt_errcode;
 
 /* **************************************
  * Structures
@@ -73,7 +83,7 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize);
  * 2) threaded compression
  * - return -1 on error
  */
-int ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr);
+size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr);
 
 /**
  * 3) get some statistic
@@ -103,7 +113,7 @@ typedef struct ZSTDMT_DCtx_s ZSTDMT_DCtx;
  * @srclen  - the max size of src for ZSTDMT_CompressCCtx()
  * @dstlen  - the min size of dst
  */
-ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads);
+ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, int inputsize);
 
 /**
  * 2) threaded compression
@@ -112,7 +122,7 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads);
  * - will do all the compression, is calling the read/write wrapper...
  * - the wrapper should also do some progress, not only read/write
  */
-int ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr);
+size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr);
 
 /**
  * 3) get some statistic, fail only when ctx is invalid

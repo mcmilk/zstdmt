@@ -229,8 +229,8 @@ int main(int argc, char **argv)
 	/* opt_level = 1..22 */
 	if (opt_level < 1)
 		opt_level = 1;
-	else if (opt_level > 22)
-		opt_level = 22;
+	else if (opt_level > ZSTDMT_LEVEL_MAX)
+		opt_level = ZSTDMT_LEVEL_MAX;
 
 	/* opt_threads = 1..ZSTDMT_THREAD_MAX */
 	if (opt_threads < 1)
