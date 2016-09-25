@@ -15,7 +15,7 @@
 #include <string.h>
 
 #define LZ5F_DISABLE_OBSOLETE_ENUMS
-#include <lz5frame.h>
+#include "lz5frame.h"
 
 #include "threading.h"
 #include "list.h"
@@ -38,13 +38,13 @@
 /* could be replaced by MEM_writeLE32() */
 static inline void write_le32(unsigned char *dst, unsigned int u)
 {
-	dst[0] = u;
+	dst[0] = (unsigned char)u;
 	u >>= 8;
-	dst[1] = u;
+	dst[1] = (unsigned char)u;
 	u >>= 8;
-	dst[2] = u;
+	dst[2] = (unsigned char)u;
 	u >>= 8;
-	dst[3] = u;
+	dst[3] = (unsigned char)u;
 }
 
 /* worker for compression */
@@ -183,7 +183,7 @@ static size_t pt_write(LZ5MT_CCtx * ctx, struct writelist *wl)
 		if (wl->frame == ctx->curframe) {
 			int rv = ctx->fn_write(ctx->arg_write, &wl->out);
 			if (rv == -1)
-				return -1;
+				return ERROR(write_fail);
 			ctx->outsize += wl->out.size;
 			ctx->curframe++;
 			list_move(entry, &ctx->writelist_free);
@@ -268,7 +268,7 @@ static void *pt_compress(void *arg)
 
 		/* compress whole frame */
 		result =
-		    LZ5F_compressFrame(wl->out.buf + 12, wl->out.size - 12,
+		    LZ5F_compressFrame((unsigned char*)wl->out.buf + 12, wl->out.size - 12,
 				       in.buf, in.size, &w->zpref);
 		if (LZ5F_isError(result)) {
 			pthread_mutex_lock(&ctx->write_mutex);
@@ -280,16 +280,16 @@ static void *pt_compress(void *arg)
 		}
 
 		/* write skippable frame */
-		write_le32(wl->out.buf + 0, LZ5FMT_MAGIC_SKIPPABLE);
-		write_le32(wl->out.buf + 4, 4);
-		write_le32(wl->out.buf + 8, result);
+		write_le32((unsigned char*)wl->out.buf + 0, LZ5FMT_MAGIC_SKIPPABLE);
+		write_le32((unsigned char*)wl->out.buf + 4, 4);
+		write_le32((unsigned char*)wl->out.buf + 8, (unsigned char)result);
 		wl->out.size = result + 12;
 
 		/* write result */
 		pthread_mutex_lock(&ctx->write_mutex);
 		result = pt_write(ctx, wl);
 		pthread_mutex_unlock(&ctx->write_mutex);
-		if (LZ5MT_isError(result))
+		if (ERR_isError(result))
 			return (void *)result;
 	}
 

@@ -15,7 +15,7 @@
 #include <string.h>
 
 #define LZ4F_DISABLE_OBSOLETE_ENUMS
-#include <lz4frame.h>
+#include "lz4frame.h"
 
 #include "threading.h"
 #include "list.h"
@@ -179,7 +179,7 @@ static size_t pt_write(LZ4MT_DCtx * ctx, struct writelist *wl)
 		if (wl->frame == ctx->curframe) {
 			int rv = ctx->fn_write(ctx->arg_write, &wl->out);
 			if (rv == -1)
-				return -1;
+				return ERROR(write_fail);
 			ctx->outsize += wl->out.size;
 			ctx->curframe++;
 			list_move(entry, &ctx->writelist_free);
@@ -226,18 +226,18 @@ static size_t pt_read(LZ4MT_DCtx * ctx, LZ4MT_Buffer * in, size_t * frame)
 			goto error_read;
 		if (hdr.size != 12)
 			goto error_read;
-		if (read_le32(hdr.buf + 0) != LZ4FMT_MAGIC_SKIPPABLE)
+		if (read_le32((unsigned char*)hdr.buf + 0) != LZ4FMT_MAGIC_SKIPPABLE)
 			goto error_data;
 	}
 
 	/* check header data */
-	if (read_le32(hdr.buf + 4) != 4)
+	if (read_le32((unsigned char*)hdr.buf + 4) != 4)
 		goto error_data;
 
 	ctx->insize += 12;
 	/* read new inputsize */
 	{
-		size_t toRead = read_le32(hdr.buf + 8);
+		size_t toRead = read_le32((unsigned char*)hdr.buf + 8);
 		if (in->allocated < toRead) {
 			/* need bigger input buffer */
 			if (in->allocated)
@@ -288,7 +288,6 @@ static void *pt_decompress(void *arg)
 	for (;;) {
 		struct list_head *entry;
 		LZ4MT_Buffer *out;
-		int rv;
 
 		/* allocate space for new output */
 		pthread_mutex_lock(&ctx->write_mutex);
@@ -326,7 +325,7 @@ static void *pt_decompress(void *arg)
 
 		{
 			/* get frame size for output buffer */
-			unsigned char *src = in->buf + 6;
+			unsigned char *src = (unsigned char*)in->buf + 6;
 			out->size = (size_t) read_le64(src);
 		}
 
@@ -359,11 +358,9 @@ static void *pt_decompress(void *arg)
 
 		/* write result */
 		pthread_mutex_lock(&ctx->write_mutex);
-		rv = pt_write(ctx, wl);
-		if (rv == -1) {
-			result = ERROR(write_fail);
+		result = pt_write(ctx, wl);
+		if (ERR_isError(result))
 			goto error_unlock;
-		}
 		pthread_mutex_unlock(&ctx->write_mutex);
 	}
 
@@ -449,7 +446,7 @@ static size_t st_decompress(void *arg)
 			/* decompress */
 			nextToLoad =
 			    LZ4F_decompress(w->dctx, out->buf, &out->size,
-					    in->buf + pos, &remaining, NULL);
+					    (unsigned char*)in->buf + pos, &remaining, NULL);
 			if (LZ4F_isError(nextToLoad)) {
 				free(in->buf);
 				free(out->buf);
