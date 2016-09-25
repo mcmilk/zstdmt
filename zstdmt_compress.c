@@ -124,11 +124,11 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize)
 		ctx->inputsize = inputsize;
 	else {
 		const int mb[] = {
-			2, 2, 4, 4, 6, 6, 6, /* 1 - 7 */
-			8, 8, 8, 8, 8, 8, 8, /* 8 - 14 */
-			16, 16, 16, 16, 16, 16, 16, 16 /* 15 - 22 */
+			2, 2, 4, 4, 6, 6, 6,	/* 1 - 7 */
+			8, 8, 8, 8, 8, 8, 8,	/* 8 - 14 */
+			16, 16, 16, 16, 16, 16, 16, 16	/* 15 - 22 */
 		};
-		ctx->inputsize = 1024 * 1024 * mb[level-1];
+		ctx->inputsize = 1024 * 1024 * mb[level - 1];
 	}
 
 	/* setup ctx */

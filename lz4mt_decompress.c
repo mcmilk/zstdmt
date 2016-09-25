@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <stdio.h>
+
 #define LZ4F_DISABLE_OBSOLETE_ENUMS
 #include <lz4frame.h>
 
@@ -283,10 +285,10 @@ static void *pt_decompress(void *arg)
 	LZ4MT_Buffer *in = &w->in;
 	LZ4MT_DCtx *ctx = w->ctx;
 	size_t result = 0;
+	struct writelist *wl;
 
 	for (;;) {
 		struct list_head *entry;
-		struct writelist *wl;
 		LZ4MT_Buffer *out;
 		int rv;
 
@@ -302,10 +304,12 @@ static void *pt_decompress(void *arg)
 			wl = (struct writelist *)
 			    malloc(sizeof(struct writelist));
 			if (!wl) {
-				pthread_mutex_unlock(&ctx->write_mutex);
-				return (void *)ERROR(memory_allocation);
+				result = ERROR(memory_allocation);
+				goto error_unlock;
 			}
-
+			wl->out.buf = 0;
+			wl->out.size = 0;
+			wl->out.allocated = 0;
 			list_add(&wl->node, &ctx->writelist_busy);
 		}
 		pthread_mutex_unlock(&ctx->write_mutex);
@@ -313,14 +317,13 @@ static void *pt_decompress(void *arg)
 
 		/* zero should not happen here! */
 		result = pt_read(ctx, in, &wl->frame);
-		if (in->size == 0) {
-			list_move(&wl->node, &ctx->writelist_free);
-			goto done;
-		}
+		if (in->size == 0)
+			break;
 
 		if (LZ4MT_isError(result)) {
 			list_move(&wl->node, &ctx->writelist_free);
-			return (void *)result;
+
+			goto error_lock;
 		}
 
 		{
@@ -335,8 +338,8 @@ static void *pt_decompress(void *arg)
 			else
 				out->buf = malloc(out->size);
 			if (!out->buf) {
-				list_move(&wl->node, &ctx->writelist_free);
-				return (void *)ERROR(memory_allocation);
+				result = ERROR(memory_allocation);
+			goto error_lock;
 			}
 			out->allocated = out->size;
 		}
@@ -347,27 +350,41 @@ static void *pt_decompress(void *arg)
 
 		if (LZ4F_isError(result)) {
 			lz4mt_errcode = result;
-			list_move(&wl->node, &ctx->writelist_free);
-			return (void *)ERROR(compression_library);
+			result = ERROR(compression_library);
+			goto error_lock;
 		}
 
 		if (result != 0) {
-			list_move(&wl->node, &ctx->writelist_free);
-			return (void *)ERROR(frame_decompress);
+			result = ERROR(frame_decompress);
+			goto error_lock;
 		}
 
 		/* write result */
 		pthread_mutex_lock(&ctx->write_mutex);
 		rv = pt_write(ctx, wl);
-		pthread_mutex_unlock(&ctx->write_mutex);
 		if (rv == -1) {
-			list_move(&wl->node, &ctx->writelist_free);
-			return (void *)ERROR(write_fail);
+			result = ERROR(write_fail);
+			goto error_unlock;
 		}
+		pthread_mutex_unlock(&ctx->write_mutex);
 	}
 
- done:
+	/* everything is okay */
+	pthread_mutex_lock(&ctx->write_mutex);
+	list_move(&wl->node, &ctx->writelist_free);
+	pthread_mutex_unlock(&ctx->write_mutex);
+	if (in->allocated)
+		free(in->buf);
 	return 0;
+
+error_lock:
+	pthread_mutex_lock(&ctx->write_mutex);
+error_unlock:
+	list_move(&wl->node, &ctx->writelist_free);
+	pthread_mutex_unlock(&ctx->write_mutex);
+	if (in->allocated)
+		free(in->buf);
+	return (void *)result;
 }
 
 /* single threaded */
@@ -500,8 +517,10 @@ size_t LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
 		return st_decompress(ctx);
 	}
 
+	/* mark unused */
 	in->buf = 0;
 	in->size = 0;
+	in->allocated = 0;
 
 	/* single threaded, but with known sizes */
 	if (ctx->threads == 1) {
@@ -515,6 +534,9 @@ size_t LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
 	/* multi threaded */
 	for (t = 0; t < ctx->threads; t++) {
 		cwork_t *w = &ctx->cwork[t];
+		w->in.buf = 0;
+		w->in.size = 0;
+		w->in.allocated = 0;
 		pthread_create(&w->pthread, NULL, pt_decompress, w);
 	}
 
@@ -528,16 +550,26 @@ size_t LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
 	}
 
  okay:
-	/* clean up lists */
-	{
-		struct list_head *entry;
+	/* clean up the buffers */
+		if (!list_empty(&ctx->writelist_busy)) {
+			printf("busy entry!\n");
+			fflush(stdout);
+		}
+
+		if (!list_empty(&ctx->writelist_done)) {
+			printf("busy done!\n");
+			fflush(stdout);
+		}
+
+		while (!list_empty(&ctx->writelist_free)) {
 		struct writelist *wl;
-		list_for_each(entry, &ctx->writelist_free) {
+			struct list_head *entry;
+			entry = list_first(&ctx->writelist_free);
 			wl = list_entry(entry, struct writelist, node);
 			free(wl->out.buf);
+			list_del(&wl->node);
 			free(wl);
 		}
-	}
 
 	return 0;
 }
@@ -580,6 +612,9 @@ void LZ4MT_freeDCtx(LZ4MT_DCtx * ctx)
 		cwork_t *w = &ctx->cwork[t];
 		LZ4F_freeDecompressionContext(w->dctx);
 	}
+
+	pthread_mutex_destroy(&ctx->read_mutex);
+	pthread_mutex_destroy(&ctx->write_mutex);
 	free(ctx->cwork);
 	free(ctx);
 	ctx = 0;

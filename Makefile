@@ -6,7 +6,7 @@ CFLAGS	= -W -pthread -Wall -pipe -fomit-frame-pointer
 LDFLAGS	= -lpthread
 
 #CFLAGS += -DDEBUGME
-#CFLAGS += -g
+CFLAGS += -g
 CFLAGS += -O
 #CFLAGS += -march=native
 #CFLAGS += -Wno-unused-but-set-variable
