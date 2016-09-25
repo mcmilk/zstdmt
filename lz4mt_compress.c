@@ -17,6 +17,7 @@
 #define LZ4F_DISABLE_OBSOLETE_ENUMS
 #include "lz4frame.h"
 
+#include "mem.h"
 #include "threading.h"
 #include "list.h"
 #include "lz4mt.h"
@@ -34,18 +35,6 @@
  *   3) get write mutex and write result
  *   4) begin with step 1 again, until no input
  */
-
-/* could be replaced by MEM_writeLE32() */
-static inline void write_le32(unsigned char *dst, unsigned int u)
-{
-	dst[0] = (unsigned char)u;
-	u >>= 8;
-	dst[1] = (unsigned char)u;
-	u >>= 8;
-	dst[2] = (unsigned char)u;
-	u >>= 8;
-	dst[3] = (unsigned char)u;
-}
 
 /* worker for compression */
 typedef struct {
@@ -280,9 +269,9 @@ static void *pt_compress(void *arg)
 		}
 
 		/* write skippable frame */
-		write_le32((unsigned char*)wl->out.buf + 0, LZ4FMT_MAGIC_SKIPPABLE);
-		write_le32((unsigned char*)wl->out.buf + 4, 4);
-		write_le32((unsigned char*)wl->out.buf + 8, (unsigned char)result);
+		MEM_writeLE32((unsigned char*)wl->out.buf + 0, LZ4FMT_MAGIC_SKIPPABLE);
+		MEM_writeLE32((unsigned char*)wl->out.buf + 4, 4);
+		MEM_writeLE32((unsigned char*)wl->out.buf + 8, (unsigned char)result);
 		wl->out.size = result + 12;
 
 		/* write result */

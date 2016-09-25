@@ -39,42 +39,40 @@
 extern "C" {
 #endif
 
-#ifdef _WIN32
-#define inline __inline
-#endif
+#include "mem.h"
 
 struct list_head {
 	struct list_head *prev;
 	struct list_head *next;
 };
 
-static inline void INIT_LIST_HEAD(struct list_head *head)
+MEM_STATIC void INIT_LIST_HEAD(struct list_head *head)
 {
 	head->prev = head;
 	head->next = head;
 }
 
-static inline struct list_head *list_first(const struct list_head *head)
+MEM_STATIC struct list_head *list_first(const struct list_head *head)
 {
 	return head->next;
 }
 
-static inline struct list_head *list_last(const struct list_head *head)
+MEM_STATIC struct list_head *list_last(const struct list_head *head)
 {
 	return head->prev;
 }
 
-static inline struct list_head *list_next(const struct list_head *node)
+MEM_STATIC struct list_head *list_next(const struct list_head *node)
 {
 	return node->next;
 }
 
-static inline struct list_head *list_prev(const struct list_head *node)
+MEM_STATIC struct list_head *list_prev(const struct list_head *node)
 {
 	return node->prev;
 }
 
-static inline void __list_add_between(struct list_head *prev,
+MEM_STATIC void __list_add_between(struct list_head *prev,
 	struct list_head *node, struct list_head *next)
 {
 	prev->next = node;
@@ -83,34 +81,34 @@ static inline void __list_add_between(struct list_head *prev,
 	next->prev = node;
 }
 
-static inline void list_add(struct list_head *node, struct list_head *head)
+MEM_STATIC void list_add(struct list_head *node, struct list_head *head)
 {
 	__list_add_between(head, node, head->next);
 }
 
-static inline void list_add_tail(struct list_head *node, struct list_head *head)
+MEM_STATIC void list_add_tail(struct list_head *node, struct list_head *head)
 {
 	__list_add_between(head->prev, node, head);
 }
 
-static inline void list_del(struct list_head *entry)
+MEM_STATIC void list_del(struct list_head *entry)
 {
 	entry->prev->next = entry->next;
 	entry->next->prev = entry->prev;
 }
 
-static inline int list_empty(const struct list_head *head)
+MEM_STATIC int list_empty(const struct list_head *head)
 {
 	return (head->next == head);
 }
 
-static inline void list_move(struct list_head *node, struct list_head *head)
+MEM_STATIC void list_move(struct list_head *node, struct list_head *head)
 {
 	list_del(node);
 	list_add(node, head);
 }
 
-static inline void list_move_tail(struct list_head *node, struct list_head *head)
+MEM_STATIC void list_move_tail(struct list_head *node, struct list_head *head)
 {
 	list_del(node);
 	list_add_tail(node, head);

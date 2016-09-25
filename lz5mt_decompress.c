@@ -17,6 +17,7 @@
 #define LZ5F_DISABLE_OBSOLETE_ENUMS
 #include "lz5frame.h"
 
+#include "mem.h"
 #include "threading.h"
 #include "list.h"
 #include "lz5mt.h"
@@ -89,25 +90,6 @@ struct LZ5MT_DCtx_s {
 /* **************************************
  * Decompression
  ****************************************/
-
-/* could be replaced by MEM_readLE32() */
-static unsigned int read_le32(const unsigned char *x)
-{
-	return (unsigned int)(x[0]) | (((unsigned int)(x[1])) << 8) |
-	    (((unsigned int)(x[2])) << 16) | (((unsigned int)(x[3])) << 24);
-}
-
-static unsigned long long int read_le64(const unsigned char *x)
-{
-	return (unsigned long long int)(x[0])
-	    | (((unsigned long long int)(x[1])) << 8)
-	    | (((unsigned long long int)(x[2])) << 16)
-	    | (((unsigned long long int)(x[3])) << 24)
-	    | (((unsigned long long int)(x[4])) << 32)
-	    | (((unsigned long long int)(x[5])) << 40)
-	    | (((unsigned long long int)(x[6])) << 48)
-	    | (((unsigned long long int)(x[7])) << 56);
-}
 
 LZ5MT_DCtx *LZ5MT_createDCtx(int threads, int inputsize)
 {
@@ -226,18 +208,18 @@ static size_t pt_read(LZ5MT_DCtx * ctx, LZ5MT_Buffer * in, size_t * frame)
 			goto error_read;
 		if (hdr.size != 12)
 			goto error_read;
-		if (read_le32((unsigned char*)hdr.buf + 0) != LZ5FMT_MAGIC_SKIPPABLE)
+		if (MEM_readLE32((unsigned char*)hdr.buf + 0) != LZ5FMT_MAGIC_SKIPPABLE)
 			goto error_data;
 	}
 
 	/* check header data */
-	if (read_le32((unsigned char*)hdr.buf + 4) != 4)
+	if (MEM_readLE32((unsigned char*)hdr.buf + 4) != 4)
 		goto error_data;
 
 	ctx->insize += 12;
 	/* read new inputsize */
 	{
-		size_t toRead = read_le32((unsigned char*)hdr.buf + 8);
+		size_t toRead = MEM_readLE32((unsigned char*)hdr.buf + 8);
 		if (in->allocated < toRead) {
 			/* need bigger input buffer */
 			if (in->allocated)
@@ -326,7 +308,7 @@ static void *pt_decompress(void *arg)
 		{
 			/* get frame size for output buffer */
 			unsigned char *src = (unsigned char*)in->buf + 6;
-			out->size = (size_t) read_le64(src);
+			out->size = (size_t) MEM_readLE64(src);
 		}
 
 		if (out->allocated < out->size) {
@@ -502,10 +484,10 @@ size_t LZ5MT_DecompressDCtx(LZ5MT_DCtx * ctx, LZ5MT_RdWr_t * rdwr)
 		return ERROR(data_error);
 
 	/* single threaded with unknown sizes */
-	if (read_le32(buf) != LZ5FMT_MAGIC_SKIPPABLE) {
+	if (MEM_readLE32(buf) != LZ5FMT_MAGIC_SKIPPABLE) {
 
 		/* look for correct magic */
-		if (read_le32(buf) != LZ5FMT_MAGICNUMBER)
+		if (MEM_readLE32(buf) != LZ5FMT_MAGICNUMBER)
 			return ERROR(data_error);
 
 		/* decompress single threaded */
