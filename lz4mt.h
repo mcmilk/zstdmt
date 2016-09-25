@@ -28,6 +28,9 @@ extern "C" {
 #define LZ4MT_THREAD_MAX 128
 #define LZ4MT_LEVEL_MAX   16
 
+#define LZ4FMT_MAGICNUMBER     0x184D2204U
+#define LZ4FMT_MAGIC_SKIPPABLE 0x184D2A50U
+
 /* **************************************
  * Error Handling
  ****************************************/

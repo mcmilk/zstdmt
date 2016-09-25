@@ -35,9 +35,6 @@
  *   4) begin with step 1 again, until no input
  */
 
-#define LZ5FMT_MAGIC_SKIPPABLE 0x184D2A50U
-#define LZ5FMT_MAGICNUMBER     0x184D2205U
-
 /* will be used for lib errors */
 size_t lz5mt_errcode;
 

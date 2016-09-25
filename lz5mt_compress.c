@@ -280,7 +280,7 @@ static void *pt_compress(void *arg)
 		}
 
 		/* write skippable frame */
-		write_le32(wl->out.buf + 0, 0x184D2A50);
+		write_le32(wl->out.buf + 0, LZ5FMT_MAGIC_SKIPPABLE);
 		write_le32(wl->out.buf + 4, 4);
 		write_le32(wl->out.buf + 8, result);
 		wl->out.size = result + 12;
