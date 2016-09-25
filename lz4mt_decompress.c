@@ -14,8 +14,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <stdio.h>
-
 #define LZ4F_DISABLE_OBSOLETE_ENUMS
 #include <lz4frame.h>
 
@@ -36,6 +34,9 @@
  *   3) get write mutex and write result
  *   4) begin with step 1 again, until no input
  */
+
+#define LZ4FMT_MAGIC_SKIPPABLE 0x184D2A50U
+#define LZ4FMT_MAGICNUMBER     0x184D2204U
 
 /* will be used for lib errors */
 size_t lz4mt_errcode;
@@ -228,7 +229,7 @@ static size_t pt_read(LZ4MT_DCtx * ctx, LZ4MT_Buffer * in, size_t * frame)
 			goto error_read;
 		if (hdr.size != 12)
 			goto error_read;
-		if (read_le32(hdr.buf + 0) != 0x184D2A50)
+		if (read_le32(hdr.buf + 0) != LZ4FMT_MAGIC_SKIPPABLE)
 			goto error_data;
 	}
 
@@ -339,7 +340,7 @@ static void *pt_decompress(void *arg)
 				out->buf = malloc(out->size);
 			if (!out->buf) {
 				result = ERROR(memory_allocation);
-			goto error_lock;
+				goto error_lock;
 			}
 			out->allocated = out->size;
 		}
@@ -377,9 +378,9 @@ static void *pt_decompress(void *arg)
 		free(in->buf);
 	return 0;
 
-error_lock:
+ error_lock:
 	pthread_mutex_lock(&ctx->write_mutex);
-error_unlock:
+ error_unlock:
 	list_move(&wl->node, &ctx->writelist_free);
 	pthread_mutex_unlock(&ctx->write_mutex);
 	if (in->allocated)
@@ -497,7 +498,7 @@ size_t LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
 	ctx->arg_read = rdwr->arg_read;
 	ctx->arg_write = rdwr->arg_write;
 
-	/* check for 0x184D2A50 (multithreading stream) */
+	/* check for LZ4FMT_MAGIC_SKIPPABLE */
 	in->buf = buf;
 	in->size = 4;
 	rv = ctx->fn_read(ctx->arg_read, in);
@@ -507,10 +508,10 @@ size_t LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
 		return ERROR(data_error);
 
 	/* single threaded with unknown sizes */
-	if (read_le32(buf) != 0x184D2A50) {
+	if (read_le32(buf) != LZ4FMT_MAGIC_SKIPPABLE) {
 
 		/* look for correct magic */
-		if (read_le32(buf) != 0x184D2204)
+		if (read_le32(buf) != LZ4FMT_MAGICNUMBER)
 			return ERROR(data_error);
 
 		/* decompress single threaded */
@@ -551,25 +552,15 @@ size_t LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
 
  okay:
 	/* clean up the buffers */
-		if (!list_empty(&ctx->writelist_busy)) {
-			printf("busy entry!\n");
-			fflush(stdout);
-		}
-
-		if (!list_empty(&ctx->writelist_done)) {
-			printf("busy done!\n");
-			fflush(stdout);
-		}
-
-		while (!list_empty(&ctx->writelist_free)) {
+	while (!list_empty(&ctx->writelist_free)) {
 		struct writelist *wl;
-			struct list_head *entry;
-			entry = list_first(&ctx->writelist_free);
-			wl = list_entry(entry, struct writelist, node);
-			free(wl->out.buf);
-			list_del(&wl->node);
-			free(wl);
-		}
+		struct list_head *entry;
+		entry = list_first(&ctx->writelist_free);
+		wl = list_entry(entry, struct writelist, node);
+		free(wl->out.buf);
+		list_del(&wl->node);
+		free(wl);
+	}
 
 	return 0;
 }

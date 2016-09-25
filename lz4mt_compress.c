@@ -12,6 +12,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 
 #define LZ4F_DISABLE_OBSOLETE_ENUMS
 #include <lz4frame.h>
@@ -149,6 +150,7 @@ LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize)
 		w->ctx = ctx;
 
 		/* setup preferences for that thread */
+		memset(&w->zpref, 0, sizeof(LZ4F_preferences_t));
 		w->zpref.compressionLevel = level;
 		w->zpref.frameInfo.blockMode = LZ4F_blockLinked;
 		w->zpref.frameInfo.contentSize = 1;
@@ -323,14 +325,14 @@ size_t LZ4MT_CompressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr)
 	}
 
 	/* clean up lists */
-	{
-		struct list_head *entry;
+	while (!list_empty(&ctx->writelist_free)) {
 		struct writelist *wl;
-		list_for_each(entry, &ctx->writelist_free) {
-			wl = list_entry(entry, struct writelist, node);
-			free(wl->out.buf);
-			free(wl);
-		}
+		struct list_head *entry;
+		entry = list_first(&ctx->writelist_free);
+		wl = list_entry(entry, struct writelist, node);
+		free(wl->out.buf);
+		list_del(&wl->node);
+		free(wl);
 	}
 
 	return 0;
@@ -368,6 +370,8 @@ void LZ4MT_freeCCtx(LZ4MT_CCtx * ctx)
 	if (!ctx)
 		return;
 
+	pthread_mutex_destroy(&ctx->read_mutex);
+	pthread_mutex_destroy(&ctx->write_mutex);
 	free(ctx->cwork);
 	free(ctx);
 	ctx = 0;

@@ -12,6 +12,7 @@
  */
 
 #include <stdlib.h>
+#include <string.h>
 
 #define LZ5F_DISABLE_OBSOLETE_ENUMS
 #include <lz5frame.h>
@@ -122,7 +123,7 @@ LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize)
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else
-		ctx->inputsize = 1024 * 256;
+		ctx->inputsize = 1024 * 32;
 
 	/* setup ctx */
 	ctx->level = level;
@@ -149,6 +150,7 @@ LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize)
 		w->ctx = ctx;
 
 		/* setup preferences for that thread */
+		memset(&w->zpref, 0, sizeof(LZ5F_preferences_t));
 		w->zpref.compressionLevel = level;
 		w->zpref.frameInfo.blockMode = LZ5F_blockLinked;
 		w->zpref.frameInfo.contentSize = 1;
@@ -323,14 +325,14 @@ size_t LZ5MT_CompressCCtx(LZ5MT_CCtx * ctx, LZ5MT_RdWr_t * rdwr)
 	}
 
 	/* clean up lists */
-	{
-		struct list_head *entry;
+	while (!list_empty(&ctx->writelist_free)) {
 		struct writelist *wl;
-		list_for_each(entry, &ctx->writelist_free) {
-			wl = list_entry(entry, struct writelist, node);
-			free(wl->out.buf);
-			free(wl);
-		}
+		struct list_head *entry;
+		entry = list_first(&ctx->writelist_free);
+		wl = list_entry(entry, struct writelist, node);
+		free(wl->out.buf);
+		list_del(&wl->node);
+		free(wl);
 	}
 
 	return 0;
@@ -368,6 +370,8 @@ void LZ5MT_freeCCtx(LZ5MT_CCtx * ctx)
 	if (!ctx)
 		return;
 
+	pthread_mutex_destroy(&ctx->read_mutex);
+	pthread_mutex_destroy(&ctx->write_mutex);
 	free(ctx->cwork);
 	free(ctx);
 	ctx = 0;
