@@ -123,7 +123,7 @@ LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize)
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else
-		ctx->inputsize = 1024 * 32;
+		ctx->inputsize = 1024 * 64;
 
 	/* setup ctx */
 	ctx->level = level;
