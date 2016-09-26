@@ -76,7 +76,7 @@ int my_read_loop(void *arg, ZSTDMT_Buffer * in)
 	int *fd = (int *)arg;
 	ssize_t done = read_loop(*fd, in->buf, in->size);
 
-#if 0
+#if 1
 	printf("read_loop(fd=%d, buffer=%p,count=%zu) = %zd\n", *fd, in->buf,
 	       in->size, done);
 	fflush(stdout);

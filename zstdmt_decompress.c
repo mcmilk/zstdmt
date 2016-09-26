@@ -247,9 +247,18 @@ static void *pt_decompress(void *arg)
 	size_t result = 0;
 	struct writelist *wl;
 
+	/* init dstream stream */
+	result = ZSTD_initDStream(w->dctx);
+	if (ZSTD_isError(result)) {
+		zstdmt_errcode = result;
+		return (void*)ERROR(compression_library);
+	}
+
 	for (;;) {
 		struct list_head *entry;
 		ZSTDMT_Buffer *out;
+		ZSTD_inBuffer zIn;
+		ZSTD_outBuffer zOut;
 
 		/* allocate space for new output */
 		pthread_mutex_lock(&ctx->write_mutex);
@@ -278,19 +287,19 @@ static void *pt_decompress(void *arg)
 		result = pt_read(ctx, in, &wl->frame);
 		if (in->size == 0)
 			break;
-
 		if (ZSTDMT_isError(result)) {
-			list_move(&wl->node, &ctx->writelist_free);
-
 			goto error_lock;
 		}
 
 		{
-			/* get frame size for output buffer */
-			unsigned char *src = (unsigned char *)in->buf + 6;
-			out->size = (size_t) MEM_readLE64(src);
+		ZSTD_frameParams fp;
+		ZSTD_getFrameParams(&fp, in->buf, in->size);
+		printf("frameContentSize=%llu ", fp.frameContentSize);
+		fflush(stdout);
+		out->size = 1024*1024*20;
+		if (fp.frameContentSize != 0)
+			out->size = fp.frameContentSize;
 		}
-
 		if (out->allocated < out->size) {
 			if (out->allocated)
 				out->buf = realloc(out->buf, out->size);
@@ -302,31 +311,54 @@ static void *pt_decompress(void *arg)
 			}
 			out->allocated = out->size;
 		}
-		// ZSTD_DStream* zds, ZSTD_outBuffer* output, ZSTD_inBuffer* input
-		{
-			ZSTD_inBuffer zIn;
-			ZSTD_outBuffer zOut;
 
+		zIn.size = in->allocated;
+		zIn.src = in->buf;
+		zIn.pos = 0;
+		for (;;) {
+			/* decompress loop */
+			zOut.size = out->allocated;
+			zOut.dst = out->buf;
+			zOut.pos = 0;
+
+			printf("in: in.size=%zu out.size=%zu\n", in->size, out->size);
 			result = ZSTD_decompressStream(w->dctx, &zOut, &zIn);
-		}
+			printf("out: ret=%zu in.size=%zu out.size=%zu\n",
+			result, in->size, out->size);
+			if (ZSTD_isError(result)) {
+				goto error_clib;
+			}
 
-		if (ZSTD_isError(result)) {
-			zstdmt_errcode = result;
-			result = ERROR(compression_library);
-			goto error_lock;
-		}
+			if (zOut.pos) {
 
-		if (result != 0) {
-			result = ERROR(frame_decompress);
-			goto error_lock;
-		}
+				/* write result */
+				pthread_mutex_lock(&ctx->write_mutex);
+				result = pt_write(ctx, wl);
+				if (ERR_isError(result))
+					goto error_unlock;
+				pthread_mutex_unlock(&ctx->write_mutex);
+			}
 
-		/* write result */
-		pthread_mutex_lock(&ctx->write_mutex);
-		result = pt_write(ctx, wl);
-		if (ERR_isError(result))
-			goto error_unlock;
-		pthread_mutex_unlock(&ctx->write_mutex);
+			/* one more round */
+			if ((zIn.pos == zIn.size) && (result == 1)
+			    && zOut.pos)
+				continue;
+
+			/* end of frame */
+			if (result == 0) {
+				printf("ZSTD_initDStream()...\n");
+				fflush(stdout);
+				result = ZSTD_initDStream(w->dctx);
+				if (ZSTD_isError(result))
+					goto error_clib;
+			}
+
+			/* finished */
+			if (zIn.pos == zIn.size)
+				break;
+
+		}		/* decompress */
+
 	}
 
 	/* everything is okay */
@@ -337,6 +369,10 @@ static void *pt_decompress(void *arg)
 		free(in->buf);
 	return 0;
 
+ error_clib:
+	zstdmt_errcode = result;
+	result = ERROR(compression_library);
+	/* fall through */
  error_lock:
 	pthread_mutex_lock(&ctx->write_mutex);
  error_unlock:
@@ -362,7 +398,7 @@ static size_t st_decompress(void *arg)
 	ZSTD_inBuffer zIn;
 	ZSTD_outBuffer zOut;
 
-	/* reset stream */
+	/* init dstream stream */
 	result = ZSTD_initDStream(w->dctx);
 	if (ZSTD_isError(result)) {
 		zstdmt_errcode = result;
@@ -442,7 +478,7 @@ static size_t st_decompress(void *arg)
 				if (ZSTD_isError(result))
 					goto error_clib;
 			}
-		} /* decompress */
+		}		/* decompress */
 
 		/* read next input */
 		in->size = in->allocated;
@@ -458,7 +494,7 @@ static size_t st_decompress(void *arg)
 
 		zIn.size = in->size;
 		zIn.pos = 0;
-	} /* read */
+	}			/* read */
 
  error_clib:
 	zstdmt_errcode = result;
