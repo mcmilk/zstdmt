@@ -20,13 +20,14 @@
 #include <stdio.h>
 
 #include "zstdmt.h"
+#include "zstd.h"
 #include "util.h"
 
 /**
  * program for testing threaded stuff on zstd
  */
 
-static void perror_exit(char *msg)
+static void perror_exit(const char *msg)
 {
 	printf("%s\n", msg);
 	fflush(stdout);
@@ -73,11 +74,13 @@ static void headline(void)
 int my_read_loop(void *arg, ZSTDMT_Buffer * in)
 {
 	int *fd = (int *)arg;
-	int done = read_loop(*fd, in->buf, in->size);
+	ssize_t done = read_loop(*fd, in->buf, in->size);
 
-	//printf("read_loop(fd=%d, buffer=%p,count=%d)\n", *fd, in->buf,
-	//       in->size);
-	//fflush(stdout);
+#if 1
+	printf("read_loop(fd=%d, buffer=%p,count=%zu) = %zd\n", *fd, in->buf,
+	       in->size, done);
+	fflush(stdout);
+#endif
 
 	in->size = done;
 	return done;
@@ -86,11 +89,13 @@ int my_read_loop(void *arg, ZSTDMT_Buffer * in)
 int my_write_loop(void *arg, ZSTDMT_Buffer * out)
 {
 	int *fd = (int *)arg;
-	int done = write_loop(*fd, out->buf, out->size);
+	ssize_t done = write_loop(*fd, out->buf, out->size);
 
-	//printf("write_loop(fd=%d, buffer=%p,count=%d)\n", *fd, out->buf,
-	//       out->size);
-	//fflush(stdout);
+#if 1
+	printf("write_loop(fd=%d, buffer=%p,count=%zu) = %zd\n", *fd, out->buf,
+	       out->size, done);
+	fflush(stdout);
+#endif
 
 	out->size = done;
 	return done;
@@ -101,7 +106,7 @@ static void do_compress(int threads, int level, int bufsize, int fdin,
 {
 	static int first = 1;
 	ZSTDMT_RdWr_t rdwr;
-	int ret;
+	size_t ret;
 
 	/* 1) setup read/write functions */
 	rdwr.fn_read = my_read_loop;
@@ -116,8 +121,17 @@ static void do_compress(int threads, int level, int bufsize, int fdin,
 
 	/* 3) compress */
 	ret = ZSTDMT_CompressCCtx(ctx, &rdwr);
-	if (ret == -1)
-		perror_exit("ZSTDMT_CompressCCtx() failed!");
+	if (ZSTDMT_isError(ret)) {
+		printf
+		    ("zstdmt_errcode=%zu, ZSTDMT_error_compression_library=%d, ret=%zu\n",
+		     zstdmt_errcode, ZSTDMT_error_compression_library, ret);
+		fflush(stdout);
+		if (ret == ZSTDMT_error_compression_library) {
+			perror_exit(ZSTD_getErrorName(zstdmt_errcode));
+		} else {
+			perror_exit(ZSTDMT_getErrorName(ret));
+		}
+	}
 
 	/* 4) get statistic */
 	if (first) {
@@ -132,12 +146,11 @@ static void do_compress(int threads, int level, int bufsize, int fdin,
 	ZSTDMT_freeCCtx(ctx);
 }
 
-#if 0
-static void do_decompress(int threads, int fdin, int fdout)
+static void do_decompress(int threads, int bufsize, int fdin, int fdout)
 {
 	static int first = 1;
 	ZSTDMT_RdWr_t rdwr;
-	int ret;
+	size_t ret;
 
 	/* 1) setup read/write functions */
 	rdwr.fn_read = my_read_loop;
@@ -146,14 +159,25 @@ static void do_decompress(int threads, int fdin, int fdout)
 	rdwr.arg_write = (void *)&fdout;
 
 	/* 2) create compression context */
-	ZSTDMT_DCtx *ctx = ZSTDMT_createDCtx(threads);
+	ZSTDMT_DCtx *ctx = ZSTDMT_createDCtx(threads, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
 	ret = ZSTDMT_DecompressDCtx(ctx, &rdwr);
-	if (ret == -1)
-		perror_exit("ZSTDMT_CompressDCtx() failed!");
+	if (ZSTDMT_isError(ret)) {
+		printf
+		    ("zstdmt_errcode=%zu, ZSTDMT_error_compression_library=%d, ret=%zu\n",
+		     zstdmt_errcode, ZSTDMT_error_compression_library, ret);
+		fflush(stdout);
+		perror_exit(ZSTD_getErrorName(zstdmt_errcode));
+		if (ret ==
+		    ZSTDMT_getErrorCode(ZSTDMT_error_compression_library)) {
+			perror_exit(ZSTD_getErrorName(zstdmt_errcode));
+		} else {
+			perror_exit(ZSTDMT_getErrorName(ret));
+		}
+	}
 
 	/* 4) get statistic */
 	if (first) {
@@ -167,7 +191,6 @@ static void do_decompress(int threads, int fdin, int fdout)
 	/* 5) free resources */
 	ZSTDMT_freeDCtx(ctx);
 }
-#endif
 
 #define tsub(a, b, result) \
 do { \
@@ -265,7 +288,7 @@ int main(int argc, char **argv)
 			do_compress(opt_threads, opt_level, opt_bufsize, fdin,
 				    fdout);
 		} else {
-			//do_decompress(opt_threads, fdin, fdout);
+			do_decompress(opt_threads, opt_bufsize, fdin, fdout);
 		}
 
 		opt_iterations--;

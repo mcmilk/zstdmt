@@ -13,8 +13,9 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
-#define ZSTD_DISABLE_OBSOLETE_ENUMS
+#define ZSTD_STATIC_LINKING_ONLY
 #include "zstd.h"
 
 #include "mem.h"
@@ -116,7 +117,7 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, int inputsize)
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else
-		ctx->inputsize = 1024 * 1024 * 2; /* smallest default */
+		ctx->inputsize = 1024 * 1024 * 2;	/* smallest default */
 
 	pthread_mutex_init(&ctx->read_mutex, NULL);
 	pthread_mutex_init(&ctx->write_mutex, NULL);
@@ -208,18 +209,19 @@ static size_t pt_read(ZSTDMT_DCtx * ctx, ZSTDMT_Buffer * in, size_t * frame)
 			goto error_read;
 		if (hdr.size != 12)
 			goto error_read;
-		if (MEM_readLE32((unsigned char*)hdr.buf + 0) != ZSTDMT_MAGIC_SKIPPABLE)
+		if (MEM_readLE32((unsigned char *)hdr.buf + 0) !=
+		    ZSTDMT_MAGIC_SKIPPABLE)
 			goto error_data;
 	}
 
 	/* check header data */
-	if (MEM_readLE32((unsigned char*)hdr.buf + 4) != 4)
+	if (MEM_readLE32((unsigned char *)hdr.buf + 4) != 4)
 		goto error_data;
 
 	ctx->insize += 12;
 	/* read new inputsize */
 	{
-		size_t toRead = MEM_readLE32((unsigned char*)hdr.buf + 8);
+		size_t toRead = MEM_readLE32((unsigned char *)hdr.buf + 8);
 		if (in->allocated < toRead) {
 			/* need bigger input buffer */
 			if (in->allocated)
@@ -307,7 +309,7 @@ static void *pt_decompress(void *arg)
 
 		{
 			/* get frame size for output buffer */
-			unsigned char *src = (unsigned char*)in->buf + 6;
+			unsigned char *src = (unsigned char *)in->buf + 6;
 			out->size = (size_t) MEM_readLE64(src);
 		}
 
@@ -322,14 +324,12 @@ static void *pt_decompress(void *arg)
 			}
 			out->allocated = out->size;
 		}
-
 		// ZSTD_DStream* zds, ZSTD_outBuffer* output, ZSTD_inBuffer* input
 		{
-		ZSTD_inBuffer zIn;
-		ZSTD_outBuffer zOut;
+			ZSTD_inBuffer zIn;
+			ZSTD_outBuffer zOut;
 
-		result =
-		    ZSTD_decompressStream(w->dctx, &zOut, &zIn);
+			result = ZSTD_decompressStream(w->dctx, &zOut, &zIn);
 		}
 
 		if (ZSTD_isError(result)) {
@@ -346,8 +346,8 @@ static void *pt_decompress(void *arg)
 		/* write result */
 		pthread_mutex_lock(&ctx->write_mutex);
 		result = pt_write(ctx, wl);
-		//if (ERR_isError(result))
-			//goto error_unlock;
+		if (ERR_isError(result))
+			goto error_unlock;
 		pthread_mutex_unlock(&ctx->write_mutex);
 	}
 
@@ -373,92 +373,131 @@ static void *pt_decompress(void *arg)
 static size_t st_decompress(void *arg)
 {
 	ZSTDMT_DCtx *ctx = (ZSTDMT_DCtx *) arg;
-	size_t nextToLoad = 0;
 	cwork_t *w = &ctx->cwork[0];
 	ZSTDMT_Buffer Out;
-	ZSTDMT_Buffer *out = &Out;
 	ZSTDMT_Buffer *in = &w->in;
+	ZSTDMT_Buffer *out = &Out;
 	void *magic = in->buf;
-	size_t pos = 0;
+	size_t result;
 	int rv;
 
 	ZSTD_inBuffer zIn;
 	ZSTD_outBuffer zOut;
 
+	/* reset stream */
+	result = ZSTD_initDStream(w->dctx);
+	if (ZSTD_isError(result)) {
+		zstdmt_errcode = result;
+		return ERROR(compression_library);
+	}
+
 	/* allocate space for input buffer */
-	in->size = ctx->inputsize;
+	in->size = ZSTD_DStreamInSize();
 	in->buf = malloc(in->size);
 	if (!in->buf)
 		return ERROR(memory_allocation);
+	in->allocated = in->size;
 
 	/* allocate space for output buffer */
-	out->size = ctx->inputsize;
+	out->size = ZSTD_DStreamOutSize();
 	out->buf = malloc(out->size);
 	if (!out->buf) {
 		free(in->buf);
 		return ERROR(memory_allocation);
 	}
+	out->allocated = out->size;
 
-	/* we have read already 4 bytes */
-	in->size = 4;
-	memcpy(in->buf, magic, in->size);
-
-	nextToLoad =
-	    ZSTD_decompressStream(w->dctx, &zOut, &zIn);
-	if (ZSTD_isError(nextToLoad)) {
-		free(in->buf);
-		free(out->buf);
-		return ERROR(compression_library);
+	/* 4 bytes + some more ... */
+	memcpy(in->buf, magic, 4);
+	in->buf += 4;
+	in->size = in->allocated - 4;
+	rv = ctx->fn_read(ctx->arg_read, in);
+	if (rv == -1) {
+		result = ERROR(read_fail);
+		goto error;
 	}
 
-	for (; nextToLoad; pos = 0) {
-		if (nextToLoad > ctx->inputsize)
-			nextToLoad = ctx->inputsize;
+	if (in->size == 0)
+		goto error;
+	in->buf -= 4;
+	in->size += 4;
+	ctx->insize += in->size;
 
-		/* read new input */
-		in->size = nextToLoad;
-		rv = ctx->fn_read(ctx->arg_read, in);
-		if (rv == -1) {
-			free(in->buf);
-			free(out->buf);
-			return ERROR(read_fail);
-		}
+	zIn.src = in->buf;
+	zIn.size = in->size;
+	zIn.pos = 0;
 
-		/* done, eof reached */
-		if (in->size == 0)
-			break;
+	for (;;) {
+		for (;;) {
+			/* decompress loop */
+			zOut.dst = out->buf;
+			zOut.size = out->size;
+			zOut.pos = 0;
 
-		/* still to read, or still to flush */
-		while ((pos < in->size) || (out->size == ctx->inputsize)) {
-			size_t remaining = in->size - pos;
-			out->size = ctx->inputsize;
+			printf
+			    ("decompress() in: in.size=%zu in.pos=%zu out.size=%zu out.pos=%zu\n",
+			     zIn.size, zIn.pos, zOut.size, zOut.pos);
+			result = ZSTD_decompressStream(w->dctx, &zOut, &zIn);
+			printf
+			    ("decompress() out: ret=%zu: in.size=%zu in.pos=%zu out.size=%zu out.pos=%zu\n",
+			     result, zIn.size, zIn.pos, zOut.size, zOut.pos);
+			if (ZSTD_isError(result))
+				goto error_clib;
 
-			/* decompress */
-	nextToLoad =
-	    ZSTD_decompressStream(w->dctx, &zOut, &zIn);
-			if (ZSTD_isError(nextToLoad)) {
-				free(in->buf);
-				free(out->buf);
-				return ERROR(compression_library);
+			if (zOut.size) {
+				ZSTDMT_Buffer w;
+				w.size = zOut.size;
+				w.buf = zOut.dst;
+				rv = ctx->fn_write(ctx->arg_write, &w);
+				ctx->outsize += zOut.size;
 			}
 
-			/* have some output */
-			if (out->size) {
-				rv = ctx->fn_write(ctx->arg_write, out);
-				if (rv == -1) {
-					free(in->buf);
-					free(out->buf);
-					return ERROR(write_fail);
-				}
-			}
+			/* one more round */
+			if ((zIn.pos == zIn.size) && (result == 1)
+			    && zOut.pos)
+				continue;
 
-			if (nextToLoad == 0)
+			/* finished */
+			if (zIn.pos == zIn.size)
 				break;
 
-			pos += remaining;
+			/* end of frame */
+			if (result == 0) {
+				result = ZSTD_initDStream(w->dctx);
+				if (ZSTD_isError(result))
+					goto error_clib;
+			}
 		}
+
+		/* read next input */
+		in->size = in->allocated;
+		rv = ctx->fn_read(ctx->arg_read, in);
+		if (rv == -1) {
+			result = ERROR(read_fail);
+			goto error;
+		}
+
+		if (in->size == 0)
+			goto okay;
+		ctx->insize += in->size;
+
+		zIn.src = in->buf;
+		zIn.size = in->size;
+		zIn.pos = 0;
+
 	}
 
+ error_clib:
+	//free(out->buf);
+	//free(in->buf);
+	zstdmt_errcode = result;
+	return ERROR(compression_library);
+ error:
+	/* return with error */
+	free(out->buf);
+	free(in->buf);
+	return result;
+ okay:
 	/* no error */
 	free(out->buf);
 	free(in->buf);
@@ -492,9 +531,12 @@ size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 
 	/* single threaded with unknown sizes */
 	if (MEM_readLE32(buf) != ZSTDMT_MAGIC_SKIPPABLE) {
+		U32 magic = MEM_readLE32(buf);
 
-		/* look for correct magic */
-		if (MEM_readLE32(buf) != ZSTDMT_MAGICNUMBER)
+		/* look for usable magic */
+		if (magic < ZSTDMT_MAGICNUMBER_MIN)
+			return ERROR(data_error);
+		else if (magic > ZSTDMT_MAGICNUMBER_MAX)
 			return ERROR(data_error);
 
 		/* decompress single threaded */

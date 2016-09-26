@@ -100,7 +100,7 @@ size_t LZ4MT_GetOutsizeCCtx(LZ4MT_CCtx * ctx);
 void LZ4MT_freeCCtx(LZ4MT_CCtx * ctx);
 
 /* **************************************
- * Decompression - TODO, but it's easy...
+ * Decompression
  ****************************************/
 
 typedef struct LZ4MT_DCtx_s LZ4MT_DCtx;
@@ -109,10 +109,7 @@ typedef struct LZ4MT_DCtx_s LZ4MT_DCtx;
  * 1) allocate new cctx
  * - return cctx or zero on error
  *
- * @level   - 1 .. 22
  * @threads - 1 .. LZ4MT_THREAD_MAX
- * @srclen  - the max size of src for LZ4MT_CompressCCtx()
- * @dstlen  - the min size of dst
  * @ inputsize - used for single threaded standard lz4 format without skippable frames
  */
 LZ4MT_DCtx *LZ4MT_createDCtx(int threads, int inputsize);

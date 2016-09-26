@@ -35,22 +35,7 @@
  *   4) begin with step 1 again, until no input
  */
 
-#define DEBUGME
-#ifdef DEBUGME
 #include <stdio.h>
-#endif
-
-/* could be replaced by MEM_writeLE32() */
-static inline void write_le32(unsigned char *dst, unsigned int u)
-{
-	dst[0] = (unsigned char)u;
-	u >>= 8;
-	dst[1] = (unsigned char)u;
-	u >>= 8;
-	dst[2] = (unsigned char)u;
-	u >>= 8;
-	dst[3] = (unsigned char)u;
-}
 
 /* worker for compression */
 typedef struct {
@@ -364,10 +349,10 @@ static void *pt_compress(void *arg)
 		}
 
 		/* write skippable frame */
-		write_le32((unsigned char *)out.buf + 0, 0x184D2A50);
-		write_le32((unsigned char *)out.buf + 4, 4);
-		write_le32((unsigned char *)out.buf + 8,
-			   (unsigned int)output.pos);
+		MEM_writeLE32((unsigned char *)out.buf + 0, 0x184D2A50);
+		MEM_writeLE32((unsigned char *)out.buf + 4, 4);
+		MEM_writeLE32((unsigned char *)out.buf + 8,
+			      (unsigned int)output.pos);
 		out.size = (int)output.pos + 12;
 
 		/* write result */

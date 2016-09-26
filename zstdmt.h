@@ -27,8 +27,9 @@ extern "C" {
 #define ZSTDMT_THREAD_MAX 128
 #define ZSTDMT_LEVEL_MAX   22
 
-#define ZSTDMT_MAGICNUMBER     0xFD2FB528U
-#define ZSTDMT_MAGIC_SKIPPABLE 0x184D2A50U
+#define ZSTDMT_MAGICNUMBER_MIN  0xFD2FB524U
+#define ZSTDMT_MAGICNUMBER_MAX  0xFD2FB528U
+#define ZSTDMT_MAGIC_SKIPPABLE  0x184D2A50U
 
 /* **************************************
  * Error Handling

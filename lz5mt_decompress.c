@@ -208,18 +208,19 @@ static size_t pt_read(LZ5MT_DCtx * ctx, LZ5MT_Buffer * in, size_t * frame)
 			goto error_read;
 		if (hdr.size != 12)
 			goto error_read;
-		if (MEM_readLE32((unsigned char*)hdr.buf + 0) != LZ5FMT_MAGIC_SKIPPABLE)
+		if (MEM_readLE32((unsigned char *)hdr.buf + 0) !=
+		    LZ5FMT_MAGIC_SKIPPABLE)
 			goto error_data;
 	}
 
 	/* check header data */
-	if (MEM_readLE32((unsigned char*)hdr.buf + 4) != 4)
+	if (MEM_readLE32((unsigned char *)hdr.buf + 4) != 4)
 		goto error_data;
 
 	ctx->insize += 12;
 	/* read new inputsize */
 	{
-		size_t toRead = MEM_readLE32((unsigned char*)hdr.buf + 8);
+		size_t toRead = MEM_readLE32((unsigned char *)hdr.buf + 8);
 		if (in->allocated < toRead) {
 			/* need bigger input buffer */
 			if (in->allocated)
@@ -307,7 +308,7 @@ static void *pt_decompress(void *arg)
 
 		{
 			/* get frame size for output buffer */
-			unsigned char *src = (unsigned char*)in->buf + 6;
+			unsigned char *src = (unsigned char *)in->buf + 6;
 			out->size = (size_t) MEM_readLE64(src);
 		}
 
@@ -428,7 +429,8 @@ static size_t st_decompress(void *arg)
 			/* decompress */
 			nextToLoad =
 			    LZ5F_decompress(w->dctx, out->buf, &out->size,
-					    (unsigned char*)in->buf + pos, &remaining, NULL);
+					    (unsigned char *)in->buf + pos,
+					    &remaining, NULL);
 			if (LZ5F_isError(nextToLoad)) {
 				free(in->buf);
 				free(out->buf);

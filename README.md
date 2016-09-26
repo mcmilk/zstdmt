@@ -282,3 +282,10 @@ Level|Threads|InSize|OutSize|Frames|Real|User|Sys|MaxMem
 [LZ4]:https://cyan4973.github.io/lz4/
 [LZ5]:https://github.com/inikep/lz5
 [ZStandard]:http://facebook.github.io/zstd/
+
+# TODO
+
+- threaded decompression for zstd not ready
+- document the header files correctly ... just some first start currently
+
+/TR 2016-09-25

@@ -73,7 +73,13 @@ static void headline(void)
 int my_read_loop(void *arg, LZ5MT_Buffer * in)
 {
 	int *fd = (int *)arg;
-	size_t done = read_loop(*fd, in->buf, in->size);
+	ssize_t done = read_loop(*fd, in->buf, in->size);
+
+#if 0
+	printf("read_loop(fd=%d, buffer=%p,count=%zu)\n", *fd, in->buf,
+	       in->size);
+	fflush(stdout);
+#endif
 
 	in->size = done;
 	return done;
@@ -82,7 +88,13 @@ int my_read_loop(void *arg, LZ5MT_Buffer * in)
 int my_write_loop(void *arg, LZ5MT_Buffer * out)
 {
 	int *fd = (int *)arg;
-	size_t done = write_loop(*fd, out->buf, out->size);
+	ssize_t done = write_loop(*fd, out->buf, out->size);
+
+#if 0
+	printf("write_loop(fd=%d, buffer=%p,count=%zu)\n", *fd, out->buf,
+	       out->size);
+	fflush(stdout);
+#endif
 
 	out->size = done;
 	return done;

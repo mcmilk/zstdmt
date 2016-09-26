@@ -257,8 +257,9 @@ static void *pt_compress(void *arg)
 
 		/* compress whole frame */
 		result =
-		    LZ5F_compressFrame((unsigned char*)wl->out.buf + 12, wl->out.size - 12,
-				       in.buf, in.size, &w->zpref);
+		    LZ5F_compressFrame((unsigned char *)wl->out.buf + 12,
+				       wl->out.size - 12, in.buf, in.size,
+				       &w->zpref);
 		if (LZ5F_isError(result)) {
 			pthread_mutex_lock(&ctx->write_mutex);
 			list_move(&wl->node, &ctx->writelist_free);
@@ -269,9 +270,11 @@ static void *pt_compress(void *arg)
 		}
 
 		/* write skippable frame */
-		MEM_writeLE32((unsigned char*)wl->out.buf + 0, LZ5FMT_MAGIC_SKIPPABLE);
-		MEM_writeLE32((unsigned char*)wl->out.buf + 4, 4);
-		MEM_writeLE32((unsigned char*)wl->out.buf + 8, (unsigned char)result);
+		MEM_writeLE32((unsigned char *)wl->out.buf + 0,
+			      LZ5FMT_MAGIC_SKIPPABLE);
+		MEM_writeLE32((unsigned char *)wl->out.buf + 4, 4);
+		MEM_writeLE32((unsigned char *)wl->out.buf + 8,
+			      (unsigned char)result);
 		wl->out.size = result + 12;
 
 		/* write result */
