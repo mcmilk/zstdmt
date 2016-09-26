@@ -76,7 +76,7 @@ int my_read_loop(void *arg, ZSTDMT_Buffer * in)
 	int *fd = (int *)arg;
 	ssize_t done = read_loop(*fd, in->buf, in->size);
 
-#if 1
+#if 0
 	printf("read_loop(fd=%d, buffer=%p,count=%zu) = %zd\n", *fd, in->buf,
 	       in->size, done);
 	fflush(stdout);
@@ -91,7 +91,7 @@ int my_write_loop(void *arg, ZSTDMT_Buffer * out)
 	int *fd = (int *)arg;
 	ssize_t done = write_loop(*fd, out->buf, out->size);
 
-#if 1
+#if 0
 	printf("write_loop(fd=%d, buffer=%p,count=%zu) = %zd\n", *fd, out->buf,
 	       out->size, done);
 	fflush(stdout);
