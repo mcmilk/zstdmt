@@ -335,7 +335,7 @@ static void *pt_compress(void *arg)
 			list_move(&wl->node, &ctx->writelist_free);
 			pthread_mutex_unlock(&ctx->write_mutex);
 
-			return 0;
+			goto okay;
 		}
 		ctx->insize += in.size;
 		wl->frame = ctx->frames++;
@@ -399,6 +399,7 @@ static void *pt_compress(void *arg)
 			goto error;
 	}
 
+ okay:
 	return 0;
  error:
 	pthread_mutex_lock(&ctx->write_mutex);
@@ -412,7 +413,7 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 	int t;
 
 	if (!ctx)
-		return -1;
+		return ERROR(compressionParameter_unsupported);
 
 	/* init reading and writing functions */
 	ctx->fn_read = rdwr->fn_read;
@@ -432,7 +433,7 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 		void *p;
 		pthread_join(w->pthread, &p);
 		if (p)
-			return -1;
+			return (size_t) p;
 	}
 
 	return 0;

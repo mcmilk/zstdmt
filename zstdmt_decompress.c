@@ -346,7 +346,7 @@ static void *pt_decompress(void *arg)
 				goto again;
 			}
 		}		/* decompress */
-	} /* read input */
+	}			/* read input */
 
 	/* everything is okay */
 	pthread_mutex_lock(&ctx->write_mutex);
@@ -409,22 +409,25 @@ static size_t st_decompress(void *arg)
 	out->allocated = out->size;
 
 	/* 4 bytes + some more ... */
-	memcpy(in->buf, magic, 4);
-	in->buf += 4;
-	in->size = in->allocated - 4;
-	rv = ctx->fn_read(ctx->arg_read, in);
-	if (rv == -1) {
-		result = ERROR(read_fail);
-		goto error;
-	}
+	{
+		unsigned char *buf = in->buf;
+		memcpy(in->buf, magic, 4);
+		in->buf = buf + 4;
+		in->size = in->allocated - 4;
+		rv = ctx->fn_read(ctx->arg_read, in);
+		if (rv == -1) {
+			result = ERROR(read_fail);
+			goto error;
+		}
 
-	if (in->size == 0) {
-		result = ERROR(data_error);
-		goto error;
+		if (in->size == 0) {
+			result = ERROR(data_error);
+			goto error;
+		}
+		in->buf = buf;
+		in->size += 4;
+		ctx->insize += in->size;
 	}
-	in->buf -= 4;
-	in->size += 4;
-	ctx->insize += in->size;
 
 	zIn.src = in->buf;
 	zIn.size = in->size;

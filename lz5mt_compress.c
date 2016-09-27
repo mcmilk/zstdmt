@@ -254,7 +254,7 @@ static void *pt_compress(void *arg)
 			list_move(&wl->node, &ctx->writelist_free);
 			pthread_mutex_unlock(&ctx->write_mutex);
 
-			return 0;
+			goto okay;
 		}
 		ctx->insize += in.size;
 		wl->frame = ctx->frames++;
@@ -290,6 +290,7 @@ static void *pt_compress(void *arg)
 			return (void *)result;
 	}
 
+ okay:
 	return 0;
 }
 
