@@ -34,8 +34,9 @@ static unsigned __stdcall worker(void *arg)
 	return 0;
 }
 
-int pthread_create(pthread_t * thread, const void *unused,
-		   void *(*start_routine) (void *), void *arg)
+int
+pthread_create(pthread_t * thread, const void *unused,
+	       void *(*start_routine) (void *), void *arg)
 {
 	(void)unused;
 	thread->arg = arg;

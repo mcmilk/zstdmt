@@ -162,79 +162,6 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize)
 	return 0;
 }
 
-#if 0
-/**
- * pt_read - read input a bit smarter
- */
-static int pt_read(ZSTDMT_CCtx * ctx, ZSTDMT_Buffer * in)
-{
-	/**
-	 * -1 not allocated
-	 *  0 no more elemtes currently
-	 * >0 N elements left
-	 */
-	static int array_len = -1;
-	static ZSTDMT_Buffer *array = 0;
-	size_t total;
-	int t;
-
-	/* deinit */
-	if (tid == 0) {
-		if (need_init == 0)
-			free(in);
-		return 0;
-	}
-
-	/* init */
-	if (array_len == -1) {
-		array =
-		    (ZSTDMT_Buffer *) malloc(sizeof(ZSTDMT_Buffer) *
-					     ctx->threads);
-		if (!array)
-			return -1;
-		array_len = 0;
-	}
-
-	/* return next pre-read value */
-	if (array_len) {
-		in = array[ctx->threads - array_len];
-		array_len -= 1;
-		return in->size;
-	}
-
-	/* read new content */
-	total = 0;
-	for (t = 0; t < ctx->threads; t++) {
-		array[t].size = ctx->inputsize;
-		array[t].buf = malloc(ctx->inputsize);
-		int len = ctx->fn_read(ctx->arg_read, array[t]);
-		if (len == 0)
-			break;
-		if (len == -1)
-			return -1;
-		total += len;
-	}
-
-	/* check, if chunks are full */
-	if (total == ctx->inputsize * ctx->threads) {
-		in = array[0];
-		array_len = ctx->threads - 1;
-		return;
-	}
-#define MINSIZE ZSTD_CStreamInSize()
-	/* eof reached, split up the work a bit... */
-
-	/**
-	 * case one, all items together do not fullfill the minumum size
-	 * -> create the work for N threads, which get all the optimal size
-	 */
-	if (total < ZSTD_CStreamInSize() * ctx->threads) {
-	}
-
-	return 0;
-}
-#endif
-
 /**
  * pt_write - queue for compressed output
  */
@@ -341,14 +268,12 @@ static void *pt_compress(void *arg)
 		pthread_mutex_unlock(&ctx->read_mutex);
 
 		/* compress whole frame */
-		#if 0
 		result = ZSTD_initCStream(w->zctx, ctx->level);
 		if (ZSTD_isError(result)) {
 			zstdmt_errcode = result;
 			wl->out.buf = (void *)ZSTD_getErrorName(result);
 			goto error;
 		}
-		#endif
 
 		{
 			ZSTD_inBuffer input;

@@ -47,7 +47,7 @@ static void usage(void)
 	printf(" -l N    set level (1..16) of compression (default: 1)\n");
 	printf(" -t N    set number of (de)compression threads (default: 2)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
-	printf(" -b N    set input chunksize to N MiB (default: auto)\n");
+	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
 	printf(" -c      compress (default mode)\n");
 	printf(" -d      use decompress mode\n");
 	printf(" -H      print headline for the testing values\n");
@@ -100,8 +100,8 @@ int my_write_loop(void *arg, LZ4MT_Buffer * out)
 	return done;
 }
 
-static void do_compress(int threads, int level, int bufsize,
-			int fdin, int fdout)
+static void
+do_compress(int threads, int level, int bufsize, int fdin, int fdout)
 {
 	static int first = 1;
 	LZ4MT_RdWr_t rdwr;
@@ -246,9 +246,9 @@ int main(int argc, char **argv)
 	else if (opt_iterations > MAX_ITERATIONS)
 		opt_iterations = MAX_ITERATIONS;
 
-	/* opt_bufsize is in MB */
+	/* opt_bufsize is in KiB */
 	if (opt_bufsize > 0)
-		opt_bufsize *= 1024 * 1024;
+		opt_bufsize *= 1024;
 
 	/* file names */
 	fdin = open_read(argv[optind]);
@@ -264,8 +264,8 @@ int main(int argc, char **argv)
 
 	for (;;) {
 		if (opt_mode == MODE_COMPRESS) {
-			do_compress(opt_threads, opt_level, opt_bufsize,
-				    fdin, fdout);
+			do_compress(opt_threads, opt_level, opt_bufsize, fdin,
+				    fdout);
 		} else {
 			do_decompress(opt_threads, opt_bufsize, fdin, fdout);
 		}

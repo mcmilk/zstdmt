@@ -293,14 +293,13 @@ static void *pt_decompress(void *arg)
 
 		/* zero should not happen here! */
 		result = pt_read(ctx, in, &wl->frame);
-		if (in->size == 0)
-			break;
-
 		if (LZ4MT_isError(result)) {
 			list_move(&wl->node, &ctx->writelist_free);
-
 			goto error_lock;
 		}
+
+		if (in->size == 0)
+			break;
 
 		{
 			/* get frame size for output buffer */

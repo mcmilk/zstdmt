@@ -54,7 +54,7 @@ typedef enum {
 #  undef ERROR   /* reported already defined on VS 2015 (Rich Geldreich) */
 #endif
 #define PREFIX(name) LZ4MT_error_##name
-#define ERROR(name) ((size_t)-PREFIX(name))
+#define ERROR(name)  ((size_t)-PREFIX(name))
 extern unsigned LZ4MT_isError(size_t code);
 extern const char* LZ4MT_getErrorString(size_t code);
 

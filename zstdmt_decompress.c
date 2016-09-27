@@ -249,6 +249,7 @@ static void *pt_decompress(void *arg)
 	struct writelist *wl;
 	size_t result = 0;
 
+
 	for (;;) {
 		ZSTDMT_Buffer *out;
 		ZSTD_inBuffer zIn;
@@ -281,6 +282,7 @@ static void *pt_decompress(void *arg)
 			out->allocated = out->size;
 			list_add(&wl->node, &ctx->writelist_busy);
 		}
+
 
 		/* start with 512KB */
 		pthread_mutex_unlock(&ctx->write_mutex);
@@ -381,6 +383,7 @@ static size_t st_decompress(void *arg)
 	ZSTD_inBuffer zIn;
 	ZSTD_outBuffer zOut;
 
+
 	/* init dstream stream */
 	result = ZSTD_initDStream(w->dctx);
 	if (ZSTD_isError(result)) {
@@ -450,8 +453,7 @@ static size_t st_decompress(void *arg)
 			}
 
 			/* one more round */
-			if ((zIn.pos == zIn.size) && (result == 1)
-			    && zOut.pos)
+			if ((zIn.pos == zIn.size) && (result == 1) && zOut.pos)
 				continue;
 
 			/* finished */
@@ -484,6 +486,7 @@ static size_t st_decompress(void *arg)
 
  error_clib:
 	zstdmt_errcode = result;
+	result = ERROR(compression_library);
 	/* fall through */
  error:
 	/* return with error */
