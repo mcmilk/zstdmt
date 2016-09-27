@@ -165,6 +165,11 @@ static size_t pt_write(LZ4MT_CCtx * ctx, struct writelist *wl)
 
 	/* move the entry to the done list */
 	list_move(&wl->node, &ctx->writelist_done);
+
+	/* the entry isn't the currently needed, return...  */
+	if (wl->frame != ctx->curframe)
+		return 0;
+
  again:
 	/* check, what can be written ... */
 	list_for_each(entry, &ctx->writelist_done) {

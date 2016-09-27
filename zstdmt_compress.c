@@ -80,7 +80,11 @@ struct ZSTDMT_CCtx_s {
 	pthread_mutex_t write_mutex;
 	fn_write *fn_write;
 	void *arg_write;
-	struct list_head writelist;
+
+	/* lists for writing queue */
+	struct list_head writelist_free;
+	struct list_head writelist_busy;
+	struct list_head writelist_done;
 };
 
 /* **************************************
@@ -102,7 +106,7 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize)
 		return 0;
 
 	/* check level */
-	if (level < 1 || level > 22)
+	if (level < 1 || level > ZSTDMT_LEVEL_MAX)
 		return 0;
 
 	/* calculate chunksize for one thread */
@@ -127,7 +131,10 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize)
 
 	pthread_mutex_init(&ctx->read_mutex, NULL);
 	pthread_mutex_init(&ctx->write_mutex, NULL);
-	INIT_LIST_HEAD(&ctx->writelist);
+
+	INIT_LIST_HEAD(&ctx->writelist_free);
+	INIT_LIST_HEAD(&ctx->writelist_busy);
+	INIT_LIST_HEAD(&ctx->writelist_done);
 
 	ctx->cwork = (cwork_t *) malloc(sizeof(cwork_t) * threads);
 	if (!ctx->cwork)
@@ -234,34 +241,28 @@ static int pt_read(ZSTDMT_CCtx * ctx, ZSTDMT_Buffer * in)
 /**
  * pt_write - queue for compressed output
  */
-static int pt_write(ZSTDMT_CCtx * ctx, size_t frame, ZSTDMT_Buffer * out)
+static size_t pt_write(ZSTDMT_CCtx * ctx, struct writelist *wl)
 {
-	struct writelist *wl =
-	    (struct writelist *)malloc(sizeof(struct writelist));
 	struct list_head *entry;
 
-	if (!wl)
-		return -1;
+	/* move the entry to the done list */
+	list_move(&wl->node, &ctx->writelist_done);
 
-	wl->frame = frame;
-	wl->out.buf = out->buf;
-	wl->out.size = out->size;
-	list_add(&wl->node, &ctx->writelist);
+	/* the entry isn't the currently needed, return...  */
+	if (wl->frame != ctx->curframe)
+		return 0;
 
  again:
-	/* check, what can be written ... O(n) for thread count */
-	list_for_each(entry, &ctx->writelist) {
+	/* check, what can be written ... */
+	list_for_each(entry, &ctx->writelist_done) {
 		wl = list_entry(entry, struct writelist, node);
 		if (wl->frame == ctx->curframe) {
-			int rv;
-			rv = ctx->fn_write(ctx->arg_write, &wl->out);
-			if (rv < 0)
-				return -1;
+			int rv = ctx->fn_write(ctx->arg_write, &wl->out);
+			if (rv == -1)
+				return ERROR(write_fail);
 			ctx->outsize += wl->out.size;
 			ctx->curframe++;
-			list_del(entry);
-			free(wl->out.buf);
-			free(wl);
+			list_move(entry, &ctx->writelist_free);
 			goto again;
 		}
 	}
@@ -273,107 +274,140 @@ static void *pt_compress(void *arg)
 {
 	cwork_t *w = (cwork_t *) arg;
 	ZSTDMT_CCtx *ctx = w->ctx;
-
+	struct writelist *wl;
+	size_t result;
 	ZSTDMT_Buffer in;
-	ZSTDMT_Buffer out;
-
-	/* used for error message */
-	out.buf = 0;
 
 	/* inbuf is constant */
-	in.buf = malloc(ctx->inputsize);
+	in.size = ctx->inputsize;
+	in.buf = malloc(in.size);
 	if (!in.buf)
-		goto error;
+		return (void *)ERROR(memory_allocation);
 
 	for (;;) {
-		size_t result, frame;
+		struct list_head *entry;
+		ZSTDMT_Buffer *out;
 		int rv;
 
-		result = ZSTD_initCStream(w->zctx, ctx->level);
-		if (ZSTD_isError(result)) {
-			out.buf = (void *)ZSTD_getErrorName(result);
-			goto error;
-		}
-
 		/* allocate space for new output */
-		out.size = (int)ZSTD_compressBound(ctx->inputsize) + 12;
-		out.buf = malloc(out.size);
-		if (!out.buf)
-			goto error;
+		pthread_mutex_lock(&ctx->write_mutex);
+		if (!list_empty(&ctx->writelist_free)) {
+			/* take unused entry */
+			entry = list_first(&ctx->writelist_free);
+			wl = list_entry(entry, struct writelist, node);
+			wl->out.size = ZSTD_compressBound(ctx->inputsize) + 12;
+			list_move(entry, &ctx->writelist_busy);
+		} else {
+			/* allocate new one */
+			wl = (struct writelist *)
+			    malloc(sizeof(struct writelist));
+			if (!wl) {
+				pthread_mutex_unlock(&ctx->write_mutex);
+				free(in.buf);
+				return (void *)ERROR(memory_allocation);
+			}
+			wl->out.size = ZSTD_compressBound(ctx->inputsize) + 12;;
+			wl->out.buf = malloc(wl->out.size);
+			if (!wl->out.buf) {
+				pthread_mutex_unlock(&ctx->write_mutex);
+				free(in.buf);
+				return (void *)ERROR(memory_allocation);
+			}
+			list_add(&wl->node, &ctx->writelist_busy);
+		}
+		pthread_mutex_unlock(&ctx->write_mutex);
+		out = &wl->out;
 
 		/* read new input */
 		pthread_mutex_lock(&ctx->read_mutex);
 		in.size = ctx->inputsize;
 		rv = ctx->fn_read(ctx->arg_read, &in);
 		if (rv == -1) {
-			out.buf = "Error while reading input!";
 			pthread_mutex_unlock(&ctx->read_mutex);
+			result = ERROR(read_fail);
 			goto error;
 		}
+
+		/* eof */
 		if (in.size == 0) {
 			free(in.buf);
-			free(out.buf);
 			pthread_mutex_unlock(&ctx->read_mutex);
+
+			pthread_mutex_lock(&ctx->write_mutex);
+			list_move(&wl->node, &ctx->writelist_free);
+			pthread_mutex_unlock(&ctx->write_mutex);
+
 			return 0;
 		}
 		ctx->insize += in.size;
-		frame = ctx->frames++;
+		wl->frame = ctx->frames++;
 		pthread_mutex_unlock(&ctx->read_mutex);
 
 		/* compress whole frame */
-		ZSTD_inBuffer input;
-		input.src = in.buf;
-		input.size = in.size;
-		input.pos = 0;
-
-		ZSTD_outBuffer output;
-		output.dst = (char *)out.buf + 12;
-		output.size = out.size - 12;
-		output.pos = 0;
-
-		result = ZSTD_compressStream(w->zctx, &output, &input);
+		result = ZSTD_initCStream(w->zctx, ctx->level);
 		if (ZSTD_isError(result)) {
-			out.buf = (void *)ZSTD_getErrorName(result);
+			zstdmt_errcode = result;
+			wl->out.buf = (void *)ZSTD_getErrorName(result);
 			goto error;
 		}
 
-		if (input.size != input.pos) {
-			out.buf = "ZSTD_compressStream didn't consume input!";
-			goto error;
-		}
+		{
+			ZSTD_inBuffer input;
+			input.src = in.buf;
+			input.size = in.size;
+			input.pos = 0;
 
-		result = ZSTD_endStream(w->zctx, &output);
-		if (ZSTD_isError(result)) {
-			out.buf = (void *)ZSTD_getErrorName(result);
-			goto error;
+			ZSTD_outBuffer output;
+			output.dst = (char *)out->buf + 12;
+			output.size = out->size - 12;
+			output.pos = 0;
+
+			result = ZSTD_compressStream(w->zctx, &output, &input);
+			if (ZSTD_isError(result)) {
+				/* user can lookup that code */
+				zstdmt_errcode = result;
+				result = ERROR(compression_library);
+				goto error;
+			}
+
+			if (input.size != input.pos) {
+				result = ERROR(frame_compress);
+				goto error;
+			}
+
+			result = ZSTD_endStream(w->zctx, &output);
+			if (ZSTD_isError(result)) {
+				zstdmt_errcode = result;
+				result = ERROR(compression_library);
+				goto error;
+			}
+
+			result = output.pos;
+
 		}
 
 		/* write skippable frame */
-		MEM_writeLE32((unsigned char *)out.buf + 0, 0x184D2A50);
-		MEM_writeLE32((unsigned char *)out.buf + 4, 4);
-		MEM_writeLE32((unsigned char *)out.buf + 8,
-			      (unsigned int)output.pos);
-		out.size = (int)output.pos + 12;
+		MEM_writeLE32((unsigned char *)out->buf + 0,
+			      ZSTDMT_MAGIC_SKIPPABLE);
+		MEM_writeLE32((unsigned char *)out->buf + 4, 4);
+		MEM_writeLE32((unsigned char *)out->buf + 8,
+			      (unsigned char)result);
+		out->size = result + 12;
 
 		/* write result */
-		pthread_mutex_lock(&ctx->read_mutex);
-		rv = pt_write(ctx, frame, &out);
-		pthread_mutex_unlock(&ctx->read_mutex);
-		if (rv == -1) {
-			out.buf = "Error while writing output!";
+		pthread_mutex_lock(&ctx->write_mutex);
+		result = pt_write(ctx, wl);
+		pthread_mutex_unlock(&ctx->write_mutex);
+		if (ERR_isError(result))
 			goto error;
-		}
 	}
 
+	return 0;
  error:
-#if 0
-	if (!out.buf)
-		out.buf = "Allocation error : not enough memory";
-	printf("ERR @ pt_compress() = %s\n", (char *)out.buf);
-	fflush(stdout);
-#endif
-	out.size = 0;
-	return (void *)-1;
+	pthread_mutex_lock(&ctx->write_mutex);
+	list_move(&wl->node, &ctx->writelist_free);
+	pthread_mutex_unlock(&ctx->write_mutex);
+	return (void *)result;
 }
 
 size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)

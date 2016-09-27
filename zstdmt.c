@@ -50,7 +50,7 @@ static void usage(void)
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -b N    set input chunksize to N MiB (default: auto)\n");
 	printf(" -c      compress (default mode)\n");
-	printf(" -d      use decompress mode (XXX, not done)\n");
+	printf(" -d      use decompress mode\n");
 	printf(" -H      print headline for the testing values\n");
 	printf(" -h      show usage\n");
 	printf(" -v      show version\n");
@@ -76,9 +76,10 @@ int my_read_loop(void *arg, ZSTDMT_Buffer * in)
 	int *fd = (int *)arg;
 	ssize_t done = read_loop(*fd, in->buf, in->size);
 
-#if 1
-	printf("read_loop(fd=%d, buffer=%p,count=%zu) = %zd\n", *fd, in->buf,
-	       in->size, done);
+#if 0
+	// ssize_t x = llseek(*fd, 0, SEEK_CUR);
+	printf("read_loop(fd=%d, buffer=%p,count=%zu) = %zd off = %zd\n", *fd,
+	       in->buf, in->size, done);
 	fflush(stdout);
 #endif
 
@@ -92,8 +93,9 @@ int my_write_loop(void *arg, ZSTDMT_Buffer * out)
 	ssize_t done = write_loop(*fd, out->buf, out->size);
 
 #if 0
-	printf("write_loop(fd=%d, buffer=%p,count=%zu) = %zd\n", *fd, out->buf,
-	       out->size, done);
+	//ssize_t x = llseek(*fd, 0, SEEK_CUR);
+	printf("write_loop(fd=%d, buffer=%p,count=%zu) = %zd off = %zd\n", *fd,
+	       out->buf, out->size, done);
 	fflush(stdout);
 #endif
 

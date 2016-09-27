@@ -28,6 +28,7 @@ typedef enum {
   ZSTDMT_error_read_fail,
   ZSTDMT_error_write_fail,
   ZSTDMT_error_data_error,
+  ZSTDMT_error_frame_compress,
   ZSTDMT_error_frame_decompress,
   ZSTDMT_error_compressionParameter_unsupported,
   ZSTDMT_error_compression_library,

@@ -251,7 +251,7 @@ static void *pt_decompress(void *arg)
 	result = ZSTD_initDStream(w->dctx);
 	if (ZSTD_isError(result)) {
 		zstdmt_errcode = result;
-		return (void*)ERROR(compression_library);
+		return (void *)ERROR(compression_library);
 	}
 
 	for (;;) {
@@ -290,16 +290,19 @@ static void *pt_decompress(void *arg)
 		if (ZSTDMT_isError(result)) {
 			goto error_lock;
 		}
+#if 0
 
 		{
-		ZSTD_frameParams fp;
-		ZSTD_getFrameParams(&fp, in->buf, in->size);
-		printf("frameContentSize=%llu ", fp.frameContentSize);
-		fflush(stdout);
-		out->size = 1024*1024*20;
-		if (fp.frameContentSize != 0)
-			out->size = fp.frameContentSize;
+			ZSTD_frameParams fp;
+			ZSTD_getFrameParams(&fp, in->buf, in->size);
+			printf("frameContentSize=%llu ", fp.frameContentSize);
+			fflush(stdout);
+			out->size = 1024 * 1024 * 20;
+			if (fp.frameContentSize != 0)
+				out->size = fp.frameContentSize;
 		}
+#endif
+		out->size = 1024 * 1024 * 20;
 		if (out->allocated < out->size) {
 			if (out->allocated)
 				out->buf = realloc(out->buf, out->size);
@@ -321,10 +324,11 @@ static void *pt_decompress(void *arg)
 			zOut.dst = out->buf;
 			zOut.pos = 0;
 
-			printf("in: in.size=%zu out.size=%zu\n", in->size, out->size);
+			printf("in: in.size=%zu out.size=%zu\n", in->size,
+			       out->size);
 			result = ZSTD_decompressStream(w->dctx, &zOut, &zIn);
 			printf("out: ret=%zu in.size=%zu out.size=%zu\n",
-			result, in->size, out->size);
+			       result, in->size, out->size);
 			if (ZSTD_isError(result)) {
 				goto error_clib;
 			}
