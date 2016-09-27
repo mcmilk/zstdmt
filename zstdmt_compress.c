@@ -362,6 +362,17 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 			return (size_t) p;
 	}
 
+	/* clean up lists */
+	while (!list_empty(&ctx->writelist_free)) {
+		struct writelist *wl;
+		struct list_head *entry;
+		entry = list_first(&ctx->writelist_free);
+		wl = list_entry(entry, struct writelist, node);
+		free(wl->out.buf);
+		list_del(&wl->node);
+		free(wl);
+	}
+
 	return 0;
 }
 
