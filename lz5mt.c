@@ -121,7 +121,7 @@ static void do_compress(int threads, int level, int bufsize,
 	/* 3) compress */
 	ret = LZ5MT_CompressCCtx(ctx, &rdwr);
 	if (LZ5MT_isError(ret))
-		perror_exit(ZSTDMT_getErrorName(ret));
+		perror_exit(LZ5MT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first) {
@@ -156,7 +156,7 @@ static void do_decompress(int threads, int bufsize, int fdin, int fdout)
 	/* 3) compress */
 	ret = LZ5MT_DecompressDCtx(ctx, &rdwr);
 	if (LZ5MT_isError(ret))
-		perror_exit(ZSTDMT_getErrorName(ret));
+		perror_exit(LZ5MT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first) {

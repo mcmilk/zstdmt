@@ -123,17 +123,8 @@ static void do_compress(int threads, int level, int bufsize, int fdin,
 
 	/* 3) compress */
 	ret = ZSTDMT_CompressCCtx(ctx, &rdwr);
-	if (ZSTDMT_isError(ret)) {
-		printf
-		    ("zstdmt_errcode=%zu, ZSTDMT_error_compression_library=%d, ret=%zu\n",
-		     zstdmt_errcode, ZSTDMT_error_compression_library, ret);
-		fflush(stdout);
-		if (ret == ZSTDMT_error_compression_library) {
-			perror_exit(ZSTD_getErrorName(zstdmt_errcode));
-		} else {
-			perror_exit(ZSTDMT_getErrorName(ret));
-		}
-	}
+	if (ZSTDMT_isError(ret))
+		perror_exit(ZSTDMT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first) {
@@ -167,19 +158,8 @@ static void do_decompress(int threads, int bufsize, int fdin, int fdout)
 
 	/* 3) compress */
 	ret = ZSTDMT_DecompressDCtx(ctx, &rdwr);
-	if (ZSTDMT_isError(ret)) {
-		printf
-		    ("zstdmt_errcode=%zu, ZSTDMT_error_compression_library=%d, ret=%zu\n",
-		     zstdmt_errcode, ZSTDMT_error_compression_library, ret);
-		fflush(stdout);
-		perror_exit(ZSTD_getErrorName(zstdmt_errcode));
-		if (ret ==
-		    ZSTDMT_getErrorCode(ZSTDMT_error_compression_library)) {
-			perror_exit(ZSTD_getErrorName(zstdmt_errcode));
-		} else {
-			perror_exit(ZSTDMT_getErrorName(ret));
-		}
-	}
+	if (ZSTDMT_isError(ret))
+		perror_exit(ZSTDMT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first) {

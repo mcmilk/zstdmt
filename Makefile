@@ -15,10 +15,10 @@ CFLAGS += -O3
 
 PRGS	= zstdmt lz4mt lz5mt
 
-OBJ	= threading.o util.o zstdmt_common.o
-OBJLZ4	= lz4mt_compress.o lz4mt.o lz4mt_decompress.o
-OBJLZ5	= lz5mt_compress.o lz5mt.o lz5mt_decompress.o
-OBJZSTD	= zstdmt_compress.o zstdmt.o zstdmt_decompress.o
+OBJ	= threading.o util.o
+OBJLZ4	= lz4mt_common.o lz4mt_compress.o lz4mt_decompress.o lz4mt.o
+OBJLZ5	= lz5mt_common.o lz5mt_compress.o lz5mt_decompress.o lz5mt.o
+OBJZSTD	= zstdmt_common.o zstdmt_compress.o zstdmt_decompress.o zstdmt.o
 
 all:	$(PRGS)
 again:	clean $(PRGS)

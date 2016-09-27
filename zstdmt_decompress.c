@@ -21,7 +21,6 @@
 #include "threading.h"
 #include "list.h"
 #include "zstdmt.h"
-#include "error_private.h"
 
 /**
  * multi threaded zstd - multiple workers version
@@ -35,9 +34,6 @@
  *   3) get write mutex and write result
  *   4) begin with step 1 again, until no input
  */
-
-/* will be used for lib errors */
-size_t zstdmt_errcode;
 
 /* worker for compression */
 typedef struct {
@@ -323,7 +319,7 @@ static void *pt_decompress(void *arg)
 				/* write result */
 				pthread_mutex_lock(&ctx->write_mutex);
 				result = pt_write(ctx, wl);
-				if (ERR_isError(result))
+				if (ZSTDMT_isError(result))
 					goto error_unlock;
 				pthread_mutex_unlock(&ctx->write_mutex);
 				/* will read next input */

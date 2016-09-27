@@ -9,28 +9,28 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-#include "zstd.h"
-#include "zstdmt.h"
+#include "lz5frame.h"
+#include "lz5mt.h"
 
 /* will be used for lib errors */
-size_t zstdmt_errcode;
+size_t lz5mt_errcode;
 
 /*-****************************************
 *  ZSTDMT Error Management
 ******************************************/
-/*! ZSTDMT_isError() :
+/*! LZ5MT_isError() :
 *   tells if a return value is an error code */
-unsigned ZSTDMT_isError(size_t code)
+unsigned LZ5MT_isError(size_t code)
 {
-	return (code > ZSTDMT_error_maxCode);
+	return (code > LZ5MT_error_maxCode);
 }
 
-/*! ZSTDMT_getErrorString() :
+/*! LZ5MT_getErrorString() :
 *   provides error code string from function result (useful for debugging) */
-const char *ZSTDMT_getErrorString(size_t code)
+const char *LZ5MT_getErrorString(size_t code)
 {
-    if (ZSTD_isError(zstdmt_errcode))
-	    return ZSTDMT_getErrorString(zstdmt_errcode);
+    if (LZ5F_isError(lz5mt_errcode))
+	    return LZ5F_getErrorName(lz5mt_errcode);
 
     static const char* notErrorCode = "Unspecified error code";
     switch( code )

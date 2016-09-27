@@ -21,7 +21,6 @@
 #include "threading.h"
 #include "list.h"
 #include "lz4mt.h"
-#include "error_private.h"
 
 /**
  * multi threaded lz4 - multiple workers version
@@ -286,7 +285,7 @@ static void *pt_compress(void *arg)
 		pthread_mutex_lock(&ctx->write_mutex);
 		result = pt_write(ctx, wl);
 		pthread_mutex_unlock(&ctx->write_mutex);
-		if (ERR_isError(result))
+		if (LZ4MT_isError(result))
 			return (void *)result;
 	}
 

@@ -22,7 +22,7 @@
 extern "C" {
 #endif
 
-#include "error_public.h"
+#include <stddef.h>   /* size_t */
 
 #define ZSTDMT_THREAD_MAX 128
 #define ZSTDMT_LEVEL_MAX   22
@@ -36,6 +36,27 @@ extern "C" {
  ****************************************/
 
 extern size_t zstdmt_errcode;
+
+typedef enum {
+  ZSTDMT_error_no_error,
+  ZSTDMT_error_memory_allocation,
+  ZSTDMT_error_read_fail,
+  ZSTDMT_error_write_fail,
+  ZSTDMT_error_data_error,
+  ZSTDMT_error_frame_compress,
+  ZSTDMT_error_frame_decompress,
+  ZSTDMT_error_compressionParameter_unsupported,
+  ZSTDMT_error_compression_library,
+  ZSTDMT_error_maxCode
+} ZSTDMT_ErrorCode;
+
+#ifdef ERROR
+#  undef ERROR   /* reported already defined on VS 2015 (Rich Geldreich) */
+#endif
+#define PREFIX(name) ZSTDMT_error_##name
+#define ERROR(name) ((size_t)-PREFIX(name))
+extern unsigned ZSTDMT_isError(size_t code);
+extern const char* ZSTDMT_getErrorString(size_t code);
 
 /* **************************************
  * Structures

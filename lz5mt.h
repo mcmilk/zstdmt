@@ -22,7 +22,7 @@
 extern "C" {
 #endif
 
-#include "error_public.h"
+#include <stddef.h>   /* size_t */
 
 /* current maximum the library will accept */
 #define LZ5MT_THREAD_MAX 128
@@ -36,6 +36,27 @@ extern "C" {
  ****************************************/
 
 extern size_t lz5mt_errcode;
+
+typedef enum {
+  LZ5MT_error_no_error,
+  LZ5MT_error_memory_allocation,
+  LZ5MT_error_read_fail,
+  LZ5MT_error_write_fail,
+  LZ5MT_error_data_error,
+  LZ5MT_error_frame_compress,
+  LZ5MT_error_frame_decompress,
+  LZ5MT_error_compressionParameter_unsupported,
+  LZ5MT_error_compression_library,
+  LZ5MT_error_maxCode
+} LZ5MT_ErrorCode;
+
+#ifdef ERROR
+#  undef ERROR   /* reported already defined on VS 2015 (Rich Geldreich) */
+#endif
+#define PREFIX(name) LZ5MT_error_##name
+#define ERROR(name) ((size_t)-PREFIX(name))
+extern unsigned LZ5MT_isError(size_t code);
+extern const char* LZ5MT_getErrorString(size_t code);
 
 /* **************************************
  * Structures

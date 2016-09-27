@@ -20,7 +20,6 @@
 #include "threading.h"
 #include "list.h"
 #include "zstdmt.h"
-#include "error_private.h"
 
 /**
  * multi threaded zstd - multiple workers version
@@ -342,12 +341,14 @@ static void *pt_compress(void *arg)
 		pthread_mutex_unlock(&ctx->read_mutex);
 
 		/* compress whole frame */
+		#if 0
 		result = ZSTD_initCStream(w->zctx, ctx->level);
 		if (ZSTD_isError(result)) {
 			zstdmt_errcode = result;
 			wl->out.buf = (void *)ZSTD_getErrorName(result);
 			goto error;
 		}
+		#endif
 
 		{
 			ZSTD_inBuffer input;
@@ -395,7 +396,7 @@ static void *pt_compress(void *arg)
 		pthread_mutex_lock(&ctx->write_mutex);
 		result = pt_write(ctx, wl);
 		pthread_mutex_unlock(&ctx->write_mutex);
-		if (ERR_isError(result))
+		if (ZSTDMT_isError(result))
 			goto error;
 	}
 
