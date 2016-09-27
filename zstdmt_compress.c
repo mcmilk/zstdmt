@@ -35,8 +35,6 @@
  *   4) begin with step 1 again, until no input
  */
 
-#include <stdio.h>
-
 /* worker for compression */
 typedef struct {
 	ZSTDMT_CCtx *ctx;
@@ -383,7 +381,6 @@ static void *pt_compress(void *arg)
 			}
 
 			result = output.pos;
-
 		}
 
 		/* write skippable frame */

@@ -13,7 +13,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 #define ZSTD_STATIC_LINKING_ONLY
 #include "zstd.h"
@@ -46,6 +45,7 @@ typedef struct {
 	pthread_t pthread;
 	ZSTDMT_Buffer in;
 	ZSTD_DStream *dctx;
+	int tid;
 } cwork_t;
 
 struct writelist;
@@ -60,7 +60,7 @@ struct ZSTDMT_DCtx_s {
 	/* threads: 1..ZSTDMT_THREAD_MAX */
 	int threads;
 
-	/* should be used for read from input */
+	/* should be used for read from input (single thread only) */
 	size_t inputsize;
 
 	/* statistic */
@@ -86,6 +86,9 @@ struct ZSTDMT_DCtx_s {
 	struct list_head writelist_free;
 	struct list_head writelist_busy;
 	struct list_head writelist_done;
+
+	/* should be used for read from input */
+	size_t outputsize;
 };
 
 /* **************************************
@@ -116,7 +119,10 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, int inputsize)
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else
-		ctx->inputsize = 0;	/* auto detect */
+		ctx->inputsize = 1024 * 512;
+
+	/* frame size (will get higher, when needed) */
+	ctx->outputsize = 1024 * 512;
 
 	/* later */
 	ctx->cwork = 0;
@@ -244,29 +250,23 @@ static void *pt_decompress(void *arg)
 	cwork_t *w = (cwork_t *) arg;
 	ZSTDMT_Buffer *in = &w->in;
 	ZSTDMT_DCtx *ctx = w->ctx;
-	size_t result = 0;
 	struct writelist *wl;
-
-	/* init dstream stream */
-	result = ZSTD_initDStream(w->dctx);
-	if (ZSTD_isError(result)) {
-		zstdmt_errcode = result;
-		return (void *)ERROR(compression_library);
-	}
+	size_t result = 0;
 
 	for (;;) {
-		struct list_head *entry;
 		ZSTDMT_Buffer *out;
 		ZSTD_inBuffer zIn;
 		ZSTD_outBuffer zOut;
 
-		/* allocate space for new output */
+		/* select or allocate space for new output */
 		pthread_mutex_lock(&ctx->write_mutex);
 		if (!list_empty(&ctx->writelist_free)) {
 			/* take unused entry */
+			struct list_head *entry;
 			entry = list_first(&ctx->writelist_free);
 			wl = list_entry(entry, struct writelist, node);
 			list_move(entry, &ctx->writelist_busy);
+			out = &wl->out;
 		} else {
 			/* allocate new one */
 			wl = (struct writelist *)
@@ -275,13 +275,26 @@ static void *pt_decompress(void *arg)
 				result = ERROR(memory_allocation);
 				goto error_unlock;
 			}
-			wl->out.buf = 0;
-			wl->out.size = 0;
-			wl->out.allocated = 0;
+			out = &wl->out;
+			out->size = ctx->outputsize;
+			out->buf = malloc(out->size);
+			if (!out->buf) {
+				result = ERROR(memory_allocation);
+				goto error_unlock;
+			}
+			out->allocated = out->size;
 			list_add(&wl->node, &ctx->writelist_busy);
 		}
+
+		/* start with 512KB */
 		pthread_mutex_unlock(&ctx->write_mutex);
-		out = &wl->out;
+
+		/* init dstream stream */
+		result = ZSTD_initDStream(w->dctx);
+		if (ZSTD_isError(result)) {
+			zstdmt_errcode = result;
+			return (void *)ERROR(compression_library);
+		}
 
 		/* zero should not happen here! */
 		result = pt_read(ctx, in, &wl->frame);
@@ -290,80 +303,50 @@ static void *pt_decompress(void *arg)
 		if (ZSTDMT_isError(result)) {
 			goto error_lock;
 		}
-#if 0
-
-		{
-			ZSTD_frameParams fp;
-			ZSTD_getFrameParams(&fp, in->buf, in->size);
-			printf("frameContentSize=%llu ", fp.frameContentSize);
-			fflush(stdout);
-			out->size = 1024 * 1024 * 20;
-			if (fp.frameContentSize != 0)
-				out->size = fp.frameContentSize;
-		}
-#endif
-		out->size = 1024 * 1024 * 20;
-		if (out->allocated < out->size) {
-			if (out->allocated)
-				out->buf = realloc(out->buf, out->size);
-			else
-				out->buf = malloc(out->size);
-			if (!out->buf) {
-				result = ERROR(memory_allocation);
-				goto error_lock;
-			}
-			out->allocated = out->size;
-		}
 
 		zIn.size = in->allocated;
 		zIn.src = in->buf;
 		zIn.pos = 0;
 		for (;;) {
 			/* decompress loop */
+ again:
 			zOut.size = out->allocated;
 			zOut.dst = out->buf;
 			zOut.pos = 0;
 
-			printf("in: in.size=%zu out.size=%zu\n", in->size,
-			       out->size);
 			result = ZSTD_decompressStream(w->dctx, &zOut, &zIn);
-			printf("out: ret=%zu in.size=%zu out.size=%zu\n",
-			       result, in->size, out->size);
-			if (ZSTD_isError(result)) {
+			if (ZSTD_isError(result))
 				goto error_clib;
-			}
 
-			if (zOut.pos) {
-
+			/* end of frame */
+			if (result == 0) {
 				/* write result */
 				pthread_mutex_lock(&ctx->write_mutex);
 				result = pt_write(ctx, wl);
 				if (ERR_isError(result))
 					goto error_unlock;
 				pthread_mutex_unlock(&ctx->write_mutex);
-			}
-
-			/* one more round */
-			if ((zIn.pos == zIn.size) && (result == 1)
-			    && zOut.pos)
-				continue;
-
-			/* end of frame */
-			if (result == 0) {
-				printf("ZSTD_initDStream()...\n");
-				fflush(stdout);
-				result = ZSTD_initDStream(w->dctx);
-				if (ZSTD_isError(result))
-					goto error_clib;
-			}
-
-			/* finished */
-			if (zIn.pos == zIn.size)
+				/* will read next input */
 				break;
+			}
 
+			/* outbuffer to small for full frame */
+			if (zIn.pos < zIn.size) {
+				/* double the buffer, until it fits */
+				pthread_mutex_lock(&ctx->write_mutex);
+				out->size *= 2;
+				ctx->outputsize = out->size;
+				pthread_mutex_unlock(&ctx->write_mutex);
+				out->buf = realloc(out->buf, out->size);
+				if (!out->buf) {
+					result = ERROR(memory_allocation);
+					goto error_lock;
+				}
+				out->allocated = out->size;
+				goto again;
+			}
 		}		/* decompress */
-
-	}
+	} /* read input */
 
 	/* everything is okay */
 	pthread_mutex_lock(&ctx->write_mutex);
@@ -567,9 +550,6 @@ size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 		return st_decompress(ctx);
 	}
 
-	printf("multistream\n");
-	fflush(stdout);
-
 	/* setup thread work */
 	ctx->cwork = (cwork_t *) malloc(sizeof(cwork_t) * ctx->threads);
 	if (!ctx->cwork)
@@ -607,6 +587,7 @@ size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 		w->in.buf = 0;
 		w->in.size = 0;
 		w->in.allocated = 0;
+		w->tid = t;
 		pthread_create(&w->pthread, NULL, pt_decompress, w);
 	}
 
