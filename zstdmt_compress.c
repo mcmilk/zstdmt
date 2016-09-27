@@ -313,8 +313,7 @@ static void *pt_compress(void *arg)
 		MEM_writeLE32((unsigned char *)out->buf + 0,
 			      ZSTDMT_MAGIC_SKIPPABLE);
 		MEM_writeLE32((unsigned char *)out->buf + 4, 4);
-		MEM_writeLE32((unsigned char *)out->buf + 8,
-			      (unsigned char)result);
+		MEM_writeLE32((unsigned char *)out->buf + 8, result);
 		out->size = result + 12;
 
 		/* write result */

@@ -249,7 +249,6 @@ static void *pt_decompress(void *arg)
 	struct writelist *wl;
 	size_t result = 0;
 
-
 	for (;;) {
 		ZSTDMT_Buffer *out;
 		ZSTD_inBuffer zIn;
@@ -343,6 +342,9 @@ static void *pt_decompress(void *arg)
 				out->allocated = out->size;
 				goto again;
 			}
+			
+			if (zIn.pos == zIn.size)
+				break; /* should fail... */
 		}		/* decompress */
 	}			/* read input */
 
