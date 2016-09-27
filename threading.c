@@ -12,10 +12,15 @@
  */
 
 /**
- * This file will hold wrapper for system, which do not support Pthreads
+ * This file will hold wrapper for systems, which do not support Pthreads
  */
 
 #ifdef _WIN32
+
+/**
+ * Windows Pthread Wrapper, based on this site:
+ * http://www.cse.wustl.edu/~schmidt/win32-cv-1.html
+ */
 
 #include "threading.h"
 

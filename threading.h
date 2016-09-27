@@ -18,14 +18,7 @@
 extern "C" {
 #endif
 
-#ifndef _WIN32
-
-/* POSIX Systems */
-#include <pthread.h>
-
-/* XXX, add here more systems, when required */
-
-#else
+#ifdef _WIN32
 
 /**
  * Windows Pthread Wrapper, based on this site:
@@ -56,7 +49,17 @@ extern int pthread_create(pthread_t * thread, const void *unused,
 
 #define pthread_join(a, b) _pthread_join(&(a), (b))
 extern int _pthread_join(pthread_t * thread, void **value_ptr);
-#endif				/* _WIN32 */
+
+/**
+ * add here more systems as required
+ */
+
+#else
+
+/* POSIX Systems */
+#include <pthread.h>
+
+#endif /* POSIX Systems */
 
 #if defined (__cplusplus)
 }
