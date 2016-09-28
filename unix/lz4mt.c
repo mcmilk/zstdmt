@@ -19,8 +19,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "lz4mt.h"
 #include "util.h"
+#include "lz4mt.h"
 
 /**
  * program for testing threaded stuff on zstd

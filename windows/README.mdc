@@ -1,20 +1,68 @@
 
+# compiling via cross compiler @ linux
+- i686-w64-mingw32-ranlib libzstd.a
+
 # Multithreading Library for [LZ4], [LZ5] and [ZStandard]
 
-## Description
-- works with skippables frame id 0x184D2A50 (12 bytes per compressed frame)
-- three small test utils (which only work @ linux)
-- the library itself works on windows already
-- multithreaded 7-Zip ZS is currently in testing
 
-## Usage of the Testutils
+### Compression
+```
+typedef struct {
+	void *buf;		/* ptr to data */
+	size_t size;		/* current filled in buf */
+	size_t allocated;	/* length of buf */
+} LZ4MT_Buffer;
 
-- see unix
-- see windows
+/**
+ * reading and writing functions
+ * - you can use stdio functions or plain read/write ...
+ * - a sample is given in 7-Zip ZS or lz4mt.c
+ */
+typedef int (fn_read) (void *args, LZ4MT_Buffer * in);
+typedef int (fn_write) (void *args, LZ4MT_Buffer * out);
 
-## Usage of the Library
+typedef struct {
+	fn_read *fn_read;
+	void *arg_read;
+	fn_write *fn_write;
+	void *arg_write;
+} LZ4MT_RdWr_t;
 
-- see lib
+typedef struct LZ4MT_CCtx_s LZ4MT_CCtx;
+
+/* 1) allocate new cctx */
+LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize);
+
+/* 2) threaded compression */
+size_t LZ4MT_CompressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr);
+
+/* 3) get some statistic */
+size_t LZ4MT_GetFramesCCtx(LZ4MT_CCtx * ctx);
+size_t LZ4MT_GetInsizeCCtx(LZ4MT_CCtx * ctx);
+size_t LZ4MT_GetOutsizeCCtx(LZ4MT_CCtx * ctx);
+
+/* 4) free cctx */
+void LZ4MT_freeCCtx(LZ4MT_CCtx * ctx);
+```
+
+### Decompression
+```
+typedef struct LZ4MT_DCtx_s LZ4MT_DCtx;
+
+/* 1) allocate new cctx */
+LZ4MT_DCtx *LZ4MT_createDCtx(int threads, int inputsize);
+
+/* 2) threaded compression */
+size_t LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr);
+
+/* 3) get some statistic */
+size_t LZ4MT_GetFramesDCtx(LZ4MT_DCtx * ctx);
+size_t LZ4MT_GetInsizeDCtx(LZ4MT_DCtx * ctx);
+size_t LZ4MT_GetOutsizeDCtx(LZ4MT_DCtx * ctx);
+
+/* 4) free cctx */
+void LZ4MT_freeDCtx(LZ4MT_DCtx * ctx);
+```
 
 ## Benchmarks
 
@@ -181,5 +229,9 @@ Level|Threads|InSize|OutSize|Frames|Real|User|Sys|MaxMem
 [LZ5]:https://github.com/inikep/lz5
 [ZStandard]:http://facebook.github.io/zstd/
 
+# TODO
 
-/TR 2016-09-28
+- threaded decompression for zstd not ready
+- document the header files correctly ... just some first start currently
+
+/TR 2016-09-25

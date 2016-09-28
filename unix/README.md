@@ -1,20 +1,54 @@
 
-# Multithreading Library for [LZ4], [LZ5] and [ZStandard]
+## Usage of the Testutils @ UNIX / Linux
 
-## Description
-- works with skippables frame id 0x184D2A50 (12 bytes per compressed frame)
-- three small test utils (which only work @ linux)
-- the library itself works on windows already
-- multithreaded 7-Zip ZS is currently in testing
+### [LZ4]
+```
+Usage: lz4mt [options] infile outfile
 
-## Usage of the Testutils
+Otions:
+ -l N    set level (1..16) of compression (default: 1)
+ -t N    set number of (de)compression threads (default: 2)
+ -i N    set number of iterations for testing (default: 1)
+ -b N    set input chunksize to N MiB (default: auto)
+ -c      compress (default mode)
+ -d      use decompress mode
+ -H      print headline for the testing values
+ -h      show usage
+ -v      show version
+```
 
-- see unix
-- see windows
+### [LZ5]
+```
+Usage: lz5mt [options] infile outfile
 
-## Usage of the Library
+Otions:
+ -l N    set level (1..16) of compression (default: 1)
+ -t N    set number of (de)compression threads (default: 2)
+ -i N    set number of iterations for testing (default: 1)
+ -b N    set input chunksize to N MiB (default: auto)
+ -c      compress (default mode)
+ -d      use decompress mode
+ -H      print headline for the testing values
+ -h      show usage
+ -v      show version
+```
 
-- see lib
+### [ZStandard]
+```
+Usage: zstdmt [options] infile outfile
+
+Otions:
+ -l N    set level of compression (default: 3)
+ -t N    set number of (de)compression threads (default: 2)
+ -i N    set number of iterations for testing (default: 1)
+ -b N    set input chunksize to N MiB (default: auto)
+ -c      compress (default mode)
+ -d      use decompress mode (XXX, not done)
+ -H      print headline for the testing values
+ -h      show usage
+ -v      show version
+```
+
 
 ## Benchmarks
 
@@ -180,6 +214,3 @@ Level|Threads|InSize|OutSize|Frames|Real|User|Sys|MaxMem
 [LZ4]:https://cyan4973.github.io/lz4/
 [LZ5]:https://github.com/inikep/lz5
 [ZStandard]:http://facebook.github.io/zstd/
-
-
-/TR 2016-09-28

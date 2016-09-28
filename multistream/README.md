@@ -1,20 +1,6 @@
 
 # zstdmt multistream testing, obsolete
 
-zstdmt depends currently on posix threads for multi-threading and is
-only tested on linux
-
-I will add support for windows and CreateThread() together with
-WaitForMultipleObjects() / WaitForSingleObject() later...
-
-## Building for Linux with gcc
-
- - Run `make`.
-
-## Building for Linux with Clang
-
- - Run `make CC=clang`
-
 ## Overview
 
  - `./zstd-zstd` - single threaded single stream mode (normal zstd stream)
@@ -24,8 +10,7 @@ WaitForMultipleObjects() / WaitForSingleObject() later...
 
 ## Todo
 
- - add support for windows
- - fix and document return codes in own mini libraries
+ - nothing, this stuff is obsolte, just kept for history
 
 ## See also
 

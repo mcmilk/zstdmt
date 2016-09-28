@@ -24,14 +24,6 @@ size_t lz4mt_errcode;
  */
 unsigned LZ4MT_isError(size_t code)
 {
-#if 0
-	printf("no_error            = %zu\n", ERROR(no_error));
-	printf("memory_allocation   = %zu\n", ERROR(memory_allocation));
-	printf("compression_library = %zu\n", ERROR(compression_library));
-	printf("maxCode             = %zu\n", ERROR(maxCode));
-	printf("result              = %zu\n", code);
-	printf("ok ZSTD_decompressStream() result=%zu >=%d max=%zu\n", code, code > ERROR(maxCode), ERROR(maxCode));
-#endif
 	return (code > ERROR(maxCode));
 }
 
