@@ -278,7 +278,7 @@ static void *pt_compress(void *arg)
 			      LZ4FMT_MAGIC_SKIPPABLE);
 		MEM_writeLE32((unsigned char *)wl->out.buf + 4, 4);
 		MEM_writeLE32((unsigned char *)wl->out.buf + 8,
-			      (unsigned char)result);
+			      (U32)result);
 		wl->out.size = result + 12;
 
 		/* write result */

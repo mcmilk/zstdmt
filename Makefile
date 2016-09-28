@@ -2,7 +2,8 @@
 CC	= gcc
 #CC	= clang
 
-CFLAGS	= -W -pthread -Wall -pipe -fomit-frame-pointer
+CFLAGS	= -W -pthread -Wall -pipe
+#CFLAGS	= -fomit-frame-pointer
 LDFLAGS	= -lpthread
 
 #CFLAGS += -DDEBUGME
