@@ -321,8 +321,7 @@ static void *pt_decompress(void *arg)
 
 			/* end of frame */
 			if (result == 0) {
-				/* write result */
-				pthread_mutex_lock(&ctx->write_mutex);
+				/* put collected stuff together */
 				if (collect.size) {
 					void *bnew;
 					bnew = malloc(collect.size + zOut.pos);
@@ -330,15 +329,20 @@ static void *pt_decompress(void *arg)
 						result = ERROR(memory_allocation);
 						goto error_lock;
 					}
-					memcpy(bnew, collect.buf, collect.size);
-					memcpy(bnew + collect.size, out->buf, zOut.pos);
+					memcpy((char*)bnew, collect.buf, collect.size);
+					memcpy((char*)bnew + collect.size, out->buf, zOut.pos);
 					free(collect.buf);
 					free(out->buf);
 					out->buf = bnew;
 					out->size = collect.size + zOut.pos;
 					out->allocated = out->size;
+					collect.buf = 0;
 					collect.size = 0;
+				} else {
+					out->size = zOut.pos;
 				}
+				/* write result */
+				pthread_mutex_lock(&ctx->write_mutex);
 				result = pt_write(ctx, wl);
 				if (ZSTDMT_isError(result))
 					goto error_unlock;
@@ -351,7 +355,7 @@ static void *pt_decompress(void *arg)
 			if (result != 0) {
 				/* collect old content from out */
 				collect.buf = realloc(collect.buf, collect.size + out->size);
-				memcpy(collect.buf + collect.size, out->buf, out->size);
+				memcpy((char*)collect.buf + collect.size, out->buf, out->size);
 				collect.size = collect.size + out->size;
 
 				/* double the buffer, until it fits */
