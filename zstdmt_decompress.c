@@ -250,6 +250,9 @@ static void *pt_decompress(void *arg)
 	size_t result = 0;
 	ZSTDMT_Buffer collect;
 
+	collect.buf = 0;
+	collect.size = 0;
+	collect.allocated = 0;
 	for (;;) {
 		ZSTDMT_Buffer *out;
 		ZSTD_inBuffer zIn;
@@ -305,9 +308,6 @@ static void *pt_decompress(void *arg)
 		zIn.src = in->buf;
 		zIn.pos = 0;
 
-		collect.allocated = 0;
-		collect.size = 0;
-		collect.buf = 0;
 		for (;;) {
  again:
 			/* decompress loop */
@@ -337,6 +337,7 @@ static void *pt_decompress(void *arg)
 					out->buf = bnew;
 					out->size = collect.size + zOut.pos;
 					out->allocated = out->size;
+					collect.size = 0;
 				}
 				result = pt_write(ctx, wl);
 				if (ZSTDMT_isError(result))
