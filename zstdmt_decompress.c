@@ -248,6 +248,7 @@ static void *pt_decompress(void *arg)
 	ZSTDMT_DCtx *ctx = w->ctx;
 	struct writelist *wl;
 	size_t result = 0;
+	ZSTDMT_Buffer collect;
 
 	for (;;) {
 		ZSTDMT_Buffer *out;
@@ -262,7 +263,6 @@ static void *pt_decompress(void *arg)
 			entry = list_first(&ctx->writelist_free);
 			wl = list_entry(entry, struct writelist, node);
 			list_move(entry, &ctx->writelist_busy);
-			out = &wl->out;
 		} else {
 			/* allocate new one */
 			wl = (struct writelist *)
@@ -282,8 +282,8 @@ static void *pt_decompress(void *arg)
 			list_add(&wl->node, &ctx->writelist_busy);
 		}
 
-
 		/* start with 512KB */
+		out = &wl->out;
 		pthread_mutex_unlock(&ctx->write_mutex);
 
 		/* init dstream stream */
@@ -304,9 +304,13 @@ static void *pt_decompress(void *arg)
 		zIn.size = in->allocated;
 		zIn.src = in->buf;
 		zIn.pos = 0;
+
+		collect.allocated = 0;
+		collect.size = 0;
+		collect.buf = 0;
 		for (;;) {
-			/* decompress loop */
  again:
+			/* decompress loop */
 			zOut.size = out->allocated;
 			zOut.dst = out->buf;
 			zOut.pos = 0;
@@ -319,6 +323,21 @@ static void *pt_decompress(void *arg)
 			if (result == 0) {
 				/* write result */
 				pthread_mutex_lock(&ctx->write_mutex);
+				if (collect.size) {
+					void *bnew;
+					bnew = malloc(collect.size + zOut.pos);
+					if (!bnew) {
+						result = ERROR(memory_allocation);
+						goto error_lock;
+					}
+					memcpy(bnew, collect.buf, collect.size);
+					memcpy(bnew + collect.size, out->buf, zOut.pos);
+					free(collect.buf);
+					free(out->buf);
+					out->buf = bnew;
+					out->size = collect.size + zOut.pos;
+					out->allocated = out->size;
+				}
 				result = pt_write(ctx, wl);
 				if (ZSTDMT_isError(result))
 					goto error_unlock;
@@ -327,8 +346,13 @@ static void *pt_decompress(void *arg)
 				break;
 			}
 
-			/* outbuffer to small for full frame */
-			if (zIn.pos < zIn.size) {
+			/* out buffer to small for full frame */
+			if (result != 0) {
+				/* collect old content from out */
+				collect.buf = realloc(collect.buf, collect.size + out->size);
+				memcpy(collect.buf + collect.size, out->buf, out->size);
+				collect.size = collect.size + out->size;
+
 				/* double the buffer, until it fits */
 				pthread_mutex_lock(&ctx->write_mutex);
 				out->size *= 2;
@@ -342,11 +366,10 @@ static void *pt_decompress(void *arg)
 				out->allocated = out->size;
 				goto again;
 			}
-			
-			if (zIn.pos == zIn.size)
-				break; /* should fail... */
-		}		/* decompress */
-	}			/* read input */
+
+			if (zIn.pos == zIn.size) break; /* should fail... */
+		}		/* decompress loop */
+	}			/* read input loop */
 
 	/* everything is okay */
 	pthread_mutex_lock(&ctx->write_mutex);
