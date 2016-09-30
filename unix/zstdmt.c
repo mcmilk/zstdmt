@@ -83,7 +83,7 @@ int my_read_loop(void *arg, ZSTDMT_Buffer * in)
 #endif
 
 	in->size = done;
-	return done;
+	return 0;
 }
 
 int my_write_loop(void *arg, ZSTDMT_Buffer * out)
@@ -98,7 +98,7 @@ int my_write_loop(void *arg, ZSTDMT_Buffer * out)
 	fflush(stdout);
 #endif
 
-	out->size = done;
+	out->size = 0;
 	return done;
 }
 

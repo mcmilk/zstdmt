@@ -68,7 +68,7 @@ int my_read_loop(void *arg, LZ5MT_Buffer * in)
 #endif
 
 	in->size = done;
-	return done;
+	return 0;
 }
 
 int my_write_loop(void *arg, LZ5MT_Buffer * out)
@@ -82,7 +82,7 @@ int my_write_loop(void *arg, LZ5MT_Buffer * out)
 #endif
 
 	out->size = done;
-	return done;
+	return 0;
 }
 
 static void

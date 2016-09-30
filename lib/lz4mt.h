@@ -73,6 +73,8 @@ typedef struct {
  * - you can use stdio functions or plain read/write
  * - just write some wrapper on your own
  * - a sample is given in 7-Zip ZS or lz4mt.c
+ * - the function should return -1 on error and zero on success
+ * - the read or written bytes will go to in->size or out->size
  */
 typedef int (fn_read) (void *args, LZ4MT_Buffer * in);
 typedef int (fn_write) (void *args, LZ4MT_Buffer * out);

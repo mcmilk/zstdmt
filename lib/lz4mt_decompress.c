@@ -194,14 +194,14 @@ static size_t pt_read(LZ4MT_DCtx * ctx, LZ4MT_Buffer * in, size_t * frame)
 		hdr.buf = hdrbuf;
 		hdr.size = 12;
 		rv = ctx->fn_read(ctx->arg_read, &hdr);
+		if (rv == -1)
+			goto error_read;
 		/* eof reached ? */
-		if (rv == 0) {
+		if (hdr.size == 0) {
 			pthread_mutex_unlock(&ctx->read_mutex);
 			in->size = 0;
 			return 0;
 		}
-		if (rv == -1)
-			goto error_read;
 		if (hdr.size != 12)
 			goto error_read;
 		if (MEM_readLE32((unsigned char *)hdr.buf + 0) !=
@@ -243,7 +243,7 @@ static size_t pt_read(LZ4MT_DCtx * ctx, LZ4MT_Buffer * in, size_t * frame)
 	pthread_mutex_unlock(&ctx->read_mutex);
 
 	/* done, no error */
-	return in->size;
+	return 0;
 
  error_data:
 	pthread_mutex_unlock(&ctx->read_mutex);
