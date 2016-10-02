@@ -11,7 +11,6 @@
  * - zstdmt source repository: https://github.com/mcmilk/zstdmt
  */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -35,6 +34,13 @@
  *   3) get write mutex and write result
  *   4) begin with step 1 again, until no input
  */
+
+#if 0
+#include <stdio.h>
+#define dprintf(fmt, arg...) do { printf(fmt, ## arg); } while (0)
+#else
+#define dprintf(fmt, ...) do { } while (0)
+#endif /* DEBUG */
 
 /* worker for compression */
 typedef struct {
@@ -232,7 +238,7 @@ static size_t pt_read(ZSTDMT_DCtx * ctx, ZSTDMT_Buffer * in, size_t * frame)
 
 		/**
 		 * pzstd mode, no prefix
-		 * - start directly with 12 byte skippable
+		 * - start directly with 12 byte skippable frame
 		 */
 		if (IsZstd_Skippable(in->buf)) {
 			unsigned char *start = in->buf;	/* 16 bytes data */
@@ -406,10 +412,10 @@ static void *pt_decompress(void *arg)
 			zOut.dst = out->buf;
 			zOut.pos = 0;
 
-			printf("ZSTD_decompressStream() zIn.size=%zu zIn.pos=%zu zOut.size=%zu zOut.pos=%zu\n",
+			dprintf("ZSTD_decompressStream() zIn.size=%zu zIn.pos=%zu zOut.size=%zu zOut.pos=%zu\n",
 				zIn.size, zIn.pos, zOut.size, zOut.pos);
 			result = ZSTD_decompressStream(w->dctx, &zOut, &zIn);
-			printf("ZSTD_decompressStream(), ret=%zu zIn.size=%zu zIn.pos=%zu zOut.size=%zu zOut.pos=%zu\n",
+			dprintf("ZSTD_decompressStream(), ret=%zu zIn.size=%zu zIn.pos=%zu zOut.size=%zu zOut.pos=%zu\n",
 				result, zIn.size, zIn.pos, zOut.size, zOut.pos);
 			if (ZSTD_isError(result))
 				goto error_clib;
@@ -676,7 +682,7 @@ size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 	if (in->size < 16) {
 		if (!IsZstd_Magic(buf))
 			return ERROR(data_error);
-		printf("single thread style, current pos=%zu\n", in->size);
+		dprintf("single thread style, current pos=%zu\n", in->size);
 		type = TYPE_SINGLE_THREAD;
 		if (in->size == 9) {
 			/* create empty file */
@@ -687,21 +693,21 @@ size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 	} else {
 		if (IsZstd_Skippable(buf) && IsZstd_Magic(buf + 12)) {
 			/* pzstd */
-			printf("pzstd style\n");
+			dprintf("pzstd style\n");
 			type = TYPE_MULTI_THREAD;
 		} else if (IsZstd_Magic(buf) && IsZstd_Skippable(buf + 9)) {
 			/* zstdmt */
-			printf("zstdmt style\n");
+			dprintf("zstdmt style\n");
 			type = TYPE_MULTI_THREAD;
 			/* set buffer to the */
 		} else if (IsZstd_Magic(buf)) {
 			/* some std zstd stream */
-			printf("single thread style, current pos=%zu\n",
+			dprintf("single thread style, current pos=%zu\n",
 			       in->size);
 			type = TYPE_SINGLE_THREAD;
 		} else {
 			/* invalid */
-			printf("not valid\n");
+			dprintf("not valid\n");
 			return ERROR(data_error);
 		}
 	}
