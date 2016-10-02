@@ -1,6 +1,6 @@
 
 CC	= gcc
-STRIP	= strip
+STRIP	= echo strip
 #CC	= clang
 
 CFLAGS	= -W -pthread -Wall -pipe
@@ -10,8 +10,8 @@ LDFLAGS	= -lpthread
 # -static
 
 #CFLAGS += -DDEBUGME
-#CFLAGS += -g
-CFLAGS += -O3
+CFLAGS += -g
+CFLAGS += -O
 #CFLAGS += -march=native
 #CFLAGS += -Wno-unused-but-set-variable
 #CFLAGS += -Wno-unused-variable

@@ -129,6 +129,26 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, int inputsize)
 }
 
 /**
+ * IsZstd_Magic - check, if 4 bytes are valid ZSTD MAGIC
+ */
+static int IsZstd_Magic(unsigned char *buf)
+{
+	U32 magic = MEM_readLE32(buf);
+	if (magic == ZSTDMT_MAGICNUMBER_V01)
+		return 1;
+	return (magic >= ZSTDMT_MAGICNUMBER_MIN
+		&& magic <= ZSTDMT_MAGICNUMBER_MAX);
+}
+
+/**
+ * IsZstd_Skippable - check, if 4 bytes are MAGIC_SKIPPABLE
+ */
+static int IsZstd_Skippable(unsigned char *buf)
+{
+	return (MEM_readLE32(buf) == ZSTDMT_MAGIC_SKIPPABLE);
+}
+
+/**
  * pt_write - queue for decompressed output
  */
 static size_t pt_write(ZSTDMT_DCtx * ctx, struct writelist *wl)
@@ -156,54 +176,122 @@ static size_t pt_write(ZSTDMT_DCtx * ctx, struct writelist *wl)
 }
 
 /**
- * pt_read - read compressed output
+ * pt_read - read compressed input
  */
 static size_t pt_read(ZSTDMT_DCtx * ctx, ZSTDMT_Buffer * in, size_t * frame)
 {
 	unsigned char hdrbuf[12];
 	ZSTDMT_Buffer hdr;
+	size_t toRead;
 	int rv;
 
-	/* read skippable frame (8 or 12 bytes) */
 	pthread_mutex_lock(&ctx->read_mutex);
 
-	/* special case, first 4 bytes already read */
-	if (ctx->frames == 0) {
-		hdr.buf = hdrbuf + 4;
-		hdr.size = 8;
-		rv = ctx->fn_read(ctx->arg_read, &hdr);
-		if (rv == -1)
-			goto error_read;
-		if (hdr.size != 8)
-			goto error_read;
-		hdr.buf = hdrbuf;
-	} else {
-		hdr.buf = hdrbuf;
-		hdr.size = 12;
-		rv = ctx->fn_read(ctx->arg_read, &hdr);
-		if (rv == -1)
-			goto error_read;
-		/* eof reached ? */
-		if (hdr.size == 0) {
-			pthread_mutex_unlock(&ctx->read_mutex);
-			in->size = 0;
-			return 0;
-		}
-		if (hdr.size != 12)
-			goto error_read;
-		if (MEM_readLE32((unsigned char *)hdr.buf + 0) !=
-		    ZSTDMT_MAGIC_SKIPPABLE)
+	/* special case, some bytes were read by magic check */
+	if (unlikely(ctx->frames == 0)) {
+		/* the magic check reads exactly 16 bytes! */
+		if (unlikely(in->size != 16))
 			goto error_data;
+		ctx->insize += 16;
+
+		/**
+		 * zstdmt mode, with zstd magic prefix
+		 * 9 bytes zero byte frame + 12 byte skippable
+		 * - 21 bytes to read, 16 bytes done
+		 * - read 5 bytes, put them together (12 byte hdr)
+		 */
+		if (!IsZstd_Skippable(in->buf)) {
+			memcpy(hdrbuf, in->buf, 7);
+			hdr.buf = hdrbuf + 7;
+			hdr.size = 5;
+			rv = ctx->fn_read(ctx->arg_read, &hdr);
+			if (rv == -1)
+				goto error_read;
+			if (hdr.size != 5)
+				goto error_data;
+			hdr.buf = hdrbuf;
+			ctx->insize += 16 + 5;
+
+			/* read data */
+			toRead = MEM_readLE32((unsigned char *)hdr.buf + 8);
+			in->size = toRead;
+			in->buf = malloc(in->size);
+			if (!in->buf)
+				goto error_nomem;
+			in->allocated = in->size;
+			rv = ctx->fn_read(ctx->arg_read, in);
+			if (rv == -1)
+				goto error_read;
+			if (in->size != toRead)
+				goto error_data;
+			ctx->insize += in->size;
+			*frame = ctx->frames++;
+			pthread_mutex_unlock(&ctx->read_mutex);
+			return 0;	/* done! */
+		}
+
+		/**
+		 * pzstd mode, no prefix
+		 * - start directly with 12 byte skippable
+		 */
+		if (IsZstd_Skippable(in->buf)) {
+			unsigned char *start = in->buf;	/* 16 bytes data */
+			toRead = MEM_readLE32((unsigned char *)start + 8);
+			in->size = toRead;
+			in->buf = malloc(in->size);
+			if (!in->buf)
+				goto error_nomem;
+			in->allocated = in->size;
+			/* copy 4 bytes user data to new buf */
+			memcpy(in->buf, start + 12, 4);
+			start = in->buf;	/* point to in->buf now */
+
+			/* 12 byte skippable, so 4 bytes data done */
+			in->buf = start + 4;
+			in->size = toRead - 4;
+			rv = ctx->fn_read(ctx->arg_read, in);
+			if (rv == -1)
+				goto error_read;
+			if (in->size != toRead - 4)
+				goto error_data;
+			ctx->insize += in->size;
+			in->buf = start;	/* restore inbuf */
+			in->size += 4;
+			*frame = ctx->frames++;
+			pthread_mutex_unlock(&ctx->read_mutex);
+			return 0;	/* done! */
+		}
+	}
+
+	/**
+	 * read next skippable frame (12 bytes)
+	 * 4 bytes skippable magic
+	 * 4 bytes little endian, must be: 4 (user data size)
+	 * 4 bytes little endian, size to read (user data)
+	 */
+	hdr.buf = hdrbuf;
+	hdr.size = 12;
+	rv = ctx->fn_read(ctx->arg_read, &hdr);
+	if (rv == -1)
+		goto error_read;
+
+	/* eof reached ? */
+	if (unlikely(hdr.size == 0)) {
+		pthread_mutex_unlock(&ctx->read_mutex);
+		in->size = 0;
+		return 0;
 	}
 
 	/* check header data */
-	if (MEM_readLE32((unsigned char *)hdr.buf + 4) != 4)
+	if (unlikely(hdr.size != 12))
+		goto error_read;
+	if (unlikely(!IsZstd_Skippable(hdr.buf)))
 		goto error_data;
-
 	ctx->insize += 12;
-	/* read new inputsize */
+
+	/* read new input (size should be _toRead_ bytes */
+	toRead = MEM_readLE32((unsigned char *)hdr.buf + 8);
 	{
-		size_t toRead = MEM_readLE32((unsigned char *)hdr.buf + 8);
 		if (in->allocated < toRead) {
 			/* need bigger input buffer */
 			if (in->allocated)
@@ -288,6 +376,7 @@ static void *pt_decompress(void *arg)
 		}
 
 		/* start with 512KB */
+		/* XXX, add framesize detection... */
 		out = &wl->out;
 		pthread_mutex_unlock(&ctx->write_mutex);
 
@@ -317,7 +406,11 @@ static void *pt_decompress(void *arg)
 			zOut.dst = out->buf;
 			zOut.pos = 0;
 
+			printf("ZSTD_decompressStream() zIn.size=%zu zIn.pos=%zu zOut.size=%zu zOut.pos=%zu\n",
+				zIn.size, zIn.pos, zOut.size, zOut.pos);
 			result = ZSTD_decompressStream(w->dctx, &zOut, &zIn);
+			printf("ZSTD_decompressStream(), ret=%zu zIn.size=%zu zIn.pos=%zu zOut.size=%zu zOut.pos=%zu\n",
+				result, zIn.size, zIn.pos, zOut.size, zOut.pos);
 			if (ZSTD_isError(result))
 				goto error_clib;
 
@@ -328,11 +421,14 @@ static void *pt_decompress(void *arg)
 					void *bnew;
 					bnew = malloc(collect.size + zOut.pos);
 					if (!bnew) {
-						result = ERROR(memory_allocation);
+						result =
+						    ERROR(memory_allocation);
 						goto error_lock;
 					}
-					memcpy((char*)bnew, collect.buf, collect.size);
-					memcpy((char*)bnew + collect.size, out->buf, zOut.pos);
+					memcpy((char *)bnew, collect.buf,
+					       collect.size);
+					memcpy((char *)bnew + collect.size,
+					       out->buf, zOut.pos);
 					free(collect.buf);
 					free(out->buf);
 					out->buf = bnew;
@@ -356,8 +452,11 @@ static void *pt_decompress(void *arg)
 			/* out buffer to small for full frame */
 			if (result != 0) {
 				/* collect old content from out */
-				collect.buf = realloc(collect.buf, collect.size + out->size);
-				memcpy((char*)collect.buf + collect.size, out->buf, out->size);
+				collect.buf =
+				    realloc(collect.buf,
+					    collect.size + out->size);
+				memcpy((char *)collect.buf + collect.size,
+				       out->buf, out->size);
 				collect.size = collect.size + out->size;
 
 				/* double the buffer, until it fits */
@@ -374,7 +473,8 @@ static void *pt_decompress(void *arg)
 				goto again;
 			}
 
-			if (zIn.pos == zIn.size) break; /* should fail... */
+			if (zIn.pos == zIn.size)
+				break;	/* should fail... */
 		}		/* decompress loop */
 	}			/* read input loop */
 
@@ -438,6 +538,7 @@ static size_t st_decompress(void *arg)
 	}
 	out->allocated = out->size;
 
+	/* we read already some bytes, handle that: */
 	{
 		/* remember in->buf */
 		unsigned char *buf = in->buf;
@@ -447,17 +548,14 @@ static size_t st_decompress(void *arg)
 		magic->buf = in->buf;
 		in->buf = buf + magic->size;
 		in->size = in->allocated - magic->size;
+
 		/* read more bytes, to fill buffer */
 		rv = ctx->fn_read(ctx->arg_read, in);
 		if (rv == -1) {
 			result = ERROR(read_fail);
 			goto error;
 		}
-		/* some data should be there... */
-		if (in->size == 0) {
-			result = ERROR(data_error);
-			goto error;
-		}
+
 		/* ready, first buffer complete */
 		in->buf = buf;
 		in->size += magic->size;
@@ -536,18 +634,6 @@ static size_t st_decompress(void *arg)
 	return 0;
 }
 
-static int IsZstd_Magic(unsigned char *buf)
-{
-	U32 magic = MEM_readLE32(buf);
-	return (magic >= ZSTDMT_MAGICNUMBER_MIN && magic <= ZSTDMT_MAGICNUMBER_MAX);
-}
-
-static int IsZstd_Skippable(unsigned char *buf)
-{
-	return (MEM_readLE32(buf) == ZSTDMT_MAGIC_SKIPPABLE) \
-		&& (MEM_readLE32(buf + 4) == 4);
-}
-
 #define TYPE_UNKNOWN       0
 #define TYPE_SINGLE_THREAD 1
 #define TYPE_MULTI_THREAD  2
@@ -599,18 +685,19 @@ size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 			return 0;
 		}
 	} else {
-		if (IsZstd_Magic(buf) && IsZstd_Skippable(buf + 9)) {
+		if (IsZstd_Skippable(buf) && IsZstd_Magic(buf + 12)) {
+			/* pzstd */
+			printf("pzstd style\n");
+			type = TYPE_MULTI_THREAD;
+		} else if (IsZstd_Magic(buf) && IsZstd_Skippable(buf + 9)) {
 			/* zstdmt */
 			printf("zstdmt style\n");
 			type = TYPE_MULTI_THREAD;
 			/* set buffer to the */
-		} else if (IsZstd_Skippable(buf) && IsZstd_Magic(buf + 12)) {
-			/* pzstd */
-			printf("pzstd style\n");
-			type = TYPE_MULTI_THREAD;
 		} else if (IsZstd_Magic(buf)) {
 			/* some std zstd stream */
-			printf("single thread style, current pos=%zu\n", in->size);
+			printf("single thread style, current pos=%zu\n",
+			       in->size);
 			type = TYPE_SINGLE_THREAD;
 		} else {
 			/* invalid */
@@ -625,8 +712,6 @@ size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 
 	/* single threaded, but with known sizes */
 	if (type == TYPE_SINGLE_THREAD) {
-
-		/* no pthread_create() needed! */
 		ctx->threads = 1;
 		ctx->cwork = (cwork_t *) malloc(sizeof(cwork_t));
 		if (!ctx->cwork)
@@ -744,7 +829,7 @@ void ZSTDMT_freeDCtx(ZSTDMT_DCtx * ctx)
 
 	if (ctx->cwork)
 		free(ctx->cwork);
-	
+
 	free(ctx);
 	ctx = 0;
 
