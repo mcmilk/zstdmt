@@ -11,6 +11,7 @@
  * - zstdmt source repository: https://github.com/mcmilk/zstdmt
  */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -41,7 +42,6 @@ typedef struct {
 	pthread_t pthread;
 	ZSTDMT_Buffer in;
 	ZSTD_DStream *dctx;
-	int tid;
 } cwork_t;
 
 struct writelist;
@@ -55,6 +55,7 @@ struct ZSTDMT_DCtx_s {
 
 	/* threads: 1..ZSTDMT_THREAD_MAX */
 	int threads;
+	int threadswanted;
 
 	/* should be used for read from input (single thread only) */
 	size_t inputsize;
@@ -105,7 +106,8 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, int inputsize)
 		return 0;
 
 	/* setup ctx */
-	ctx->threads = threads;
+	ctx->threadswanted = threads;
+	ctx->threads = 0;
 	ctx->insize = 0;
 	ctx->outsize = 0;
 	ctx->frames = 0;
@@ -403,16 +405,15 @@ static size_t st_decompress(void *arg)
 {
 	ZSTDMT_DCtx *ctx = (ZSTDMT_DCtx *) arg;
 	cwork_t *w = &ctx->cwork[0];
-	ZSTDMT_Buffer Out;
-	ZSTDMT_Buffer *in = &w->in;
+	ZSTDMT_Buffer In, Out;
+	ZSTDMT_Buffer *in = &In;
 	ZSTDMT_Buffer *out = &Out;
-	void *magic = in->buf;
+	ZSTDMT_Buffer *magic = &w->in;
 	size_t result;
 	int rv;
 
 	ZSTD_inBuffer zIn;
 	ZSTD_outBuffer zOut;
-
 
 	/* init dstream stream */
 	result = ZSTD_initDStream(w->dctx);
@@ -437,24 +438,29 @@ static size_t st_decompress(void *arg)
 	}
 	out->allocated = out->size;
 
-	/* 4 bytes + some more ... */
 	{
+		/* remember in->buf */
 		unsigned char *buf = in->buf;
-		memcpy(in->buf, magic, 4);
-		in->buf = buf + 4;
-		in->size = in->allocated - 4;
+
+		/* fill first read bytes to buffer... */
+		memcpy(in->buf, magic->buf, magic->size);
+		magic->buf = in->buf;
+		in->buf = buf + magic->size;
+		in->size = in->allocated - magic->size;
+		/* read more bytes, to fill buffer */
 		rv = ctx->fn_read(ctx->arg_read, in);
 		if (rv == -1) {
 			result = ERROR(read_fail);
 			goto error;
 		}
-
+		/* some data should be there... */
 		if (in->size == 0) {
 			result = ERROR(data_error);
 			goto error;
 		}
+		/* ready, first buffer complete */
 		in->buf = buf;
-		in->size += 4;
+		in->size += magic->size;
 		ctx->insize += in->size;
 	}
 
@@ -530,13 +536,29 @@ static size_t st_decompress(void *arg)
 	return 0;
 }
 
+static int IsZstd_Magic(unsigned char *buf)
+{
+	U32 magic = MEM_readLE32(buf);
+	return (magic >= ZSTDMT_MAGICNUMBER_MIN && magic <= ZSTDMT_MAGICNUMBER_MAX);
+}
+
+static int IsZstd_Skippable(unsigned char *buf)
+{
+	return (MEM_readLE32(buf) == ZSTDMT_MAGIC_SKIPPABLE) \
+		&& (MEM_readLE32(buf + 4) == 4);
+}
+
+#define TYPE_UNKNOWN       0
+#define TYPE_SINGLE_THREAD 1
+#define TYPE_MULTI_THREAD  2
+
 size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 {
-	unsigned char buf[4];
+	unsigned char buf[16];
 	ZSTDMT_Buffer In;
 	ZSTDMT_Buffer *in = &In;
 	cwork_t *w;
-	int t, rv;
+	int t, rv, type = TYPE_UNKNOWN;
 
 	if (!ctx)
 		return ERROR(compressionParameter_unsupported);
@@ -547,25 +569,64 @@ size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 	ctx->arg_read = rdwr->arg_read;
 	ctx->arg_write = rdwr->arg_write;
 
+	/**
+	 * possible valid magic's for us, we need 16 bytes, for checking
+	 * - the @X means on offset X
+	 *
+	 * 1) ZSTDMT_MAGIC @0 -> ST Stream
+	 * 2) ZSTDMT_MAGIC @0 + MAGIC_SKIPPABLE @9 -> MT Stream else ST
+	 * 3) MAGIC_SKIPPABLE @0 + ZSTDMT_MAGIC @12 -> MT Stream
+	 * 4) all other: not valid!
+	 */
+
 	/* check for ZSTDMT_MAGIC_SKIPPABLE */
 	in->buf = buf;
-	in->size = 4;
+	in->size = 16;
 	rv = ctx->fn_read(ctx->arg_read, in);
 	if (rv == -1)
 		return ERROR(read_fail);
-	if (in->size != 4)
-		return ERROR(data_error);
 
-	/* single threaded with unknown sizes */
-	if (MEM_readLE32(buf) != ZSTDMT_MAGIC_SKIPPABLE) {
-		U32 magic = MEM_readLE32(buf);
-
-		/* look for usable magic */
-		if (magic < ZSTDMT_MAGICNUMBER_MIN)
+	/* must be single threaded standard zstd, when smaller 16 bytes */
+	if (in->size < 16) {
+		if (!IsZstd_Magic(buf))
 			return ERROR(data_error);
-		else if (magic > ZSTDMT_MAGICNUMBER_MAX)
+		printf("single thread style, current pos=%zu\n", in->size);
+		type = TYPE_SINGLE_THREAD;
+		if (in->size == 9) {
+			/* create empty file */
+			ctx->threads = 0;
+			ctx->cwork = 0;
+			return 0;
+		}
+	} else {
+		if (IsZstd_Magic(buf) && IsZstd_Skippable(buf + 9)) {
+			/* zstdmt */
+			printf("zstdmt style\n");
+			type = TYPE_MULTI_THREAD;
+			/* set buffer to the */
+		} else if (IsZstd_Skippable(buf) && IsZstd_Magic(buf + 12)) {
+			/* pzstd */
+			printf("pzstd style\n");
+			type = TYPE_MULTI_THREAD;
+		} else if (IsZstd_Magic(buf)) {
+			/* some std zstd stream */
+			printf("single thread style, current pos=%zu\n", in->size);
+			type = TYPE_SINGLE_THREAD;
+		} else {
+			/* invalid */
+			printf("not valid\n");
 			return ERROR(data_error);
+		}
+	}
 
+	/* use single thread extraction, when only one thread is there */
+	if (ctx->threadswanted == 1)
+		type = TYPE_SINGLE_THREAD;
+
+	/* single threaded, but with known sizes */
+	if (type == TYPE_SINGLE_THREAD) {
+
+		/* no pthread_create() needed! */
 		ctx->threads = 1;
 		ctx->cwork = (cwork_t *) malloc(sizeof(cwork_t));
 		if (!ctx->cwork)
@@ -573,36 +634,32 @@ size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 		w = &ctx->cwork[0];
 		w->in.buf = in->buf;
 		w->in.size = in->size;
+		w->in.allocated = 0;
 		w->ctx = ctx;
 		w->dctx = ZSTD_createDStream();
 		if (!w->dctx)
 			return ERROR(memory_allocation);
 
-		/* decompress single threaded */
+		/* test, if pt_decompress is better... */
 		return st_decompress(ctx);
 	}
 
 	/* setup thread work */
+	ctx->threads = ctx->threadswanted;
 	ctx->cwork = (cwork_t *) malloc(sizeof(cwork_t) * ctx->threads);
 	if (!ctx->cwork)
 		return ERROR(memory_allocation);
 
 	for (t = 0; t < ctx->threads; t++) {
 		w = &ctx->cwork[t];
+		/* one of the threads must reuse the first bytes */
+		w->in.buf = in->buf;
+		w->in.size = in->size;
+		w->in.allocated = 0;
 		w->ctx = ctx;
 		w->dctx = ZSTD_createDStream();
 		if (!w->dctx)
 			return ERROR(memory_allocation);
-	}
-
-	/* single threaded, but with known sizes */
-	if (ctx->threads == 1) {
-		/* no pthread_create() needed! */
-		w = &ctx->cwork[0];
-		w->in.buf = in->buf;
-		w->in.size = in->size;
-		/* test, if pt_decompress is better... */
-		return st_decompress(ctx);
 	}
 
 	/* real multi threaded, init pthread's */
@@ -616,10 +673,6 @@ size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 	/* multi threaded */
 	for (t = 0; t < ctx->threads; t++) {
 		cwork_t *w = &ctx->cwork[t];
-		w->in.buf = 0;
-		w->in.size = 0;
-		w->in.allocated = 0;
-		w->tid = t;
 		pthread_create(&w->pthread, NULL, pt_decompress, w);
 	}
 
@@ -689,7 +742,9 @@ void ZSTDMT_freeDCtx(ZSTDMT_DCtx * ctx)
 		ZSTD_freeDStream(w->dctx);
 	}
 
-	free(ctx->cwork);
+	if (ctx->cwork)
+		free(ctx->cwork);
+	
 	free(ctx);
 	ctx = 0;
 

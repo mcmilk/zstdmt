@@ -161,12 +161,25 @@ LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize)
 static size_t pt_write(LZ4MT_CCtx * ctx, struct writelist *wl)
 {
 	struct list_head *entry;
+	int rv;
 
 	/* move the entry to the done list */
 	list_move(&wl->node, &ctx->writelist_done);
 
+	/* write zero byte frame for type identification */
+	if (unlikely(wl->frame == 0)) {
+		unsigned char frame0[] = { 0x04, 0x22, 0x4D, 0x18, 0x60, 0x40, 0x82, 0x00, 0x00, 0x00, 0x00 };
+		LZ4MT_Buffer b;
+		b.buf = frame0;
+		b.size = sizeof(frame0);
+		rv = ctx->fn_write(ctx->arg_write, &b);
+		if (rv == -1)
+			return ERROR(write_fail);
+		ctx->outsize += b.size;
+	}
+
 	/* the entry isn't the currently needed, return...  */
-	if (wl->frame != ctx->curframe)
+	if (likely(wl->frame != ctx->curframe))
 		return 0;
 
  again:
@@ -174,7 +187,7 @@ static size_t pt_write(LZ4MT_CCtx * ctx, struct writelist *wl)
 	list_for_each(entry, &ctx->writelist_done) {
 		wl = list_entry(entry, struct writelist, node);
 		if (wl->frame == ctx->curframe) {
-			int rv = ctx->fn_write(ctx->arg_write, &wl->out);
+			rv = ctx->fn_write(ctx->arg_write, &wl->out);
 			if (rv == -1)
 				return ERROR(write_fail);
 			ctx->outsize += wl->out.size;

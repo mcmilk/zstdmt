@@ -43,6 +43,14 @@ extern "C" {
 #define MEM_STATIC_ASSERT(c)   { enum { XXH_static_assert = 1/(int)(!!(c)) }; }
 MEM_STATIC void MEM_check(void) { MEM_STATIC_ASSERT((sizeof(size_t)==4) || (sizeof(size_t)==8)); }
 
+/* define likely() and unlikely() */
+#if defined(__GNUC__) || (__INTEL_COMPILER >= 800) || defined(__clang__)
+#  define expect(expr,value)    (__builtin_expect ((expr),(value)) )
+#else
+#  define expect(expr,value)    (expr)
+#endif
+#define likely(expr)     expect((expr) != 0, 1)
+#define unlikely(expr)   expect((expr) != 0, 0)
 
 /*-**************************************************************
 *  Basic Types
