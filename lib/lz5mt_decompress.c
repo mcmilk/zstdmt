@@ -141,6 +141,24 @@ LZ5MT_DCtx *LZ5MT_createDCtx(int threads, int inputsize)
 	return 0;
 }
 
+size_t LZ5MT_ResetDCtx(LZ5MT_DCtx * ctx)
+{
+	if (!ctx)
+		return ERROR(compressionParameter_unsupported);
+
+	/* free -> busy -> out -> free -> ... */
+	INIT_LIST_HEAD(&ctx->writelist_free);	/* free, can be used */
+	INIT_LIST_HEAD(&ctx->writelist_busy);	/* busy */
+	INIT_LIST_HEAD(&ctx->writelist_done);	/* can be written */
+
+	ctx->insize = 0;
+	ctx->outsize = 0;
+	ctx->frames = 0;
+	ctx->curframe = 0;
+
+	return 0;
+}
+
 /**
  * pt_write - queue for decompressed output
  */

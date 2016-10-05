@@ -301,6 +301,7 @@ static void *pt_decompress(void *arg)
 		if (in->size == 0)
 			break;
 
+		// XXX - we depend on frame size here, remove that!
 		{
 			/* get frame size for output buffer */
 			unsigned char *src = (unsigned char *)in->buf + 6;

@@ -101,11 +101,17 @@ typedef struct LZ5MT_CCtx_s LZ5MT_CCtx;
  */
 LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize);
 
+
 /**
  * 2) threaded compression
  * - return -1 on error
  */
 size_t LZ5MT_CompressCCtx(LZ5MT_CCtx * ctx, LZ5MT_RdWr_t * rdwr);
+
+/**
+ * optional - reset ctx to initial values
+ */
+size_t LZ5MT_ResetCCtx(LZ5MT_CCtx * ctx);
 
 /**
  * 3) get some statistic
@@ -142,6 +148,11 @@ LZ5MT_DCtx *LZ5MT_createDCtx(int threads, int inputsize);
  * - return -1 on error
  */
 size_t LZ5MT_DecompressDCtx(LZ5MT_DCtx * ctx, LZ5MT_RdWr_t * rdwr);
+
+/**
+ * optional - reset ctx to initial values
+ */
+size_t LZ5MT_ResetDCtx(LZ5MT_DCtx * ctx);
 
 /**
  * 3) get some statistic

@@ -179,11 +179,13 @@ static size_t pt_write(ZSTDMT_CCtx * ctx, struct writelist *wl)
 		unsigned char frame0[] = { 0x28, 0xB5, 0x2F, 0xFD, 0x00, 0x48, 0x01, 0x00, 0x00 };
 		ZSTDMT_Buffer b;
 		b.buf = frame0;
-		b.size = sizeof(frame0);
+		b.size = 9;
 		rv = ctx->fn_write(ctx->arg_write, &b);
 		if (rv == -1)
 			return ERROR(write_fail);
-		ctx->outsize += b.size;
+		if (b.size != 9)
+			return ERROR(write_fail);
+		ctx->outsize += 9;
 	}
 
 	/* the entry isn't the currently needed, return...  */
