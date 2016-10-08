@@ -12,9 +12,6 @@
 #include "zstd.h"
 #include "zstdmt.h"
 
-/* will be used for lib errors */
-size_t zstdmt_errcode;
-
 /* ****************************************
  * LZ4MT Error Management
  ******************************************/
@@ -30,7 +27,7 @@ unsigned ZSTDMT_isError(size_t code)
 /**
  * ZSTDMT_getErrorString() - give error code string from function result
  */
-const char *ZSTDMT_getErrorString(size_t code)
+const char *ZSTDMT_getErrorString(size_t code, size_t zcode)
 {
 	if (ZSTD_isError(zstdmt_errcode))
 		return ZSTD_getErrorName(zstdmt_errcode);

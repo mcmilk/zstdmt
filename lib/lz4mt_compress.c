@@ -168,7 +168,10 @@ static size_t pt_write(LZ4MT_CCtx * ctx, struct writelist *wl)
 
 	/* write zero byte frame for type identification */
 	if (unlikely(wl->frame == 0)) {
-		unsigned char frame0[] = { 0x04, 0x22, 0x4D, 0x18, 0x60, 0x40, 0x82, 0x00, 0x00, 0x00, 0x00 };
+		unsigned char frame0[] =
+		    { 0x04, 0x22, 0x4D, 0x18, 0x60, 0x40, 0x82, 0x00, 0x00,
+			0x00, 0x00
+		};
 		LZ4MT_Buffer b;
 		b.buf = frame0;
 		b.size = sizeof(frame0);
@@ -290,8 +293,7 @@ static void *pt_compress(void *arg)
 		MEM_writeLE32((unsigned char *)wl->out.buf + 0,
 			      LZ4FMT_MAGIC_SKIPPABLE);
 		MEM_writeLE32((unsigned char *)wl->out.buf + 4, 4);
-		MEM_writeLE32((unsigned char *)wl->out.buf + 8,
-			      (U32)result);
+		MEM_writeLE32((unsigned char *)wl->out.buf + 8, (U32) result);
 		wl->out.size = result + 12;
 
 		/* write result */

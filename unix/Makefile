@@ -10,8 +10,8 @@ LDFLAGS	= -lpthread
 # -static
 
 #CFLAGS += -DDEBUGME
-CFLAGS += -g
-CFLAGS += -O
+#CFLAGS += -g
+CFLAGS += -O3
 #CFLAGS += -march=native
 #CFLAGS += -Wno-unused-but-set-variable
 #CFLAGS += -Wno-unused-variable

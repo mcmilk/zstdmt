@@ -23,14 +23,13 @@
 #include "zstdmt.h"
 
 /**
- * multi threaded zstd - multiple workers version
+ * multi threaded zstd decompression
  *
  * - each thread works on his own
- * - no main thread which does reading and then starting the work
  * - needs a callback for reading / writing
- * - each worker does his:
+ * - each worker does this:
  *   1) get read mutex and read some input
- *   2) release read mutex and do compression
+ *   2) release read mutex and do decompression
  *   3) get write mutex and write result
  *   4) begin with step 1 again, until no input
  */
@@ -40,7 +39,7 @@
 #define dprintf(fmt, arg...) do { printf(fmt, ## arg); } while (0)
 #else
 #define dprintf(fmt, ...) do { } while (0)
-#endif /* DEBUG */
+#endif				/* DEBUG */
 
 /* worker for compression */
 typedef struct {
@@ -63,8 +62,11 @@ struct ZSTDMT_DCtx_s {
 	int threads;
 	int threadswanted;
 
-	/* should be used for read from input (single thread only) */
+	/* input buffer, used at single threading */
 	size_t inputsize;
+
+	/* buffersize used for output */
+	size_t outputsize;
 
 	/* statistic */
 	size_t insize;
@@ -85,13 +87,13 @@ struct ZSTDMT_DCtx_s {
 	fn_write *fn_write;
 	void *arg_write;
 
+	/* error handling */
+	pthread_mutex_t error_mutex;
+
 	/* lists for writing queue */
 	struct list_head writelist_free;
 	struct list_head writelist_busy;
 	struct list_head writelist_done;
-
-	/* should be used for read from input */
-	size_t outputsize;
 };
 
 /* **************************************
@@ -412,11 +414,13 @@ static void *pt_decompress(void *arg)
 			zOut.dst = out->buf;
 			zOut.pos = 0;
 
-			dprintf("ZSTD_decompressStream() zIn.size=%zu zIn.pos=%zu zOut.size=%zu zOut.pos=%zu\n",
-				zIn.size, zIn.pos, zOut.size, zOut.pos);
+			dprintf
+			    ("ZSTD_decompressStream() zIn.size=%zu zIn.pos=%zu zOut.size=%zu zOut.pos=%zu\n",
+			     zIn.size, zIn.pos, zOut.size, zOut.pos);
 			result = ZSTD_decompressStream(w->dctx, &zOut, &zIn);
-			dprintf("ZSTD_decompressStream(), ret=%zu zIn.size=%zu zIn.pos=%zu zOut.size=%zu zOut.pos=%zu\n",
-				result, zIn.size, zIn.pos, zOut.size, zOut.pos);
+			dprintf
+			    ("ZSTD_decompressStream(), ret=%zu zIn.size=%zu zIn.pos=%zu zOut.size=%zu zOut.pos=%zu\n",
+			     result, zIn.size, zIn.pos, zOut.size, zOut.pos);
 			if (ZSTD_isError(result))
 				goto error_clib;
 
@@ -663,7 +667,6 @@ size_t ZSTDMT_decompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 
 	/**
 	 * possible valid magic's for us, we need 16 bytes, for checking
-	 * - the @X means on offset X
 	 *
 	 * 1) ZSTDMT_MAGIC @0 -> ST Stream
 	 * 2) ZSTDMT_MAGIC @0 + MAGIC_SKIPPABLE @9 -> MT Stream else ST
@@ -703,7 +706,7 @@ size_t ZSTDMT_decompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 		} else if (IsZstd_Magic(buf)) {
 			/* some std zstd stream */
 			dprintf("single thread style, current pos=%zu\n",
-			       in->size);
+				in->size);
 			type = TYPE_SINGLE_THREAD;
 		} else {
 			/* invalid */
@@ -756,6 +759,7 @@ size_t ZSTDMT_decompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 	/* real multi threaded, init pthread's */
 	pthread_mutex_init(&ctx->read_mutex, NULL);
 	pthread_mutex_init(&ctx->write_mutex, NULL);
+	pthread_mutex_init(&ctx->error_mutex, NULL);
 
 	INIT_LIST_HEAD(&ctx->writelist_free);
 	INIT_LIST_HEAD(&ctx->writelist_busy);
@@ -779,6 +783,7 @@ size_t ZSTDMT_decompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 	/* clean up pthread stuff */
 	pthread_mutex_destroy(&ctx->read_mutex);
 	pthread_mutex_destroy(&ctx->write_mutex);
+	pthread_mutex_destroy(&ctx->error_mutex);
 
 	/* clean up the buffers */
 	while (!list_empty(&ctx->writelist_free)) {

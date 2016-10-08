@@ -98,8 +98,8 @@ int my_write_loop(void *arg, ZSTDMT_Buffer * out)
 	fflush(stdout);
 #endif
 
-	out->size = 0;
-	return done;
+	out->size = done;
+	return 0;
 }
 
 static void

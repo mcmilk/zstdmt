@@ -27,6 +27,7 @@ extern "C" {
 #define ZSTDMT_THREAD_MAX 128
 #define ZSTDMT_LEVEL_MAX   22
 
+/* zstd magic values */
 #define ZSTDMT_MAGICNUMBER_V01  0x1EB52FFDU
 #define ZSTDMT_MAGICNUMBER_MIN  0xFD2FB522U
 #define ZSTDMT_MAGICNUMBER_MAX  0xFD2FB528U
@@ -36,25 +37,6 @@ extern "C" {
  * Error Handling
  ****************************************/
 
-extern size_t zstdmt_errcode;
-
-typedef enum {
-  ZSTDMT_error_no_error,
-  ZSTDMT_error_memory_allocation,
-  ZSTDMT_error_init_missing,
-  ZSTDMT_error_read_fail,
-  ZSTDMT_error_write_fail,
-  ZSTDMT_error_data_error,
-  ZSTDMT_error_frame_compress,
-  ZSTDMT_error_frame_decompress,
-  ZSTDMT_error_compressionParameter_unsupported,
-  ZSTDMT_error_compression_library,
-  ZSTDMT_error_maxCode
-} ZSTDMT_ErrorCode;
-
-#define PREFIX(name) ZSTDMT_error_##name
-#define ERROR(name) ((size_t)-PREFIX(name))
-//extern size_t SetError(size_t code);
 extern unsigned ZSTDMT_isError(size_t code);
 extern const char* ZSTDMT_getErrorString(size_t code);
 
@@ -91,37 +73,59 @@ typedef struct {
 typedef struct ZSTDMT_CCtx_s ZSTDMT_CCtx;
 
 /**
- * 1) allocate new cctx
- * - return cctx or zero on error
+ * ZSTDMT_createCCtx() - allocate new compression context
  *
- * @level   - 1 .. 22
- * @threads - 1 .. ZSTDMT_THREAD_MAX
- * @inputsize - if zero, becomes some optimal value for the level
- *            - if nonzero, the given value is taken
+ * This function allocates and initializes an zstd commpression context.
+ * The context can be used multiple times without the need for resetting
+ * or re-initializing.
+ *
+ * @level: compression level, which should be used (1..22)
+ * @threads: number of threads, which should be used (1..ZSTDMT_THREAD_MAX)
+ * @inputsize: - if zero, becomes some optimal value for the level
+ *             - if nonzero, the given value is taken
+ * @return: the context on success, zero on error
  */
 ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize);
 
 /**
- * 2) threaded compression
- * - return -1 on error
+ * ZSTDMT_compressDCtx() - threaded compression for zstd
+ *
+ * This function will create valid zstd streams. The number of threads,
+ * the input chunksize and the compression level are ....
+ *
+ * @ctx: context, which needs to be created with ZSTDMT_createDCtx()
+ * @rdwr: callback structure, which defines reding/writing functions
+ * @return: zero on success, or error code
  */
 size_t ZSTDMT_compressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr);
 
 /**
- * 3) get some statistic
+ * ZSTDMT_GetFramesCCtx() - number of frames
+ * ZSTDMT_GetInsizeCCtx() - read bytes of input
+ * ZSTDMT_GetOutsizeCCtx() - written bytes of output
+ *
+ * These three functions will return some statistical data of the
+ * compression context ctx.
+ *
+ * @ctx: context, which should be examined
+ * @return: the request value, or zero on error
  */
 size_t ZSTDMT_GetFramesCCtx(ZSTDMT_CCtx * ctx);
 size_t ZSTDMT_GetInsizeCCtx(ZSTDMT_CCtx * ctx);
 size_t ZSTDMT_GetOutsizeCCtx(ZSTDMT_CCtx * ctx);
 
 /**
- * 4) free cctx
- * - no special return value
+ * ZSTDMT_freeCCtx() - free compression context
+ *
+ * This function will free all allocated resources, which were allocated
+ * by ZSTDMT_createCCtx(). This function can not fail.
+ *
+ * @ctx: context, which should be freed
  */
 void ZSTDMT_freeCCtx(ZSTDMT_CCtx * ctx);
 
 /* **************************************
- * Decompression - TODO, but it's easy...
+ * Decompression
  ****************************************/
 
 typedef struct ZSTDMT_DCtx_s ZSTDMT_DCtx;
@@ -138,24 +142,38 @@ typedef struct ZSTDMT_DCtx_s ZSTDMT_DCtx;
 ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, int inputsize);
 
 /**
- * 2) threaded compression
- * - return -1 on error
- * - return zero on success
- * - will do all the compression, is calling the read/write wrapper...
- * - the wrapper should also do some progress, not only read/write
+ * ZSTDMT_decompressDCtx() - threaded decompression for zstd
+ *
+ * This function will decompress valid zstd streams.
+ *
+ * @ctx: context, which needs to be created with ZSTDMT_createDCtx()
+ * @rdwr: callback structure, which defines reding/writing functions
+ * @return: zero on success, or error code
  */
 size_t ZSTDMT_decompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr);
 
 /**
- * 3) get some statistic, fail only when ctx is invalid
+ * ZSTDMT_GetFramesDCtx() - number of frames
+ * ZSTDMT_GetInsizeDCtx() - read bytes of input
+ * ZSTDMT_GetOutsizeDCtx() - written bytes of output
+ *
+ * These three functions will return some statistical data of the
+ * decompression context ctx.
+ *
+ * @ctx: context, which should be examined
+ * @return: the request value, or zero on error
  */
 size_t ZSTDMT_GetFramesDCtx(ZSTDMT_DCtx * ctx);
 size_t ZSTDMT_GetInsizeDCtx(ZSTDMT_DCtx * ctx);
 size_t ZSTDMT_GetOutsizeDCtx(ZSTDMT_DCtx * ctx);
 
 /**
- * 4) free cctx
- * - no special return value
+ * ZSTDMT_freeDCtx() - free decompression context
+ *
+ * This function will free all allocated resources, which were allocated
+ * by ZSTDMT_createDCtx(). This function can not fail.
+ *
+ * @ctx: context, which should be freed
  */
 void ZSTDMT_freeDCtx(ZSTDMT_DCtx * ctx);
 
