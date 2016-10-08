@@ -119,7 +119,7 @@ do_compress(int threads, int level, int bufsize, int fdin, int fdout)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = LZ5MT_CompressCCtx(ctx, &rdwr);
+	ret = LZ5MT_compressCCtx(ctx, &rdwr);
 	if (LZ5MT_isError(ret))
 		perror_exit(LZ5MT_getErrorString(ret));
 
@@ -154,7 +154,7 @@ static void do_decompress(int threads, int bufsize, int fdin, int fdout)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = LZ5MT_DecompressDCtx(ctx, &rdwr);
+	ret = LZ5MT_decompressDCtx(ctx, &rdwr);
 	if (LZ5MT_isError(ret))
 		perror_exit(LZ5MT_getErrorString(ret));
 

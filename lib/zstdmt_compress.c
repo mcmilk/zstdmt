@@ -401,7 +401,7 @@ size_t ZSTDMT_compressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 /* returns current uncompressed data size */
 size_t ZSTDMT_GetInsizeCCtx(ZSTDMT_CCtx * ctx)
 {
-	size rv;
+	size_t rv;
 
 	if (!ctx)
 		return ERROR(init_missing);
@@ -416,7 +416,7 @@ size_t ZSTDMT_GetInsizeCCtx(ZSTDMT_CCtx * ctx)
 /* returns the current compressed data size */
 size_t ZSTDMT_GetOutsizeCCtx(ZSTDMT_CCtx * ctx)
 {
-	size rv;
+	size_t rv;
 
 	if (!ctx)
 		return ERROR(init_missing);
@@ -431,7 +431,7 @@ size_t ZSTDMT_GetOutsizeCCtx(ZSTDMT_CCtx * ctx)
 /* returns the current compressed data frame count */
 size_t ZSTDMT_GetFramesCCtx(ZSTDMT_CCtx * ctx)
 {
-	size rv;
+	size_t rv;
 
 	if (!ctx)
 		return ERROR(init_missing);
