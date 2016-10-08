@@ -23,12 +23,11 @@
 #include "zstdmt.h"
 
 /**
- * multi threaded zstd - multiple workers version
+ * multi threaded zstd compression
  *
  * - each thread works on his own
- * - no main thread which does reading and then starting the work
  * - needs a callback for reading / writing
- * - each worker does his:
+ * - each worker does this:
  *   1) get read mutex and read some input
  *   2) release read mutex and do compression
  *   3) get write mutex and write result
@@ -51,13 +50,13 @@ struct writelist {
 
 struct ZSTDMT_CCtx_s {
 
-	/* level: 1..22 */
+	/* level: 1..ZSTDMT_LEVEL_MAX */
 	int level;
 
 	/* threads: 1..ZSTDMT_THREAD_MAX */
 	int threads;
 
-	/* should be used for read from input */
+	/* buffersize for reading input */
 	int inputsize;
 
 	/* statistic */
@@ -78,6 +77,9 @@ struct ZSTDMT_CCtx_s {
 	pthread_mutex_t write_mutex;
 	fn_write *fn_write;
 	void *arg_write;
+
+	/* setting error variable */
+	pthread_mutex_t error_mutex;
 
 	/* lists for writing queue */
 	struct list_head writelist_free;
@@ -111,6 +113,7 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize)
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else {
+		/**/
 		const int mb[] = {
 			2, 2, 4, 4, 6, 6, 6,	/* 1 - 7 */
 			8, 8, 8, 8, 8, 8, 8,	/* 8 - 14 */
@@ -129,6 +132,7 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize)
 
 	pthread_mutex_init(&ctx->read_mutex, NULL);
 	pthread_mutex_init(&ctx->write_mutex, NULL);
+	pthread_mutex_init(&ctx->error_mutex, NULL);
 
 	INIT_LIST_HEAD(&ctx->writelist_free);
 	INIT_LIST_HEAD(&ctx->writelist_busy);
@@ -210,6 +214,7 @@ static size_t pt_write(ZSTDMT_CCtx * ctx, struct writelist *wl)
 	return 0;
 }
 
+/* parallel compression worker */
 static void *pt_compress(void *arg)
 {
 	cwork_t *w = (cwork_t *) arg;
@@ -287,7 +292,6 @@ static void *pt_compress(void *arg)
 		result = ZSTD_initCStream(w->zctx, ctx->level);
 		if (ZSTD_isError(result)) {
 			zstdmt_errcode = result;
-			wl->out.buf = (void *)ZSTD_getErrorName(result);
 			goto error;
 		}
 
@@ -326,11 +330,13 @@ static void *pt_compress(void *arg)
 		}
 
 		/* write skippable frame */
-		MEM_writeLE32((unsigned char *)out->buf + 0,
-			      ZSTDMT_MAGIC_SKIPPABLE);
-		MEM_writeLE32((unsigned char *)out->buf + 4, 4);
-		MEM_writeLE32((unsigned char *)out->buf + 8, (U32)result);
+		{
+		unsigned char *buf = out->buf;
+		MEM_writeLE32(buf + 0, ZSTDMT_MAGIC_SKIPPABLE);
+		MEM_writeLE32(buf + 4, 4);
+		MEM_writeLE32(buf + 8, (U32)result);
 		out->size = result + 12;
+		}
 
 		/* write result */
 		pthread_mutex_lock(&ctx->write_mutex);
@@ -349,14 +355,15 @@ static void *pt_compress(void *arg)
 	return (void *)result;
 }
 
-size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
+/* compress data, until input ends */
+size_t ZSTDMT_compressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 {
 	int t;
 
 	if (!ctx)
-		return ERROR(compressionParameter_unsupported);
+		return ERROR(init_missing);
 
-	/* init reading and writing functions */
+	/* setup reading and writing functions */
 	ctx->fn_read = rdwr->fn_read;
 	ctx->fn_write = rdwr->fn_write;
 	ctx->arg_read = rdwr->arg_read;
@@ -394,30 +401,49 @@ size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 /* returns current uncompressed data size */
 size_t ZSTDMT_GetInsizeCCtx(ZSTDMT_CCtx * ctx)
 {
-	if (!ctx)
-		return 0;
+	size rv;
 
-	return ctx->insize;
+	if (!ctx)
+		return ERROR(init_missing);
+
+	pthread_mutex_lock(&ctx->read_mutex);
+	rv = ctx->insize;
+	pthread_mutex_unlock(&ctx->read_mutex);
+
+	return rv;
 }
 
 /* returns the current compressed data size */
 size_t ZSTDMT_GetOutsizeCCtx(ZSTDMT_CCtx * ctx)
 {
-	if (!ctx)
-		return 0;
+	size rv;
 
-	return ctx->outsize;
+	if (!ctx)
+		return ERROR(init_missing);
+
+	pthread_mutex_lock(&ctx->write_mutex);
+	rv = ctx->outsize;
+	pthread_mutex_unlock(&ctx->write_mutex);
+
+	return rv;
 }
 
-/* returns the current compressed frames */
+/* returns the current compressed data frame count */
 size_t ZSTDMT_GetFramesCCtx(ZSTDMT_CCtx * ctx)
 {
-	if (!ctx)
-		return 0;
+	size rv;
 
-	return ctx->curframe;
+	if (!ctx)
+		return ERROR(init_missing);
+
+	pthread_mutex_lock(&ctx->write_mutex);
+	rv = ctx->curframe;
+	pthread_mutex_unlock(&ctx->write_mutex);
+
+	return rv;
 }
 
+/* free all allocated buffers and structures */
 void ZSTDMT_freeCCtx(ZSTDMT_CCtx * ctx)
 {
 	int t;

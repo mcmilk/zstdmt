@@ -306,7 +306,7 @@ static void *pt_compress(void *arg)
 	return 0;
 }
 
-size_t LZ4MT_CompressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr)
+size_t LZ4MT_compressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr)
 {
 	int t;
 

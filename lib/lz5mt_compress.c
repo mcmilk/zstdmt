@@ -144,31 +144,12 @@ LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize)
 		w->zpref.frameInfo.contentSize = 1;
 		w->zpref.frameInfo.contentChecksumFlag =
 		    LZ5F_contentChecksumEnabled;
-
 	}
 
 	return ctx;
 
  err_cwork:
 	free(ctx);
-
-	return 0;
-}
-
-size_t LZ5MT_ResetCCtx(LZ5MT_CCtx * ctx)
-{
-	if (!ctx)
-		return ERROR(compressionParameter_unsupported);
-
-	/* free -> busy -> out -> free -> ... */
-	INIT_LIST_HEAD(&ctx->writelist_free);	/* free, can be used */
-	INIT_LIST_HEAD(&ctx->writelist_busy);	/* busy */
-	INIT_LIST_HEAD(&ctx->writelist_done);	/* can be written */
-
-	ctx->insize = 0;
-	ctx->outsize = 0;
-	ctx->frames = 0;
-	ctx->curframe = 0;
 
 	return 0;
 }
@@ -324,7 +305,7 @@ static void *pt_compress(void *arg)
 	return 0;
 }
 
-size_t LZ5MT_CompressCCtx(LZ5MT_CCtx * ctx, LZ5MT_RdWr_t * rdwr)
+size_t LZ5MT_compressCCtx(LZ5MT_CCtx * ctx, LZ5MT_RdWr_t * rdwr)
 {
 	int t;
 
@@ -336,6 +317,11 @@ size_t LZ5MT_CompressCCtx(LZ5MT_CCtx * ctx, LZ5MT_RdWr_t * rdwr)
 	ctx->fn_write = rdwr->fn_write;
 	ctx->arg_read = rdwr->arg_read;
 	ctx->arg_write = rdwr->arg_write;
+
+	ctx->insize = 0;
+	ctx->outsize = 0;
+	ctx->frames = 0;
+	ctx->curframe = 0;
 
 	/* start all workers */
 	for (t = 0; t < ctx->threads; t++) {

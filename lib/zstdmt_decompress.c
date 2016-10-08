@@ -644,7 +644,7 @@ static size_t st_decompress(void *arg)
 #define TYPE_SINGLE_THREAD 1
 #define TYPE_MULTI_THREAD  2
 
-size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
+size_t ZSTDMT_decompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 {
 	unsigned char buf[16];
 	ZSTDMT_Buffer In;

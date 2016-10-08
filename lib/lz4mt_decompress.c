@@ -456,7 +456,7 @@ static size_t st_decompress(void *arg)
 	return 0;
 }
 
-size_t LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
+size_t LZ4MT_decompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
 {
 	unsigned char buf[4];
 	int t, rv;

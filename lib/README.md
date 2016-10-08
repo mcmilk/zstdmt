@@ -31,7 +31,7 @@ typedef struct LZ4MT_CCtx_s LZ4MT_CCtx;
 LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize);
 
 /* 2) threaded compression */
-size_t LZ4MT_CompressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr);
+size_t LZ4MT_compressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr);
 
 /* 3) get some statistic */
 size_t LZ4MT_GetFramesCCtx(LZ4MT_CCtx * ctx);
@@ -50,7 +50,7 @@ typedef struct LZ4MT_DCtx_s LZ4MT_DCtx;
 LZ4MT_DCtx *LZ4MT_createDCtx(int threads, int inputsize);
 
 /* 2) threaded compression */
-size_t LZ4MT_DecompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr);
+size_t LZ4MT_decompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr);
 
 /* 3) get some statistic */
 size_t LZ4MT_GetFramesDCtx(LZ4MT_DCtx * ctx);

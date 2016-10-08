@@ -106,12 +106,7 @@ LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize);
  * 2) threaded compression
  * - return -1 on error
  */
-size_t LZ5MT_CompressCCtx(LZ5MT_CCtx * ctx, LZ5MT_RdWr_t * rdwr);
-
-/**
- * optional - reset ctx to initial values
- */
-size_t LZ5MT_ResetCCtx(LZ5MT_CCtx * ctx);
+size_t LZ5MT_compressCCtx(LZ5MT_CCtx * ctx, LZ5MT_RdWr_t * rdwr);
 
 /**
  * 3) get some statistic
@@ -138,7 +133,7 @@ typedef struct LZ5MT_DCtx_s LZ5MT_DCtx;
  *
  * @level   - 1 .. 22
  * @threads - 1 .. LZ5MT_THREAD_MAX
- * @srclen  - the max size of src for LZ5MT_CompressCCtx()
+ * @srclen  - the max size of src for LZ5MT_compressCCtx()
  * @dstlen  - the min size of dst
  */
 LZ5MT_DCtx *LZ5MT_createDCtx(int threads, int inputsize);
@@ -147,12 +142,7 @@ LZ5MT_DCtx *LZ5MT_createDCtx(int threads, int inputsize);
  * 2) threaded compression
  * - return -1 on error
  */
-size_t LZ5MT_DecompressDCtx(LZ5MT_DCtx * ctx, LZ5MT_RdWr_t * rdwr);
-
-/**
- * optional - reset ctx to initial values
- */
-size_t LZ5MT_ResetDCtx(LZ5MT_DCtx * ctx);
+size_t LZ5MT_decompressDCtx(LZ5MT_DCtx * ctx, LZ5MT_RdWr_t * rdwr);
 
 /**
  * 3) get some statistic

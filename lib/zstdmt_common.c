@@ -41,6 +41,8 @@ const char *ZSTDMT_getErrorString(size_t code)
 		return "No error detected";
 	case PREFIX(memory_allocation):
 		return "Allocation error : not enough memory";
+	case PREFIX(init_missing):
+		return "Context should be init first";
 	case PREFIX(read_fail):
 		return "Read failure";
 	case PREFIX(write_fail):

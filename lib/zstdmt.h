@@ -41,6 +41,7 @@ extern size_t zstdmt_errcode;
 typedef enum {
   ZSTDMT_error_no_error,
   ZSTDMT_error_memory_allocation,
+  ZSTDMT_error_init_missing,
   ZSTDMT_error_read_fail,
   ZSTDMT_error_write_fail,
   ZSTDMT_error_data_error,
@@ -51,11 +52,9 @@ typedef enum {
   ZSTDMT_error_maxCode
 } ZSTDMT_ErrorCode;
 
-#ifdef ERROR
-#  undef ERROR   /* reported already defined on VS 2015 (Rich Geldreich) */
-#endif
 #define PREFIX(name) ZSTDMT_error_##name
 #define ERROR(name) ((size_t)-PREFIX(name))
+//extern size_t SetError(size_t code);
 extern unsigned ZSTDMT_isError(size_t code);
 extern const char* ZSTDMT_getErrorString(size_t code);
 
@@ -106,7 +105,7 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize);
  * 2) threaded compression
  * - return -1 on error
  */
-size_t ZSTDMT_CompressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr);
+size_t ZSTDMT_compressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr);
 
 /**
  * 3) get some statistic
@@ -133,7 +132,7 @@ typedef struct ZSTDMT_DCtx_s ZSTDMT_DCtx;
  *
  * @level   - 1 .. 22
  * @threads - 1 .. ZSTDMT_THREAD_MAX
- * @srclen  - the max size of src for ZSTDMT_CompressCCtx()
+ * @srclen  - the max size of src for ZSTDMT_compressCCtx()
  * @dstlen  - the min size of dst
  */
 ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, int inputsize);
@@ -145,7 +144,7 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, int inputsize);
  * - will do all the compression, is calling the read/write wrapper...
  * - the wrapper should also do some progress, not only read/write
  */
-size_t ZSTDMT_DecompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr);
+size_t ZSTDMT_decompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr);
 
 /**
  * 3) get some statistic, fail only when ctx is invalid
