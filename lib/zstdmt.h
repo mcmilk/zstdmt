@@ -37,6 +37,22 @@ extern "C" {
  * Error Handling
  ****************************************/
 
+typedef enum {
+  ZSTDMT_error_no_error,
+  ZSTDMT_error_memory_allocation,
+  ZSTDMT_error_init_missing,
+  ZSTDMT_error_read_fail,
+  ZSTDMT_error_write_fail,
+  ZSTDMT_error_data_error,
+  ZSTDMT_error_frame_compress,
+  ZSTDMT_error_frame_decompress,
+  ZSTDMT_error_compressionParameter_unsupported,
+  ZSTDMT_error_compression_library,
+  ZSTDMT_error_maxCode
+} ZSTDMT_ErrorCode;
+
+#define ZSTDMT_PREFIX(name) ZSTDMT_error_##name
+#define ZSTDMT_ERROR(name) ((size_t)-ZSTDMT_PREFIX(name))
 extern unsigned ZSTDMT_isError(size_t code);
 extern const char* ZSTDMT_getErrorString(size_t code);
 
@@ -83,9 +99,10 @@ typedef struct ZSTDMT_CCtx_s ZSTDMT_CCtx;
  * @threads: number of threads, which should be used (1..ZSTDMT_THREAD_MAX)
  * @inputsize: - if zero, becomes some optimal value for the level
  *             - if nonzero, the given value is taken
+ * @zstdmt_errcode: space for storing zstd errors (needed for thread safety)
  * @return: the context on success, zero on error
  */
-ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize);
+ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize, size_t *zstdmt_errcode);
 
 /**
  * ZSTDMT_compressDCtx() - threaded compression for zstd
@@ -100,7 +117,7 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize);
 size_t ZSTDMT_compressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr);
 
 /**
- * ZSTDMT_GetFramesCCtx() - number of frames
+ * ZSTDMT_GetFramesCCtx() - number of written frames
  * ZSTDMT_GetInsizeCCtx() - read bytes of input
  * ZSTDMT_GetOutsizeCCtx() - written bytes of output
  *
@@ -153,7 +170,7 @@ ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, int inputsize);
 size_t ZSTDMT_decompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr);
 
 /**
- * ZSTDMT_GetFramesDCtx() - number of frames
+ * ZSTDMT_GetFramesDCtx() - number of read frames
  * ZSTDMT_GetInsizeDCtx() - read bytes of input
  * ZSTDMT_GetOutsizeDCtx() - written bytes of output
  *
