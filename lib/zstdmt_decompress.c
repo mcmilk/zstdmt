@@ -38,7 +38,7 @@
 #include <stdio.h>
 #define dprintf(fmt, arg...) do { printf(fmt, ## arg); } while (0)
 #else
-#define dprintf(fmt, ...) do { } while (0)
+#define dprintf(fmt, ...)
 #endif				/* DEBUG */
 
 extern size_t zstdmt_errcode;

@@ -273,11 +273,14 @@ static void *pt_compress(void *arg)
 		pthread_mutex_unlock(&ctx->read_mutex);
 
 		/* compress whole frame */
-		result = ZSTD_compress(out->buf + 12, out->size - 12, in.buf, in.size, ctx->level);
+		{
+		unsigned char *outbuf = out->buf;
+		result = ZSTD_compress(outbuf + 12, out->size - 12, in.buf, in.size, ctx->level);
 		if (ZSTD_isError(result)) {
 			zstdmt_errcode = result;
 			result = ZSTDMT_ERROR(compression_library);
 			goto error;
+		}
 		}
 
 		/* write skippable frame */
