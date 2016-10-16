@@ -51,6 +51,8 @@ typedef enum {
   ZSTDMT_error_maxCode
 } ZSTDMT_ErrorCode;
 
+extern size_t zstdmt_errcode;
+
 #define ZSTDMT_PREFIX(name) ZSTDMT_error_##name
 #define ZSTDMT_ERROR(name) ((size_t)-ZSTDMT_PREFIX(name))
 extern unsigned ZSTDMT_isError(size_t code);
@@ -102,7 +104,7 @@ typedef struct ZSTDMT_CCtx_s ZSTDMT_CCtx;
  * @zstdmt_errcode: space for storing zstd errors (needed for thread safety)
  * @return: the context on success, zero on error
  */
-ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize, size_t *zstdmt_errcode);
+ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize);
 
 /**
  * ZSTDMT_compressDCtx() - threaded compression for zstd

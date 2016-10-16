@@ -39,7 +39,7 @@ CF_LZ5	+= $(CFLAGS) -Ilz5/lib
 
 ZSTDDIR    = zstd/lib
 ZSTDCOMMON = $(ZSTDDIR)/common
-LIBZSTD   += $(ZSTDCOMMON)/entropy_common.c  $(ZSTDCOMMON)/fse_decompress.c  $(ZSTDCOMMON)/xxhash.c  $(ZSTDCOMMON)/zstd_common.c
+LIBZSTD   += $(ZSTDCOMMON)/entropy_common.c  $(ZSTDCOMMON)/fse_decompress.c  $(ZSTDCOMMON)/xxhash.c  $(ZSTDCOMMON)/zstd_common.c  $(ZSTDCOMMON)/error_private.c
 ZSTDCOMP   = $(ZSTDDIR)/compress
 LIBZSTD   += $(ZSTDCOMP)/fse_compress.c  $(ZSTDCOMP)/huf_compress.c  $(ZSTDCOMP)/zbuff_compress.c  $(ZSTDCOMP)/zstd_compress.c
 ZSTDDECOMP = $(ZSTDDIR)/decompress
