@@ -64,7 +64,7 @@ typedef struct ZSTDMT_DCtx_s ZSTDMT_DCtx;
 /* 1) allocate new cctx */
 ZSTDMT_DCtx *ZSTDMT_createDCtx(int threads, int inputsize);
 
-/* 2) threaded compression */
+/* 2) threaded decompression */
 size_t ZSTDMT_decompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr);
 
 /* 3) get some statistic */
