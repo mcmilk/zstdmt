@@ -114,12 +114,21 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize)
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else {
-		 /* XXX - windowlog */ const int mb[] = {
-			2, 2, 4, 4, 6, 6, 6,	/* 1 - 7 */
-			8, 8, 8, 8, 8, 8, 8,	/* 8 - 14 */
-			16, 16, 16, 16, 16, 16, 16, 16	/* 15 - 22 */
+#if 1
+		const int windowLog[] = {
+			0, 19, 19, 20, 20, 20, 21, 21,
+			21, 21, 21, 22, 22, 22, 22, 22,
+			23, 23, 23, 23, 23, 25, 26, 27
 		};
-		ctx->inputsize = 1024 * 1024 * mb[level - 1];
+		ctx->inputsize = 1 << (windowLog[level] + 1);
+#else
+		const int mb[] = {
+			0, 1, 1, 1, 2, 2, 2,
+			3, 3, 3, 4, 4, 4, 5,
+			5, 5, 5, 5, 5, 5, 5
+		};
+		ctx->inputsize = 1024 * 1024 * mb[level];
+#endif
 	}
 
 	/* setup ctx */
@@ -171,6 +180,8 @@ static size_t pt_write(ZSTDMT_CCtx * ctx, struct writelist *wl)
 		rv = ctx->fn_write(ctx->arg_write, &b);
 		if (rv == -1)
 			return ZSTDMT_ERROR(write_fail);
+		if (rv == -2)
+			return ZSTDMT_ERROR(canceled);
 		if (b.size != 9)
 			return ZSTDMT_ERROR(write_fail);
 		ctx->outsize += 9;
@@ -188,6 +199,8 @@ static size_t pt_write(ZSTDMT_CCtx * ctx, struct writelist *wl)
 			rv = ctx->fn_write(ctx->arg_write, &wl->out);
 			if (rv == -1)
 				return ZSTDMT_ERROR(write_fail);
+			if (rv == -2)
+				return ZSTDMT_ERROR(canceled);
 			ctx->outsize += wl->out.size;
 			ctx->curframe++;
 			list_move(entry, &ctx->writelist_free);
