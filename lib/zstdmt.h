@@ -65,6 +65,7 @@ typedef enum {
   ZSTD_error_dictionary_corrupted,
   ZSTD_error_dictionary_wrong,
   ZSTD_error_maxCode,
+
   ZSTDMT_error_no_error,
   ZSTDMT_error_memory_allocation,
   ZSTDMT_error_init_missing,
