@@ -49,9 +49,9 @@ LIBZSTD   += $(ZSTDLEGACY)/zstd_v05.c  $(ZSTDLEGACY)/zstd_v06.c  $(ZSTDLEGACY)/z
 CF_ZSTD	+= $(CFLAGS) -I$(ZSTDDIR) -I$(ZSTDCOMMON) -I$(ZSTDCOMP) -I$(ZSTDDECOMP) -I$(ZSTDLEGACY)
 
 loadsource:
-	test -d lz4  || git clone https://github.com/Cyan4973/lz4 -b r131 --depth=1 lz4
-	test -d lz5  || git clone https://github.com/inikep/lz5    --depth=1 lz5
-	test -d zstd || git clone https://github.com/facebook/zstd --depth=1 zstd
+	test -d lz4  || git clone https://github.com/Cyan4973/lz4  -b v1.7.3 --depth=1 lz4
+	test -d lz5  || git clone https://github.com/inikep/lz5    -b v1.5   --depth=1 lz5
+	test -d zstd || git clone https://github.com/facebook/zstd -b v1.1.1 --depth=1 zstd
 
 lz4mt: lz4mt.o
 	$(CC) $(CF_LZ4) $(LDFLAGS) -o $@ $(LIBLZ4) lz4mt.o

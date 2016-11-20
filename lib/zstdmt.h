@@ -24,8 +24,13 @@ extern "C" {
 
 #include <stddef.h>   /* size_t */
 
+#define ZSTDMT_VERSION_MAJOR    0
+#define ZSTDMT_VERSION_MINOR    2
+#define ZSTDMT_VERSION_RELEASE  0
+
 #define ZSTDMT_THREAD_MAX 128
 #define ZSTDMT_LEVEL_MAX   22
+
 
 /* zstd magic values */
 #define ZSTDMT_MAGICNUMBER_V01  0x1EB52FFDU
@@ -38,6 +43,28 @@ extern "C" {
  ****************************************/
 
 typedef enum {
+  ZSTD_error_no_error,
+  ZSTD_error_GENERIC,
+  ZSTD_error_prefix_unknown,
+  ZSTD_error_version_unsupported,
+  ZSTD_error_parameter_unknown,
+  ZSTD_error_frameParameter_unsupported,
+  ZSTD_error_frameParameter_unsupportedBy32bits,
+  ZSTD_error_frameParameter_windowTooLarge,
+  ZSTD_error_compressionParameter_unsupported,
+  ZSTD_error_init_missing,
+  ZSTD_error_memory_allocation,
+  ZSTD_error_stage_wrong,
+  ZSTD_error_dstSize_tooSmall,
+  ZSTD_error_srcSize_wrong,
+  ZSTD_error_corruption_detected,
+  ZSTD_error_checksum_wrong,
+  ZSTD_error_tableLog_tooLarge,
+  ZSTD_error_maxSymbolValue_tooLarge,
+  ZSTD_error_maxSymbolValue_tooSmall,
+  ZSTD_error_dictionary_corrupted,
+  ZSTD_error_dictionary_wrong,
+  ZSTD_error_maxCode,
   ZSTDMT_error_no_error,
   ZSTDMT_error_memory_allocation,
   ZSTDMT_error_init_missing,
@@ -48,6 +75,7 @@ typedef enum {
   ZSTDMT_error_frame_decompress,
   ZSTDMT_error_compressionParameter_unsupported,
   ZSTDMT_error_compression_library,
+  ZSTDMT_error_canceled,
   ZSTDMT_error_maxCode
 } ZSTDMT_ErrorCode;
 

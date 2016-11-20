@@ -103,7 +103,7 @@ do_compress(int threads, int level, int bufsize, FILE * fin, FILE * fout)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = ZSTDMT_CompressCCtx(ctx, &rdwr);
+	ret = ZSTDMT_compressCCtx(ctx, &rdwr);
 	if (ZSTDMT_isError(ret))
 		perror_exit(ZSTDMT_getErrorString(ret));
 
@@ -128,7 +128,7 @@ static void do_decompress(int threads, int bufsize, FILE * fin, FILE * fout)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = ZSTDMT_DecompressDCtx(ctx, &rdwr);
+	ret = ZSTDMT_decompressDCtx(ctx, &rdwr);
 	if (ZSTDMT_isError(ret))
 		perror_exit(ZSTDMT_getErrorString(ret));
 
