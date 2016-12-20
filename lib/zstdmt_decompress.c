@@ -17,7 +17,7 @@
 #define ZSTD_STATIC_LINKING_ONLY
 #include "zstd.h"
 
-#include "mem.h"
+#include "memmt.h"
 #include "threading.h"
 #include "list.h"
 #include "zstdmt.h"

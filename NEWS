@@ -1,5 +1,5 @@
 v0.2
-- todo...
+- update to zstd 1.1.2, lz4 1.7.4, lz5 1.5
 
 v0.1
 - first public release

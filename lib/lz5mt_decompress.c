@@ -17,7 +17,7 @@
 #define LZ5F_DISABLE_OBSOLETE_ENUMS
 #include "lz5frame.h"
 
-#include "mem.h"
+#include "memmt.h"
 #include "threading.h"
 #include "list.h"
 #include "lz5mt.h"
