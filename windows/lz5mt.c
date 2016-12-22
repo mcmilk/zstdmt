@@ -30,7 +30,7 @@ static void perror_exit(const char *msg)
 
 static void version(void)
 {
-	printf("lz5mt version 0.1\n");
+	printf("lz5mt version 0.2\n");
 
 	exit(0);
 }
@@ -181,7 +181,7 @@ int main(int argc, char **argv)
 	 * check parameters
 	 */
 
-	/* opt_level = 1..22 */
+	/* opt_level = 1..LZ5MT_LEVEL_MAX */
 	if (opt_level < 1)
 		opt_level = 1;
 	else if (opt_level > LZ5MT_LEVEL_MAX)
