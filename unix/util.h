@@ -22,3 +22,19 @@ ssize_t read_loop(int fd, void *buffer, size_t count);
 ssize_t write_loop(int fd, const void *buffer, size_t count);
 int open_read(const char *filename);
 int open_rw(const char *filename);
+
+// from l95@https://github.com/inikep/zstd/blob/dev11/programs/platform.h
+// hope that PLATFORM_POSIX_VERSION is safe here...
+/*-*********************************************
+ * *  Detect if isatty() and fileno() are available
+ * ************************************************/
+#if defined(__linux__) || (PLATFORM_POSIX_VERSION >= 200112L) || defined(__DJGPP__)
+//#  include <unistd.h>   /* isatty */
+#  define IS_CONSOLE(stdStream) isatty(fileno(stdStream))
+#elif defined(MSDOS) || defined(OS2) || defined(WIN32) || defined(_WIN32) || defined(__CYGWIN__)
+#  include <io.h>       /* _isatty */
+#  define IS_CONSOLE(stdStream) _isatty(_fileno(stdStream))
+#else
+#  define IS_CONSOLE(stdStream) 0
+#endif
+
