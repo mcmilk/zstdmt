@@ -8,7 +8,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  *
  * You can contact the author at:
- * - zstdmt source repository: https://github.com/mcmilk/zstdmt
+ * - lz4mt source repository: https://github.com/mcmilk/lz4mt
  */
 
 /* getrusage */
@@ -17,13 +17,14 @@
 
 #include <unistd.h>
 #include <stdlib.h>
+#include <getopt.h>
 #include <stdio.h>
 
-#include "util.h"
 #include "lz4mt.h"
+#include "util.h"
 
 /**
- * program for testing threaded stuff on zstd
+ * program for testing threaded stuff on lz4
  */
 
 static void perror_exit(const char *msg)
@@ -42,17 +43,24 @@ static void version(void)
 
 static void usage(void)
 {
-	printf("Usage: lz4mt [options] infile outfile\n\n");
-	printf("Otions:\n");
-	printf(" -l N    set level (1..16) of compression (default: 1)\n");
-	printf(" -t N    set number of (de)compression threads (default: 2)\n");
-	printf(" -i N    set number of iterations for testing (default: 1)\n");
-	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
-	printf(" -c      compress (default mode)\n");
-	printf(" -d      use decompress mode\n");
-	printf(" -H      print headline for the testing values\n");
-	printf(" -h      show usage\n");
-	printf(" -v      show version\n");
+	printf("Usage: lz4mt [options]... [FILE]\n\n");
+
+	printf("Options:\n");
+	printf(" -o filename   write result to `filename`\n");
+	printf(" -l N          set level of compression (default: 3)\n");
+	printf
+	    (" -t N          set number of (de)compression threads (default: 2)\n");
+	printf
+	    (" -i N          set number of iterations for testing (default: 1)\n");
+	printf(" -b N          set input chunksize to N KiB (default: auto)\n");
+	printf(" -c            compress (default mode)\n");
+	printf(" -d            use decompress mode\n");
+	printf(" -H            print headline for the testing values\n");
+	printf(" -h            show usage and exit\n");
+	printf(" -v            show version and exit\n\n");
+
+	printf("With no FILE, read standard input.\n");
+	printf("With no `-o filename` option, write to standard output\n");
 
 	exit(0);
 }
@@ -60,7 +68,7 @@ static void usage(void)
 static void headline(void)
 {
 	printf
-	    ("Type;Level;Threads;InSize;Frames;OutSize;Real;User;Sys;MaxMem\n");
+	    ("Type;Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
 	exit(0);
 }
 
@@ -76,8 +84,9 @@ int my_read_loop(void *arg, LZ4MT_Buffer * in)
 	ssize_t done = read_loop(*fd, in->buf, in->size);
 
 #if 0
-	printf("read_loop(fd=%d, buffer=%p,count=%zu)\n", *fd, in->buf,
-	       in->size);
+	// ssize_t x = llseek(*fd, 0, SEEK_CUR);
+	printf("read_loop(fd=%d, buffer=%p,count=%zu) = %zd off = %zd\n", *fd,
+	       in->buf, in->size, done);
 	fflush(stdout);
 #endif
 
@@ -91,8 +100,9 @@ int my_write_loop(void *arg, LZ4MT_Buffer * out)
 	ssize_t done = write_loop(*fd, out->buf, out->size);
 
 #if 0
-	printf("write_loop(fd=%d, buffer=%p,count=%zu)\n", *fd, out->buf,
-	       out->size);
+	//ssize_t x = llseek(*fd, 0, SEEK_CUR);
+	printf("write_loop(fd=%d, buffer=%p,count=%zu) = %zd off = %zd\n", *fd,
+	       out->buf, out->size, done);
 	fflush(stdout);
 #endif
 
@@ -101,7 +111,8 @@ int my_write_loop(void *arg, LZ4MT_Buffer * out)
 }
 
 static void
-do_compress(int threads, int level, int bufsize, int fdin, int fdout)
+do_compress(int threads, int level, int bufsize, int fdin, int fdout,
+	    int no_print_suff)
 {
 	static int first = 1;
 	LZ4MT_RdWr_t rdwr;
@@ -124,7 +135,7 @@ do_compress(int threads, int level, int bufsize, int fdin, int fdout)
 		perror_exit(LZ4MT_getErrorString(ret));
 
 	/* 4) get statistic */
-	if (first) {
+	if (first && !no_print_suff) {
 		printf("%d;%d;%zu;%zu;%zu",
 		       level, threads,
 		       LZ4MT_GetInsizeCCtx(ctx), LZ4MT_GetOutsizeCCtx(ctx),
@@ -136,7 +147,8 @@ do_compress(int threads, int level, int bufsize, int fdin, int fdout)
 	LZ4MT_freeCCtx(ctx);
 }
 
-static void do_decompress(int threads, int bufsize, int fdin, int fdout)
+static void do_decompress(int threads, int bufsize, int fdin, int fdout,
+			  int no_print_suff)
 {
 	static int first = 1;
 	LZ4MT_RdWr_t rdwr;
@@ -159,7 +171,7 @@ static void do_decompress(int threads, int bufsize, int fdin, int fdout)
 		perror_exit(LZ4MT_getErrorString(ret));
 
 	/* 4) get statistic */
-	if (first) {
+	if (first && !no_print_suff) {
 		printf("%d;%d;%zu;%zu;%zu",
 		       0, threads,
 		       LZ4MT_GetInsizeDCtx(ctx), LZ4MT_GetOutsizeDCtx(ctx),
@@ -183,13 +195,15 @@ do { \
 int main(int argc, char **argv)
 {
 	/* default options: */
-	int opt, opt_threads = sysconf(_SC_NPROCESSORS_ONLN), opt_level = 1;
-	int opt_mode = MODE_COMPRESS, fdin, fdout;
+	int opt, opt_threads = sysconf(_SC_NPROCESSORS_ONLN), opt_level = 3;
+	int opt_mode = MODE_COMPRESS, fdin = -1, fdout = -1;
 	int opt_iterations = 1, opt_bufsize = 0;
 	struct rusage ru;
 	struct timeval tms, tme, tm;
+	char *ofilename = NULL;
+	int no_print_suff = 0;
 
-	while ((opt = getopt(argc, argv, "vhHl:t:i:dcb:B:")) != -1) {
+	while ((opt = getopt(argc, argv, "vhHl:t:i:dcb:o:")) != -1) {
 		switch (opt) {
 		case 'v':	/* version */
 			version();
@@ -215,14 +229,13 @@ int main(int argc, char **argv)
 		case 'b':	/* input buffer in MB */
 			opt_bufsize = atoi(optarg);
 			break;
+		case 'o':	/* output filename */
+			ofilename = optarg;
+			break;
 		default:
 			usage();
 		}
 	}
-
-	/* prog [options] infile outfile */
-	if (argc != optind + 2)
-		usage();
 
 	/**
 	 * check parameters
@@ -234,7 +247,7 @@ int main(int argc, char **argv)
 	else if (opt_level > LZ4MT_LEVEL_MAX)
 		opt_level = LZ4MT_LEVEL_MAX;
 
-	/* opt_threads = 1..LZ4MT_THREADMAX */
+	/* opt_threads = 1..LZ4MT_THREAD_MAX */
 	if (opt_threads < 1)
 		opt_threads = 1;
 	else if (opt_threads > LZ4MT_THREAD_MAX)
@@ -250,12 +263,29 @@ int main(int argc, char **argv)
 	if (opt_bufsize > 0)
 		opt_bufsize *= 1024;
 
-	/* file names */
-	fdin = open_read(argv[optind]);
+	/* File IO */
+	if (argc < optind + 1)
+		if (IS_CONSOLE(stdin)) {
+			printf("Please specify a filename to compress, or redirect via stdin.\n");
+			exit(0);
+		} else
+			fdin = fileno(stdin);
+	else
+		fdin = open_read(argv[optind]);
 	if (fdin == -1)
 		perror_exit("Opening infile failed");
 
-	fdout = open_rw(argv[optind + 1]);
+	if (ofilename == NULL) {
+		if (IS_CONSOLE(stdout)) {
+			printf("Please specify a filename for output, via `-o` or stdout.\n");
+			exit(0);
+		} else {
+			fdout = fileno(stdout);
+			no_print_suff = 1;
+		}
+	} else
+		fdout = open_rw(ofilename);
+
 	if (fdout == -1)
 		perror_exit("Opening outfile failed");
 
@@ -265,9 +295,10 @@ int main(int argc, char **argv)
 	for (;;) {
 		if (opt_mode == MODE_COMPRESS) {
 			do_compress(opt_threads, opt_level, opt_bufsize, fdin,
-				    fdout);
+				    fdout, no_print_suff);
 		} else {
-			do_decompress(opt_threads, opt_bufsize, fdin, fdout);
+			do_decompress(opt_threads, opt_bufsize, fdin, fdout,
+				      no_print_suff);
 		}
 
 		opt_iterations--;
@@ -279,13 +310,16 @@ int main(int argc, char **argv)
 	}
 
 	/* end of timing */
-	gettimeofday(&tme, NULL);
-	timersub(&tme, &tms, &tm);
-	getrusage(RUSAGE_SELF, &ru);
-	printf(";%ld.%ld;%ld.%ld;%ld.%ld;%ld\n",
-	       tm.tv_sec, tm.tv_usec / 1000,
-	       ru.ru_utime.tv_sec, ru.ru_utime.tv_usec / 1000,
-	       ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 1000, ru.ru_maxrss);
+	if (!no_print_suff) {
+		gettimeofday(&tme, NULL);
+		timersub(&tme, &tms, &tm);
+		getrusage(RUSAGE_SELF, &ru);
+		printf(";%ld.%ld;%ld.%ld;%ld.%ld;%ld\n",
+		       tm.tv_sec, tm.tv_usec / 1000,
+		       ru.ru_utime.tv_sec, ru.ru_utime.tv_usec / 1000,
+		       ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 1000,
+		       ru.ru_maxrss);
+	}
 
 	/* exit should flush stdout */
 	exit(0);
