@@ -47,6 +47,7 @@ typedef enum {
   LZ5MT_error_frame_decompress,
   LZ5MT_error_compressionParameter_unsupported,
   LZ5MT_error_compression_library,
+  LZ5MT_error_canceled,
   LZ5MT_error_maxCode
 } LZ5MT_ErrorCode;
 
@@ -101,7 +102,6 @@ typedef struct LZ5MT_CCtx_s LZ5MT_CCtx;
  */
 LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize);
 
-
 /**
  * 2) threaded compression
  * - return -1 on error
@@ -133,7 +133,7 @@ typedef struct LZ5MT_DCtx_s LZ5MT_DCtx;
  *
  * @level   - 1 .. 22
  * @threads - 1 .. LZ5MT_THREAD_MAX
- * @srclen  - the max size of src for LZ5MT_compressCCtx()
+ * @srclen  - the max size of src for LZ5MT_CompressCCtx()
  * @dstlen  - the min size of dst
  */
 LZ5MT_DCtx *LZ5MT_createDCtx(int threads, int inputsize);

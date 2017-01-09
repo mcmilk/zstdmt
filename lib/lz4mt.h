@@ -47,6 +47,7 @@ typedef enum {
   LZ4MT_error_frame_decompress,
   LZ4MT_error_compressionParameter_unsupported,
   LZ4MT_error_compression_library,
+  LZ4MT_error_canceled,
   LZ4MT_error_maxCode
 } LZ4MT_ErrorCode;
 
