@@ -183,7 +183,7 @@ do { \
 int main(int argc, char **argv)
 {
 	/* default options: */
-	int opt, opt_threads = 2, opt_level = 1;
+	int opt, opt_threads = sysconf(_SC_NPROCESSORS_ONLN), opt_level = 1;
 	int opt_mode = MODE_COMPRESS, fdin, fdout;
 	int opt_iterations = 1, opt_bufsize = 0;
 	struct rusage ru;
