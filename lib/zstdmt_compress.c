@@ -154,9 +154,27 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize)
 
 	return ctx;
 
-err_ctx:
+ err_ctx:
 	free(ctx);
 	return 0;
+}
+
+/**
+ * mt_error - return mt lib specific error code
+ */
+static size_t mt_error(int rv)
+{
+	switch (rv) {
+	case -1:
+		return ZSTDMT_ERROR(read_fail);
+	case -2:
+		return ZSTDMT_ERROR(canceled);
+	case -3:
+		return ZSTDMT_ERROR(memory_allocation);
+	}
+
+	/* XXX, some catch all other errors */
+	return ZSTDMT_ERROR(read_fail);
 }
 
 /**
@@ -170,23 +188,6 @@ static size_t pt_write(ZSTDMT_CCtx * ctx, struct writelist *wl)
 	/* move the entry to the done list */
 	list_move(&wl->node, &ctx->writelist_done);
 
-	/* write zero byte frame (9 bytes) for type identification */
-	if (unlikely(wl->frame == 0)) {
-		unsigned char frame0[] =
-		    { 0x28, 0xB5, 0x2F, 0xFD, 0x00, 0x48, 0x01, 0x00, 0x00 };
-		ZSTDMT_Buffer b;
-		b.buf = frame0;
-		b.size = 9;
-		rv = ctx->fn_write(ctx->arg_write, &b);
-		if (rv == -1)
-			return ZSTDMT_ERROR(write_fail);
-		if (rv == -2)
-			return ZSTDMT_ERROR(canceled);
-		if (b.size != 9)
-			return ZSTDMT_ERROR(write_fail);
-		ctx->outsize += 9;
-	}
-
 	/* the entry isn't the currently needed, return...  */
 	if (wl->frame != ctx->curframe)
 		return 0;
@@ -197,10 +198,8 @@ static size_t pt_write(ZSTDMT_CCtx * ctx, struct writelist *wl)
 		wl = list_entry(entry, struct writelist, node);
 		if (wl->frame == ctx->curframe) {
 			rv = ctx->fn_write(ctx->arg_write, &wl->out);
-			if (rv == -1)
-				return ZSTDMT_ERROR(write_fail);
-			if (rv == -2)
-				return ZSTDMT_ERROR(canceled);
+			if (rv != 0)
+				return mt_error(rv);
 			ctx->outsize += wl->out.size;
 			ctx->curframe++;
 			list_move(entry, &ctx->writelist_free);
@@ -264,9 +263,9 @@ static void *pt_compress(void *arg)
 		pthread_mutex_lock(&ctx->read_mutex);
 		in.size = ctx->inputsize;
 		rv = ctx->fn_read(ctx->arg_read, &in);
-		if (rv == -1) {
+		if (rv != 0) {
 			pthread_mutex_unlock(&ctx->read_mutex);
-			result = ZSTDMT_ERROR(read_fail);
+			result = mt_error(rv);
 			goto error;
 		}
 
@@ -287,13 +286,15 @@ static void *pt_compress(void *arg)
 
 		/* compress whole frame */
 		{
-		unsigned char *outbuf = out->buf;
-		result = ZSTD_compress(outbuf + 12, out->size - 12, in.buf, in.size, ctx->level);
-		if (ZSTD_isError(result)) {
-			zstdmt_errcode = result;
-			result = ZSTDMT_ERROR(compression_library);
-			goto error;
-		}
+			unsigned char *outbuf = out->buf;
+			result =
+			    ZSTD_compress(outbuf + 12, out->size - 12, in.buf,
+					  in.size, ctx->level);
+			if (ZSTD_isError(result)) {
+				zstdmt_errcode = result;
+				result = ZSTDMT_ERROR(compression_library);
+				goto error;
+			}
 		}
 
 		/* write skippable frame */
@@ -327,7 +328,7 @@ static void *pt_compress(void *arg)
 size_t ZSTDMT_compressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 {
 	int t;
-	void *rv = 0;
+	void *retval_of_thread = 0;
 
 	if (!ctx)
 		return ZSTDMT_ERROR(init_missing);
@@ -357,7 +358,7 @@ size_t ZSTDMT_compressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 		void *p;
 		pthread_join(w->pthread, &p);
 		if (p)
-			rv = p;
+			retval_of_thread = p;
 	}
 
 	/* clean up the free list */
@@ -372,7 +373,7 @@ size_t ZSTDMT_compressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 	}
 
 	/* on error, these two lists may have some entries */
-	if (rv) {
+	if (retval_of_thread) {
 		struct writelist *wl;
 		struct list_head *entry;
 
@@ -393,7 +394,7 @@ size_t ZSTDMT_compressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 		}
 	}
 
-	return (size_t) rv;
+	return (size_t)retval_of_thread;
 }
 
 /* returns current uncompressed data size */
