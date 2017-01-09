@@ -9,6 +9,7 @@ CFLAGS	+= -I ../lib
 LDFLAGS	= -lpthread
 # -static
 
+CFLAGS += -std=gnu90
 #CFLAGS += -DDEBUGME
 #CFLAGS += -g
 CFLAGS += -O3
