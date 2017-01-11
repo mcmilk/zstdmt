@@ -29,15 +29,15 @@ all:	$(PRGS)
 again:	clean $(PRGS)
 
 lz4mt:
-	$(CC) $(CFLAGS) $(LDFLAGS) -llz4 -o $@ lz4mt.c $(LIBLZ4) $(COMMON)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ lz4mt.c $(LIBLZ4) $(COMMON) -llz4 
 	$(STRIP) $@
 
 lz5mt:
-	$(CC) $(CFLAGS) $(LDFLAGS) -llz5 -o $@ lz5mt.c $(LIBLZ5) $(COMMON)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ lz5mt.c $(LIBLZ5) $(COMMON) -llz5 
 	$(STRIP) $@
 
 zstdmt:
-	$(CC) $(CFLAGS) $(LDFLAGS) -lzstd -o $@ zstdmt.c $(LIBZSTD) $(COMMON)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ zstdmt.c $(LIBZSTD) $(COMMON) -lzstd 
 	$(STRIP) $@
 
 clean:
