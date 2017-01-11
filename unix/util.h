@@ -11,6 +11,9 @@
  * - zstdmt source repository: https://github.com/mcmilk/zstdmt
  */
 
+#ifndef UTIL_H
+#define UTIL_H
+
 #define _FILE_OFFSET_BITS 64
 
 #include <unistd.h>
@@ -35,4 +38,6 @@ int open_rw(const char *filename);
 #else
 #  define IS_CONSOLE(stdStream) 0
 #endif
+
+#endif		/* UTIL_H */
 
