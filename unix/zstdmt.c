@@ -43,32 +43,29 @@ static void version(void)
 
 static void usage(void)
 {
-	printf("Usage: zstdmt [options]... [FILE]\n\n");
+	printf("Usage: zstdmt [options] > FILE\n");
+	printf("or     cat INPUT | zstdmt [options] > FILE\n");
+	printf("or     cat INPUT | zstdmt [options] -o FILE\n\n");
 
 	printf("Options:\n");
-	printf(" -o filename   write result to `filename`\n");
-	printf(" -l N          set level of compression (default: 3)\n");
-	printf
-	    (" -t N          set number of (de)compression threads (default: 2)\n");
-	printf
-	    (" -i N          set number of iterations for testing (default: 1)\n");
-	printf(" -b N          set input chunksize to N KiB (default: auto)\n");
-	printf(" -c            compress (default mode)\n");
-	printf(" -d            use decompress mode\n");
-	printf(" -H            print headline for the testing values\n");
-	printf(" -h            show usage and exit\n");
-	printf(" -v            show version and exit\n\n");
-
-	printf("With no FILE, read standard input.\n");
-	printf("With no `-o filename` option, write to standard output\n");
+	printf(" -o FILE write result to a file named `FILE`\n");
+	printf(" -l N    set level of compression (default: 3)\n");
+	printf(" -t N    set number of (de)compression threads (def: #cores)\n");
+	printf(" -i N    set number of iterations for testing (default: 1)\n");
+	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
+	printf(" -c      compress (default mode)\n");
+	printf(" -d      use decompress mode\n");
+	printf(" -T      print timings and memory usage to stderr\n");
+	printf(" -H      print headline for the timing values\n");
+	printf(" -h      show usage\n");
+	printf(" -v      show version\n\n");
 
 	exit(0);
 }
 
 static void headline(void)
 {
-	printf
-	    ("Type;Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
+	fprintf(stderr, "Type;Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
 	exit(0);
 }
 
@@ -112,7 +109,7 @@ int my_write_loop(void *arg, ZSTDMT_Buffer * out)
 
 static void
 do_compress(int threads, int level, int bufsize, int fdin, int fdout,
-	    int no_print_suff)
+	    int opt_timings)
 {
 	static int first = 1;
 	ZSTDMT_RdWr_t rdwr;
@@ -135,8 +132,8 @@ do_compress(int threads, int level, int bufsize, int fdin, int fdout,
 		perror_exit(ZSTDMT_getErrorString(ret));
 
 	/* 4) get statistic */
-	if (first && !no_print_suff) {
-		printf("%d;%d;%zu;%zu;%zu",
+	if (first && opt_timings) {
+		fprintf(stderr, "%d;%d;%zu;%zu;%zu",
 		       level, threads,
 		       ZSTDMT_GetInsizeCCtx(ctx), ZSTDMT_GetOutsizeCCtx(ctx),
 		       ZSTDMT_GetFramesCCtx(ctx));
@@ -148,7 +145,7 @@ do_compress(int threads, int level, int bufsize, int fdin, int fdout,
 }
 
 static void do_decompress(int threads, int bufsize, int fdin, int fdout,
-			  int no_print_suff)
+			  int opt_timings)
 {
 	static int first = 1;
 	ZSTDMT_RdWr_t rdwr;
@@ -171,8 +168,8 @@ static void do_decompress(int threads, int bufsize, int fdin, int fdout,
 		perror_exit(ZSTDMT_getErrorString(ret));
 
 	/* 4) get statistic */
-	if (first && !no_print_suff) {
-		printf("%d;%d;%zu;%zu;%zu",
+	if (first && opt_timings) {
+		fprintf(stderr, "%d;%d;%zu;%zu;%zu",
 		       0, threads,
 		       ZSTDMT_GetInsizeDCtx(ctx), ZSTDMT_GetOutsizeDCtx(ctx),
 		       ZSTDMT_GetFramesDCtx(ctx));
@@ -197,13 +194,12 @@ int main(int argc, char **argv)
 	/* default options: */
 	int opt, opt_threads = sysconf(_SC_NPROCESSORS_ONLN), opt_level = 3;
 	int opt_mode = MODE_COMPRESS, fdin = -1, fdout = -1;
-	int opt_iterations = 1, opt_bufsize = 0;
+	int opt_iterations = 1, opt_bufsize = 0, opt_timings = 0;
+	char *ofilename = NULL;
 	struct rusage ru;
 	struct timeval tms, tme, tm;
-	char *ofilename = NULL;
-	int no_print_suff = 0;
 
-	while ((opt = getopt(argc, argv, "vhHl:t:i:dcb:o:")) != -1) {
+	while ((opt = getopt(argc, argv, "vhHl:t:i:dcb:o:T")) != -1) {
 		switch (opt) {
 		case 'v':	/* version */
 			version();
@@ -231,6 +227,9 @@ int main(int argc, char **argv)
 			break;
 		case 'o':	/* output filename */
 			ofilename = optarg;
+			break;
+		case 'T':	/* print timings */
+			opt_timings = 1;
 			break;
 		default:
 			usage();
@@ -266,8 +265,7 @@ int main(int argc, char **argv)
 	/* File IO */
 	if (argc < optind + 1)
 		if (IS_CONSOLE(stdin)) {
-			printf("Please specify a filename to compress, or redirect via stdin.\n");
-			exit(0);
+			usage();
 		} else
 			fdin = fileno(stdin);
 	else
@@ -277,11 +275,10 @@ int main(int argc, char **argv)
 
 	if (ofilename == NULL) {
 		if (IS_CONSOLE(stdout)) {
-			printf("Please specify a filename for output, via `-o` or stdout.\n");
-			exit(0);
+			usage();
 		} else {
 			fdout = fileno(stdout);
-			no_print_suff = 1;
+			opt_timings = 1;
 		}
 	} else
 		fdout = open_rw(ofilename);
@@ -290,15 +287,16 @@ int main(int argc, char **argv)
 		perror_exit("Opening outfile failed");
 
 	/* begin timing */
-	gettimeofday(&tms, NULL);
+	if (opt_timings)
+		gettimeofday(&tms, NULL);
 
 	for (;;) {
 		if (opt_mode == MODE_COMPRESS) {
 			do_compress(opt_threads, opt_level, opt_bufsize, fdin,
-				    fdout, no_print_suff);
+				    fdout, opt_timings);
 		} else {
 			do_decompress(opt_threads, opt_bufsize, fdin, fdout,
-				      no_print_suff);
+				      opt_timings);
 		}
 
 		opt_iterations--;
@@ -309,12 +307,12 @@ int main(int argc, char **argv)
 		lseek(fdout, 0, SEEK_SET);
 	}
 
-	/* end of timing */
-	if (!no_print_suff) {
+	/* show timings */
+	if (opt_timings) {
 		gettimeofday(&tme, NULL);
 		timersub(&tme, &tms, &tm);
 		getrusage(RUSAGE_SELF, &ru);
-		printf(";%ld.%ld;%ld.%ld;%ld.%ld;%ld\n",
+		fprintf(stderr, ";%ld.%ld;%ld.%ld;%ld.%ld;%ld\n",
 		       tm.tv_sec, tm.tv_usec / 1000,
 		       ru.ru_utime.tv_sec, ru.ru_utime.tv_usec / 1000,
 		       ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 1000,

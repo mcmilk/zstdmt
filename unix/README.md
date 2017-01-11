@@ -1,54 +1,26 @@
 
-## Usage of the Testutils @ UNIX / Linux
+## Usage of zstdmt
 
-### [LZ4]
+- lz4mt and lz5mt have the same usage
+
 ```
-Usage: lz4mt [options] infile outfile
+Usage: zstdmt [options] > FILE
+or     cat INPUT | zstdmt [options] > FILE
+or     cat INPUT | zstdmt [options] -o FILE
 
-Otions:
- -l N    set level (1..16) of compression (default: 1)
- -t N    set number of (de)compression threads (default: 2)
- -i N    set number of iterations for testing (default: 1)
- -b N    set input chunksize to N MiB (default: auto)
- -c      compress (default mode)
- -d      use decompress mode
- -H      print headline for the testing values
- -h      show usage
- -v      show version
-```
-
-### [LZ5]
-```
-Usage: lz5mt [options] infile outfile
-
-Otions:
- -l N    set level (1..16) of compression (default: 1)
- -t N    set number of (de)compression threads (default: 2)
- -i N    set number of iterations for testing (default: 1)
- -b N    set input chunksize to N MiB (default: auto)
- -c      compress (default mode)
- -d      use decompress mode
- -H      print headline for the testing values
- -h      show usage
- -v      show version
-```
-
-### [ZStandard]
-```
-Usage: zstdmt [options] infile outfile
-
-Otions:
+Options:
+ -o FILE write result to a file named `FILE`
  -l N    set level of compression (default: 3)
- -t N    set number of (de)compression threads (default: 2)
+ -t N    set number of (de)compression threads (def: #cores)
  -i N    set number of iterations for testing (default: 1)
- -b N    set input chunksize to N MiB (default: auto)
+ -b N    set input chunksize to N KiB (default: auto)
  -c      compress (default mode)
  -d      use decompress mode
- -H      print headline for the testing values
+ -T      print timings and memory usage to stderr
+ -H      print headline for the timing values
  -h      show usage
  -v      show version
 ```
-
 
 ## Benchmarks
 
