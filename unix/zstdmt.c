@@ -52,7 +52,7 @@ static void usage(void)
 	printf(" -l N    set level of compression (default: 3)\n");
 	printf(" -T N    set number of (de)compression threads (def: #cores)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
-	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
+	printf(" -b N    set input chunksize to N MiB (default: auto)\n");
 	printf(" -c      compress (default mode)\n");
 	printf(" -d      use decompress mode\n");
 	printf(" -t      print timings and memory usage to stderr\n");
@@ -258,9 +258,9 @@ int main(int argc, char **argv)
 	else if (opt_iterations > MAX_ITERATIONS)
 		opt_iterations = MAX_ITERATIONS;
 
-	/* opt_bufsize is in KiB */
+	/* opt_bufsize is in MiB */
 	if (opt_bufsize > 0)
-		opt_bufsize *= 1024;
+		opt_bufsize *= 1024 * 1024;
 
 	/* File IO */
 	if (argc < optind + 1)
