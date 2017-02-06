@@ -355,7 +355,7 @@ size_t ZSTDMT_compressCCtx(ZSTDMT_CCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 	/* wait for all workers */
 	for (t = 0; t < ctx->threads; t++) {
 		cwork_t *w = &ctx->cwork[t];
-		void *p;
+		void *p = 0;
 		pthread_join(w->pthread, &p);
 		if (p)
 			retval_of_thread = p;
