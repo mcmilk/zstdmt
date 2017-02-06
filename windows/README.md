@@ -1,7 +1,7 @@
 
 ## Usage of the Testutils @ Windows
 
-### [LZ4]
+### [LZ4](https://github.com/lz4/lz4)
 ```
 Usage: lz4mt [options] infile outfile
 
@@ -16,7 +16,7 @@ Otions:
  -v      show version
 ```
 
-### [LZ5]
+### [LZ5](https://github.com/inikep/lz5)
 ```
 Usage: lz5mt [options] infile outfile
 
@@ -31,7 +31,7 @@ Otions:
  -v      show version
 ```
 
-### [ZStandard]
+### [ZStandard](https://github.com/facebook/zstd)
 ```
 Usage: zstdmt [options] infile outfile
 
