@@ -40,7 +40,7 @@ static void usage(void)
 	printf("Usage: zstdmt [options] infile outfile\n\n");
 	printf("Otions:\n");
 	printf(" -l N    set level of compression (default: 3)\n");
-	printf(" -t N    set number of (de)compression threads (default: 2)\n");
+	printf(" -T N    set number of (de)compression threads (default: 2)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
 	printf(" -c      compress (default mode)\n");
@@ -144,7 +144,7 @@ int main(int argc, char **argv)
 	int opt_iterations = 1, opt_bufsize = 0;
 	FILE *fin, *fout;
 
-	while ((opt = getopt(argc, argv, "vhHl:t:i:dcb:")) != -1) {
+	while ((opt = getopt(argc, argv, "vhHl:T:i:dcb:")) != -1) {
 		switch (opt) {
 		case 'v':	/* version */
 			version();
@@ -153,7 +153,7 @@ int main(int argc, char **argv)
 		case 'l':	/* level */
 			opt_level = atoi(optarg);
 			break;
-		case 't':	/* threads */
+		case 'T':	/* threads */
 			opt_threads = atoi(optarg);
 			break;
 		case 'i':	/* iterations */

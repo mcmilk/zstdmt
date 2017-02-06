@@ -18,6 +18,8 @@
 
 ## Benchmarks
 
+- version 0.1 was used for them
+
 ### [LZ4]
 Level|Threads|InSize|OutSize|Frames|Real|User|Sys|MaxMem
 -----|-------|------|-------|------|----|----|---|------

@@ -1,6 +1,6 @@
 
 /**
- * Copyright (c) 2016 Tino Reichardt
+ * Copyright (c) 2016 - 2017 Tino Reichardt
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
@@ -50,12 +50,12 @@ static void usage(void)
 	printf("Options:\n");
 	printf(" -o FILE write result to a file named `FILE`\n");
 	printf(" -l N    set level of compression (default: 3)\n");
-	printf(" -t N    set number of (de)compression threads (def: #cores)\n");
+	printf(" -T N    set number of (de)compression threads (def: #cores)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
 	printf(" -c      compress (default mode)\n");
 	printf(" -d      use decompress mode\n");
-	printf(" -T      print timings and memory usage to stderr\n");
+	printf(" -t      print timings and memory usage to stderr\n");
 	printf(" -H      print headline for the timing values\n");
 	printf(" -h      show usage\n");
 	printf(" -v      show version\n\n");
@@ -199,7 +199,7 @@ int main(int argc, char **argv)
 	struct rusage ru;
 	struct timeval tms, tme, tm;
 
-	while ((opt = getopt(argc, argv, "vhHl:t:i:dcb:o:T")) != -1) {
+	while ((opt = getopt(argc, argv, "vhHl:T:i:dcb:o:t")) != -1) {
 		switch (opt) {
 		case 'v':	/* version */
 			version();
@@ -210,7 +210,7 @@ int main(int argc, char **argv)
 		case 'l':	/* level */
 			opt_level = atoi(optarg);
 			break;
-		case 't':	/* threads */
+		case 'T':	/* threads */
 			opt_threads = atoi(optarg);
 			break;
 		case 'i':	/* iterations */
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
 		case 'o':	/* output filename */
 			ofilename = optarg;
 			break;
-		case 'T':	/* print timings */
+		case 't':	/* print timings */
 			opt_timings = 1;
 			break;
 		default:

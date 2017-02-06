@@ -39,7 +39,7 @@
 extern "C" {
 #endif
 
-#include "memmt.h"
+#include "mem.h"
 
 struct list_head {
 	struct list_head *prev;
