@@ -1,6 +1,6 @@
 
-CROSS	= i686-w64-mingw32-
-#CROSS	= x86_64-w64-mingw32-
+#CROSS	= i686-w64-mingw32-
+CROSS	= x86_64-w64-mingw32-
 CC	= $(CROSS)gcc
 RANLIB	= $(CROSS)ranlib
 
@@ -54,7 +54,7 @@ CFLAGS	+= -I. -I$(ZSTDMTDIR)
 loadsource:
 	test -d lz4  || git clone https://github.com/Cyan4973/lz4  -b v1.7.5 --depth=1 lz4
 	test -d lz5  || git clone https://github.com/inikep/lz5    -b v1.5   --depth=1 lz5
-	test -d zstd || git clone https://github.com/facebook/zstd -b v1.1.3 --depth=1 zstd
+	test -d zstd || git clone https://github.com/facebook/zstd -b v1.1.4 --depth=1 zstd
 
 lz4mt.exe:
 	$(CC) $(CF_LZ4) $(CDFLAGS) $(LDFLAGS) -o $@ $(LIBLZ4)
