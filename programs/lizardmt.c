@@ -188,7 +188,7 @@ int main(int argc, char **argv)
 	char *ofilename = NULL;
 	struct rusage ru;
 	struct timeval tms, tme, tm;
-	FILE *fin, *fout;
+	FILE *fin = NULL, *fout = NULL;
 
 	while ((opt = getopt(argc, argv, "vhM:HT:i:dcb:o:t0123456789")) != -1) {
 		switch (opt) {

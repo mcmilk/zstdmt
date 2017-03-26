@@ -40,7 +40,7 @@ extern int getcpucount(void);
 #include <time.h>
 #include <io.h> /* _isatty */
 
-#define IS_CONSOLE(stdStream) _isatty(_fileno(stdStream))
+#define IS_CONSOLE(stdStream) (_isatty(_fileno(stdStream)))
 
 # ifndef _TIMEVAL_DEFINED
 # define _TIMEVAL_DEFINED
@@ -82,7 +82,7 @@ extern int getrusage(int who, struct rusage *uv_rusage);
 
 #include <sys/resource.h> /* getrusage() */
 #include <sys/time.h>
-#define IS_CONSOLE(stdStream) isatty(fileno(stdStream))
+#define IS_CONSOLE(stdStream) (isatty(fileno(stdStream)))
 
 #endif /* POSIX */
 

@@ -9,6 +9,7 @@
 #WIN_LDFLAGS	= -lwinmm -lpsapi
 #EXTENSION	= -w64.exe
 
+#CC	= $(CROSS)clang
 CC	= $(CROSS)gcc
 RANLIB	= $(CROSS)ranlib
 STRIP	= $(CROSS)strip
