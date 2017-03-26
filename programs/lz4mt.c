@@ -8,23 +8,16 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  *
  * You can contact the author at:
- * - lz5mt source repository: https://github.com/mcmilk/lz5mt
+ * - lz4mt source repository: https://github.com/mcmilk/lz4mt
  */
 
-/* getrusage */
-#include <sys/resource.h>
-#include <sys/time.h>
-
-#include <unistd.h>
-#include <stdlib.h>
-#include <getopt.h>
 #include <stdio.h>
 
-#include "lz5mt.h"
-#include "util.h"
+#include "platform.h"
+#include "lz4mt.h"
 
 /**
- * program for testing threaded stuff on lz5
+ * program for testing threaded stuff on lz4
  */
 
 static void perror_exit(const char *msg)
@@ -36,21 +29,22 @@ static void perror_exit(const char *msg)
 
 static void version(void)
 {
-	printf("lz5mt version " VERSION "\n");
-
+	printf("lz4mt version " VERSION "\n");
 	exit(0);
 }
 
 static void usage(void)
 {
-	printf("Usage: lz5mt [options] > FILE\n");
-	printf("or     cat INPUT | lz5mt [options] > FILE\n");
-	printf("or     cat INPUT | lz5mt [options] -o FILE\n\n");
+	printf("Usage: lz4mt [options] INPUT > FILE\n");
+	printf("or     lz4mt [options] -o FILE INPUT\n\n");
+	printf("or     cat INPUT | lz4mt [options] -o FILE\n\n");
+	printf("or     cat INPUT | lz4mt [options] > FILE\n");
 
 	printf("Options:\n");
 	printf(" -o FILE write result to a file named `FILE`\n");
-	printf(" -#      set compression level to # (1-16, default:1)\n");
-	printf(" -T N    set number of (de)compression threads (def: #cores)\n");
+	printf(" -#      set compression level to # (1-12, default:1)\n");
+	printf
+	    (" -T N    set number of (de)compression threads (def: #cores)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
 	printf(" -c      compress (default mode)\n");
@@ -65,7 +59,8 @@ static void usage(void)
 
 static void headline(void)
 {
-	fprintf(stderr, "Type;Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
+	fprintf(stderr,
+		"Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
 	exit(0);
 }
 
@@ -75,15 +70,13 @@ static void headline(void)
 /* for the -i option */
 #define MAX_ITERATIONS   1000
 
-int my_read_loop(void *arg, LZ5MT_Buffer * in)
+int my_read_loop(void *arg, LZ4MT_Buffer * in)
 {
-	int *fd = (int *)arg;
-	ssize_t done = read_loop(*fd, in->buf, in->size);
+	FILE *fd = (FILE *) arg;
+	ssize_t done = fread(in->buf, 1, in->size, fd);
 
 #if 0
-	// ssize_t x = llseek(*fd, 0, SEEK_CUR);
-	printf("read_loop(fd=%d, buffer=%p,count=%zu) = %zd off = %zd\n", *fd,
-	       in->buf, in->size, done);
+	printf("fread(), todo=%u done=%u\n", in->size, done);
 	fflush(stdout);
 #endif
 
@@ -91,15 +84,13 @@ int my_read_loop(void *arg, LZ5MT_Buffer * in)
 	return 0;
 }
 
-int my_write_loop(void *arg, LZ5MT_Buffer * out)
+int my_write_loop(void *arg, LZ4MT_Buffer * out)
 {
-	int *fd = (int *)arg;
-	ssize_t done = write_loop(*fd, out->buf, out->size);
+	FILE *fd = (FILE *) arg;
+	ssize_t done = fwrite(out->buf, 1, out->size, fd);
 
 #if 0
-	//ssize_t x = llseek(*fd, 0, SEEK_CUR);
-	printf("write_loop(fd=%d, buffer=%p,count=%zu) = %zd off = %zd\n", *fd,
-	       out->buf, out->size, done);
+	printf("fwrite(), todo=%u done=%u\n", out->size, done);
 	fflush(stdout);
 #endif
 
@@ -108,96 +99,91 @@ int my_write_loop(void *arg, LZ5MT_Buffer * out)
 }
 
 static void
-do_compress(int threads, int level, int bufsize, int fdin, int fdout,
+do_compress(int threads, int level, int bufsize, FILE * fin, FILE * fout,
 	    int opt_timings)
 {
 	static int first = 1;
-	LZ5MT_RdWr_t rdwr;
+	LZ4MT_RdWr_t rdwr;
 	size_t ret;
 
 	/* 1) setup read/write functions */
 	rdwr.fn_read = my_read_loop;
 	rdwr.fn_write = my_write_loop;
-	rdwr.arg_read = (void *)&fdin;
-	rdwr.arg_write = (void *)&fdout;
+	rdwr.arg_read = (void *)fin;
+	rdwr.arg_write = (void *)fout;
 
 	/* 2) create compression context */
-	LZ5MT_CCtx *ctx = LZ5MT_createCCtx(threads, level, bufsize);
+	LZ4MT_CCtx *ctx = LZ4MT_createCCtx(threads, level, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = LZ5MT_compressCCtx(ctx, &rdwr);
-	if (LZ5MT_isError(ret))
-		perror_exit(LZ5MT_getErrorString(ret));
+	ret = LZ4MT_compressCCtx(ctx, &rdwr);
+	if (LZ4MT_isError(ret))
+		perror_exit(LZ4MT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first && opt_timings) {
-		fprintf(stderr, "%d;%d;%zu;%zu;%zu",
-		       level, threads,
-		       LZ5MT_GetInsizeCCtx(ctx), LZ5MT_GetOutsizeCCtx(ctx),
-		       LZ5MT_GetFramesCCtx(ctx));
+		fprintf(stderr, "%d;%d;%lu;%lu;%lu",
+			level, threads,
+			(unsigned long)LZ4MT_GetInsizeCCtx(ctx),
+			(unsigned long)LZ4MT_GetOutsizeCCtx(ctx),
+			(unsigned long)LZ4MT_GetFramesCCtx(ctx));
 		first = 0;
 	}
 
 	/* 5) free resources */
-	LZ5MT_freeCCtx(ctx);
+	LZ4MT_freeCCtx(ctx);
 }
 
-static void do_decompress(int threads, int bufsize, int fdin, int fdout,
-			  int opt_timings)
+static void do_decompress(int threads, int bufsize, FILE * fin, FILE *
+			  fout, int opt_timings)
 {
 	static int first = 1;
-	LZ5MT_RdWr_t rdwr;
+	LZ4MT_RdWr_t rdwr;
 	size_t ret;
 
 	/* 1) setup read/write functions */
 	rdwr.fn_read = my_read_loop;
 	rdwr.fn_write = my_write_loop;
-	rdwr.arg_read = (void *)&fdin;
-	rdwr.arg_write = (void *)&fdout;
+	rdwr.arg_read = (void *)fin;
+	rdwr.arg_write = (void *)fout;
 
 	/* 2) create compression context */
-	LZ5MT_DCtx *ctx = LZ5MT_createDCtx(threads, bufsize);
+	LZ4MT_DCtx *ctx = LZ4MT_createDCtx(threads, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = LZ5MT_decompressDCtx(ctx, &rdwr);
-	if (LZ5MT_isError(ret))
-		perror_exit(LZ5MT_getErrorString(ret));
+	ret = LZ4MT_decompressDCtx(ctx, &rdwr);
+	if (LZ4MT_isError(ret))
+		perror_exit(LZ4MT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first && opt_timings) {
-		fprintf(stderr, "%d;%d;%zu;%zu;%zu",
-		       0, threads,
-		       LZ5MT_GetInsizeDCtx(ctx), LZ5MT_GetOutsizeDCtx(ctx),
-		       LZ5MT_GetFramesDCtx(ctx));
+		fprintf(stderr, "%d;%d;%lu;%lu;%lu",
+			0, threads,
+			(unsigned long)LZ4MT_GetInsizeDCtx(ctx),
+			(unsigned long)LZ4MT_GetOutsizeDCtx(ctx),
+			(unsigned long)LZ4MT_GetFramesDCtx(ctx));
 		first = 0;
 	}
 
 	/* 5) free resources */
-	LZ5MT_freeDCtx(ctx);
+	LZ4MT_freeDCtx(ctx);
 }
-
-#define tsub(a, b, result) \
-do { \
-(result)->tv_sec = (a)->tv_sec - (b)->tv_sec; \
-(result)->tv_nsec = (a)->tv_nsec - (b)->tv_nsec; \
- if ((result)->tv_nsec < 0) { \
-  --(result)->tv_sec; (result)->tv_nsec += 1000000000; \
- } \
-} while (0)
 
 int main(int argc, char **argv)
 {
 	/* default options: */
-	int opt, opt_threads = sysconf(_SC_NPROCESSORS_ONLN), opt_level = 3;
-	int opt_mode = MODE_COMPRESS, fdin = -1, fdout = -1;
+	int opt, opt_threads = getcpucount(), opt_level = 1;
+	int opt_mode = MODE_COMPRESS;
 	int opt_iterations = 1, opt_bufsize = 0, opt_timings = 0;
+	int opt_numbers = 0;
 	char *ofilename = NULL;
 	struct rusage ru;
 	struct timeval tms, tme, tm;
+	FILE *fin, *fout;
 
 	while ((opt = getopt(argc, argv, "vhHT:i:dcb:o:t0123456789")) != -1) {
 		switch (opt) {
@@ -228,6 +214,23 @@ int main(int argc, char **argv)
 		case 't':	/* print timings */
 			opt_timings = 1;
 			break;
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+			if (opt_numbers == 0)
+				opt_level = 0;
+			else
+				opt_level *= 10;
+			opt_level += ((int)opt - 48);
+			opt_numbers++;
+			break;
 		default:
 			usage();
 		}
@@ -240,14 +243,14 @@ int main(int argc, char **argv)
 	/* opt_level = 1..22 */
 	if (opt_level < 1)
 		opt_level = 1;
-	else if (opt_level > LZ5MT_LEVEL_MAX)
-		opt_level = LZ5MT_LEVEL_MAX;
+	else if (opt_level > LZ4MT_LEVEL_MAX)
+		opt_level = LZ4MT_LEVEL_MAX;
 
-	/* opt_threads = 1..LZ5MT_THREAD_MAX */
+	/* opt_threads = 1..LZ4MT_THREAD_MAX */
 	if (opt_threads < 1)
 		opt_threads = 1;
-	else if (opt_threads > LZ5MT_THREAD_MAX)
-		opt_threads = LZ5MT_THREAD_MAX;
+	else if (opt_threads > LZ4MT_THREAD_MAX)
+		opt_threads = LZ4MT_THREAD_MAX;
 
 	/* opt_iterations = 1..MAX_ITERATIONS */
 	if (opt_iterations < 1)
@@ -260,39 +263,39 @@ int main(int argc, char **argv)
 		opt_bufsize *= 1024;
 
 	/* File IO */
-	if (argc < optind + 1)
+	if (argc < optind + 1) {
 		if (IS_CONSOLE(stdin)) {
 			usage();
-		} else
-			fdin = fileno(stdin);
-	else
-		fdin = open_read(argv[optind]);
-	if (fdin == -1)
+		} else {
+			fin = stdin;
+		}
+	} else
+		fin = fopen(argv[optind], "rb");
+
+	if (fin == NULL)
 		perror_exit("Opening infile failed");
 
 	if (ofilename == NULL) {
 		if (IS_CONSOLE(stdout)) {
 			usage();
 		} else {
-			fdout = fileno(stdout);
-			opt_timings = 1;
+			fout = stdout;
 		}
 	} else
-		fdout = open_rw(ofilename);
+		fout = fopen(ofilename, "wb");
 
-	if (fdout == -1)
+	if (fout == NULL)
 		perror_exit("Opening outfile failed");
 
 	/* begin timing */
-	if (opt_timings)
-		gettimeofday(&tms, NULL);
+	gettimeofday(&tms, NULL);
 
 	for (;;) {
 		if (opt_mode == MODE_COMPRESS) {
-			do_compress(opt_threads, opt_level, opt_bufsize, fdin,
-				    fdout, opt_timings);
+			do_compress(opt_threads, opt_level, opt_bufsize, fin,
+				    fout, opt_timings);
 		} else {
-			do_decompress(opt_threads, opt_bufsize, fdin, fdout,
+			do_decompress(opt_threads, opt_bufsize, fin, fout,
 				      opt_timings);
 		}
 
@@ -300,8 +303,8 @@ int main(int argc, char **argv)
 		if (opt_iterations == 0)
 			break;
 
-		lseek(fdin, 0, SEEK_SET);
-		lseek(fdout, 0, SEEK_SET);
+		fseek(fin, 0, SEEK_SET);
+		fseek(fout, 0, SEEK_SET);
 	}
 
 	/* show timings */
@@ -310,10 +313,10 @@ int main(int argc, char **argv)
 		timersub(&tme, &tms, &tm);
 		getrusage(RUSAGE_SELF, &ru);
 		fprintf(stderr, ";%ld.%ld;%ld.%ld;%ld.%ld;%ld\n",
-		       tm.tv_sec, tm.tv_usec / 1000,
-		       ru.ru_utime.tv_sec, ru.ru_utime.tv_usec / 1000,
-		       ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 1000,
-		       ru.ru_maxrss);
+			tm.tv_sec, tm.tv_usec / 1000,
+			ru.ru_utime.tv_sec, ru.ru_utime.tv_usec / 1000,
+			ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 1000,
+			(long unsigned)ru.ru_maxrss);
 	}
 
 	/* exit should flush stdout */

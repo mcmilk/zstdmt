@@ -1,10 +1,48 @@
 
 ## Usage of the Testutils under Unix Systems
 
+### [LZ4](https://github.com/lz4/lz4)
+```
+Usage: lz4mt [options] > FILE
+or     cat INPUT | lz4mt [options] > FILE
+or     cat INPUT | lz4mt [options] -o FILE
+
+Options:
+ -o FILE write result to a file named `FILE`
+ -#      set compression level to # (1-12, default:1)
+ -T N    set number of (de)compression threads (def: #cores)
+ -i N    set number of iterations for testing (default: 1)
+ -b N    set input chunksize to N KiB (default: auto)
+ -c      compress (default mode)
+ -d      use decompress mode
+ -t      print timings and memory usage to stderr
+ -H      print headline for the timing values
+ -h      show usage
+ -v      show version
+```
+
+
+### [LZ5](https://github.com/inikep/lz5)
+```
+Usage: lz5mt [options] > FILE
+or     cat INPUT | lz5mt [options] > FILE
+or     cat INPUT | lz5mt [options] -o FILE
+
+Options:
+ -o FILE write result to a file named `FILE`
+ -#      set compression level to # (1-16, default:1)
+ -T N    set number of (de)compression threads (def: #cores)
+ -i N    set number of iterations for testing (default: 1)
+ -b N    set input chunksize to N KiB (default: auto)
+ -c      compress (default mode)
+ -d      use decompress mode
+ -t      print timings and memory usage to stderr
+ -H      print headline for the timing values
+ -h      show usage
+ -v      show version
+```
+
 ### [ZStandard](https://github.com/facebook/zstd)
-
-- lz4mt and lz5mt have nearly the same usage (levels are different)
-
 ```
 Usage: zstdmt [options] > FILE
 or     cat INPUT | zstdmt [options] > FILE
