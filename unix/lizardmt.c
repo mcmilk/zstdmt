@@ -8,7 +8,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  *
  * You can contact the author at:
- * - zstdmt source repository: https://github.com/mcmilk/zstdmt
+ * - lizardmt source repository: https://github.com/mcmilk/lizardmt
  */
 
 /* getrusage */
@@ -20,11 +20,11 @@
 #include <getopt.h>
 #include <stdio.h>
 
-#include "zstdmt.h"
+#include "lizardmt.h"
 #include "util.h"
 
 /**
- * program for testing threaded stuff on zstd
+ * program for testing threaded stuff on lizard
  */
 
 static void perror_exit(const char *msg)
@@ -36,29 +36,36 @@ static void perror_exit(const char *msg)
 
 static void version(void)
 {
-	printf("zstdmt version " VERSION "\n");
+	printf("lizardmt version " VERSION "\n");
 
 	exit(0);
 }
 
 static void usage(void)
 {
-	printf("Usage: zstdmt [options] > FILE\n");
-	printf("or     cat INPUT | zstdmt [options] > FILE\n");
-	printf("or     cat INPUT | zstdmt [options] -o FILE\n\n");
+	printf("Usage: lizardmt [options] > FILE\n");
+	printf("or     cat INPUT | lizardmt [options] > FILE\n");
+	printf("or     cat INPUT | lizardmt [options] -o FILE\n\n");
 
 	printf("Options:\n");
 	printf(" -o FILE write result to a file named `FILE`\n");
 	printf(" -#      set compression level to # (1-10, default:1)\n");
 	printf(" -T N    set number of (de)compression threads (def: #cores)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
-	printf(" -b N    set input chunksize to N MiB (default: auto)\n");
+	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
 	printf(" -c      compress (default mode)\n");
 	printf(" -d      use decompress mode\n");
 	printf(" -t      print timings and memory usage to stderr\n");
 	printf(" -H      print headline for the timing values\n");
 	printf(" -h      show usage\n");
 	printf(" -v      show version\n\n");
+
+	printf("Method options:\n");
+	printf(" -M N    use method M of lizard (default:1)\n");
+	printf("    1:   fastLZ4: give better decompression speed than LZ4\n");
+	printf("    2:   LIZv1: give better ratio than LZ4 keeping 75%% decompression speed\n");
+	printf("    3:   fastLZ4 + Huffman: add Huffman coding to fastLZ4\n");
+	printf("    4:   LIZv1 + Huffman: add Huffman coding to LIZv1\n\n");
 
 	exit(0);
 }
@@ -75,7 +82,7 @@ static void headline(void)
 /* for the -i option */
 #define MAX_ITERATIONS   1000
 
-int my_read_loop(void *arg, ZSTDMT_Buffer * in)
+int my_read_loop(void *arg, LIZARDMT_Buffer * in)
 {
 	int *fd = (int *)arg;
 	ssize_t done = read_loop(*fd, in->buf, in->size);
@@ -91,7 +98,7 @@ int my_read_loop(void *arg, ZSTDMT_Buffer * in)
 	return 0;
 }
 
-int my_write_loop(void *arg, ZSTDMT_Buffer * out)
+int my_write_loop(void *arg, LIZARDMT_Buffer * out)
 {
 	int *fd = (int *)arg;
 	ssize_t done = write_loop(*fd, out->buf, out->size);
@@ -112,7 +119,7 @@ do_compress(int threads, int level, int bufsize, int fdin, int fdout,
 	    int opt_timings)
 {
 	static int first = 1;
-	ZSTDMT_RdWr_t rdwr;
+	LIZARDMT_RdWr_t rdwr;
 	size_t ret;
 
 	/* 1) setup read/write functions */
@@ -122,33 +129,33 @@ do_compress(int threads, int level, int bufsize, int fdin, int fdout,
 	rdwr.arg_write = (void *)&fdout;
 
 	/* 2) create compression context */
-	ZSTDMT_CCtx *ctx = ZSTDMT_createCCtx(threads, level, bufsize);
+	LIZARDMT_CCtx *ctx = LIZARDMT_createCCtx(threads, level, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = ZSTDMT_compressCCtx(ctx, &rdwr);
-	if (ZSTDMT_isError(ret))
-		perror_exit(ZSTDMT_getErrorString(ret));
+	ret = LIZARDMT_compressCCtx(ctx, &rdwr);
+	if (LIZARDMT_isError(ret))
+		perror_exit(LIZARDMT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first && opt_timings) {
 		fprintf(stderr, "%d;%d;%zu;%zu;%zu",
 		       level, threads,
-		       ZSTDMT_GetInsizeCCtx(ctx), ZSTDMT_GetOutsizeCCtx(ctx),
-		       ZSTDMT_GetFramesCCtx(ctx));
+		       LIZARDMT_GetInsizeCCtx(ctx), LIZARDMT_GetOutsizeCCtx(ctx),
+		       LIZARDMT_GetFramesCCtx(ctx));
 		first = 0;
 	}
 
 	/* 5) free resources */
-	ZSTDMT_freeCCtx(ctx);
+	LIZARDMT_freeCCtx(ctx);
 }
 
 static void do_decompress(int threads, int bufsize, int fdin, int fdout,
 			  int opt_timings)
 {
 	static int first = 1;
-	ZSTDMT_RdWr_t rdwr;
+	LIZARDMT_RdWr_t rdwr;
 	size_t ret;
 
 	/* 1) setup read/write functions */
@@ -158,26 +165,26 @@ static void do_decompress(int threads, int bufsize, int fdin, int fdout,
 	rdwr.arg_write = (void *)&fdout;
 
 	/* 2) create compression context */
-	ZSTDMT_DCtx *ctx = ZSTDMT_createDCtx(threads, bufsize);
+	LIZARDMT_DCtx *ctx = LIZARDMT_createDCtx(threads, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = ZSTDMT_decompressDCtx(ctx, &rdwr);
-	if (ZSTDMT_isError(ret))
-		perror_exit(ZSTDMT_getErrorString(ret));
+	ret = LIZARDMT_decompressDCtx(ctx, &rdwr);
+	if (LIZARDMT_isError(ret))
+		perror_exit(LIZARDMT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first && opt_timings) {
 		fprintf(stderr, "%d;%d;%zu;%zu;%zu",
 		       0, threads,
-		       ZSTDMT_GetInsizeDCtx(ctx), ZSTDMT_GetOutsizeDCtx(ctx),
-		       ZSTDMT_GetFramesDCtx(ctx));
+		       LIZARDMT_GetInsizeDCtx(ctx), LIZARDMT_GetOutsizeDCtx(ctx),
+		       LIZARDMT_GetFramesDCtx(ctx));
 		first = 0;
 	}
 
 	/* 5) free resources */
-	ZSTDMT_freeDCtx(ctx);
+	LIZARDMT_freeDCtx(ctx);
 }
 
 #define tsub(a, b, result) \
@@ -195,16 +202,20 @@ int main(int argc, char **argv)
 	int opt, opt_threads = sysconf(_SC_NPROCESSORS_ONLN), opt_level = 3;
 	int opt_mode = MODE_COMPRESS, fdin = -1, fdout = -1;
 	int opt_iterations = 1, opt_bufsize = 0, opt_timings = 0;
+	int opt_numbers = 0, opt_method = 1;
 	char *ofilename = NULL;
 	struct rusage ru;
 	struct timeval tms, tme, tm;
 
-	while ((opt = getopt(argc, argv, "vhHT:i:dcb:o:t0123456789")) != -1) {
+	while ((opt = getopt(argc, argv, "vhM:HT:i:dcb:o:t0123456789")) != -1) {
 		switch (opt) {
 		case 'v':	/* version */
 			version();
 		case 'h':	/* help */
 			usage();
+		case 'M':	/* method */
+			opt_method = atoi(optarg);
+			break;
 		case 'H':	/* headline */
 			headline();
 		case 'T':	/* threads */
@@ -228,6 +239,15 @@ int main(int argc, char **argv)
 		case 't':	/* print timings */
 			opt_timings = 1;
 			break;
+		case '0': case '1': case '2': case '3': case '4':
+		case '5': case '6': case '7': case '8': case '9':
+			if (opt_numbers == 0)
+				opt_level = 0;
+			else
+				opt_level *= 10;
+			opt_level += ((int)opt - 48);
+			opt_numbers++;
+			break;
 		default:
 			usage();
 		}
@@ -240,14 +260,29 @@ int main(int argc, char **argv)
 	/* opt_level = 1..22 */
 	if (opt_level < 1)
 		opt_level = 1;
-	else if (opt_level > ZSTDMT_LEVEL_MAX)
-		opt_level = ZSTDMT_LEVEL_MAX;
+	else if (opt_level > LIZARDMT_LEVEL_MAX)
+		opt_level = LIZARDMT_LEVEL_MAX;
 
-	/* opt_threads = 1..ZSTDMT_THREAD_MAX */
+	/**
+	 * opt_mthod = 1 (default)
+	 * 1) fastLZ4 : compression levels -10...-19
+	 * 2) LIZv1 : compression levels -20...-29
+	 * 3) fastLZ4 + Huffman : compression levels -30...-39
+	 * 4) LIZv1 + Huffman : compression levels -40...-49
+	 */
+	if (opt_method < 1)
+		opt_level = 1;
+	else if (opt_level > 4)
+		opt_level = 4;
+
+	/* remap to real level */
+	opt_level += opt_method * 10;
+
+	/* opt_threads = 1..LIZARDMT_THREAD_MAX */
 	if (opt_threads < 1)
 		opt_threads = 1;
-	else if (opt_threads > ZSTDMT_THREAD_MAX)
-		opt_threads = ZSTDMT_THREAD_MAX;
+	else if (opt_threads > LIZARDMT_THREAD_MAX)
+		opt_threads = LIZARDMT_THREAD_MAX;
 
 	/* opt_iterations = 1..MAX_ITERATIONS */
 	if (opt_iterations < 1)
@@ -255,9 +290,11 @@ int main(int argc, char **argv)
 	else if (opt_iterations > MAX_ITERATIONS)
 		opt_iterations = MAX_ITERATIONS;
 
-	/* opt_bufsize is in MiB */
+	/* opt_bufsize is in KiB */
 	if (opt_bufsize > 0)
-		opt_bufsize *= 1024 * 1024;
+		opt_bufsize *= 1024;
+
+	exit(0);
 
 	/* File IO */
 	if (argc < optind + 1)

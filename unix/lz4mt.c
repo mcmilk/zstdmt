@@ -36,8 +36,7 @@ static void perror_exit(const char *msg)
 
 static void version(void)
 {
-	printf("lz4mt version 0.1\n");
-
+	printf("lz4mt version " VERSION "\n");
 	exit(0);
 }
 
@@ -49,7 +48,7 @@ static void usage(void)
 
 	printf("Options:\n");
 	printf(" -o FILE write result to a file named `FILE`\n");
-	printf(" -l N    set level of compression (default: 3)\n");
+	printf(" -#      set compression level to # (1-10, default:1)\n");
 	printf(" -T N    set number of (de)compression threads (def: #cores)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
@@ -199,7 +198,7 @@ int main(int argc, char **argv)
 	struct rusage ru;
 	struct timeval tms, tme, tm;
 
-	while ((opt = getopt(argc, argv, "vhHl:T:i:dcb:o:t")) != -1) {
+	while ((opt = getopt(argc, argv, "vhHT:i:dcb:o:t0123456789")) != -1) {
 		switch (opt) {
 		case 'v':	/* version */
 			version();
@@ -207,9 +206,6 @@ int main(int argc, char **argv)
 			usage();
 		case 'H':	/* headline */
 			headline();
-		case 'l':	/* level */
-			opt_level = atoi(optarg);
-			break;
 		case 'T':	/* threads */
 			opt_threads = atoi(optarg);
 			break;

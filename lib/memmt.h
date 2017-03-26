@@ -1,4 +1,3 @@
-
 /**
  * Copyright (c) 2016-present, Yann Collet, Facebook, Inc.
  * All rights reserved.
@@ -39,10 +38,6 @@ extern "C" {
 #  define MEM_STATIC static  /* this version may generate warnings for unused static functions; disable the relevant warning */
 #endif
 
-/* code only tested on 32 and 64 bits systems */
-#define MEM_STATIC_ASSERT(c)   { enum { XXH_static_assert = 1/(int)(!!(c)) }; }
-MEM_STATIC void MEM_check(void) { MEM_STATIC_ASSERT((sizeof(size_t)==4) || (sizeof(size_t)==8)); }
-
 /* define likely() and unlikely() */
 #if defined(__GNUC__) || (__INTEL_COMPILER >= 800) || defined(__clang__)
 #  define expect(expr,value)    (__builtin_expect ((expr),(value)) )
@@ -52,26 +47,35 @@ MEM_STATIC void MEM_check(void) { MEM_STATIC_ASSERT((sizeof(size_t)==4) || (size
 #define likely(expr)     expect((expr) != 0, 1)
 #define unlikely(expr)   expect((expr) != 0, 0)
 
+/* code only tested on 32 and 64 bits systems */
+#define MEM_STATIC_ASSERT(c)   { enum { MEM_static_assert = 1/(int)(!!(c)) }; }
+MEM_STATIC void MEM_check(void) { MEM_STATIC_ASSERT((sizeof(size_t)==4) || (sizeof(size_t)==8)); }
+
+
 /*-**************************************************************
 *  Basic Types
 *****************************************************************/
 #if  !defined (__VMS) && (defined (__cplusplus) || (defined (__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L) /* C99 */) )
 # include <stdint.h>
-  typedef  uint8_t BYTE;
-  typedef uint16_t U16;
-  typedef  int16_t S16;
-  typedef uint32_t U32;
-  typedef  int32_t S32;
-  typedef uint64_t U64;
-  typedef  int64_t S64;
+  typedef   uint8_t BYTE;
+  typedef  uint16_t U16;
+  typedef   int16_t S16;
+  typedef  uint32_t U32;
+  typedef   int32_t S32;
+  typedef  uint64_t U64;
+  typedef   int64_t S64;
+  typedef  intptr_t iPtrDiff;
+  typedef uintptr_t uPtrDiff;
 #else
-  typedef unsigned char       BYTE;
+  typedef unsigned char      BYTE;
   typedef unsigned short      U16;
   typedef   signed short      S16;
   typedef unsigned int        U32;
   typedef   signed int        S32;
   typedef unsigned long long  U64;
   typedef   signed long long  S64;
+  typedef ptrdiff_t      iPtrDiff;
+  typedef size_t         uPtrDiff;
 #endif
 
 
@@ -83,11 +87,11 @@ MEM_STATIC void MEM_check(void) { MEM_STATIC_ASSERT((sizeof(size_t)==4) || (size
  * Unfortunately, on some target/compiler combinations, the generated assembly is sub-optimal.
  * The below switch allow to select different access method for improved performance.
  * Method 0 (default) : use `memcpy()`. Safe and portable.
- * Method 1 : `__packed` statement. It depends on compiler extension (ie, not portable).
+ * Method 1 : `__packed` statement. It depends on compiler extension (i.e., not portable).
  *            This method is safe if your compiler supports it, and *generally* as fast or faster than `memcpy`.
  * Method 2 : direct access. This method is portable but violate C standard.
  *            It can generate buggy code on targets depending on alignment.
- *            In some circumstances, it's the only known way to get the most performance (ie GCC + ARMv6)
+ *            In some circumstances, it's the only known way to get the most performance (i.e. GCC + ARMv6)
  * See http://fastcompression.blogspot.fr/2015/08/accessing-unaligned-memory.html for details.
  * Prefer these methods in priority order (0 > 1 > 2)
  */
@@ -189,7 +193,7 @@ MEM_STATIC U32 MEM_swap32(U32 in)
 {
 #if defined(_MSC_VER)     /* Visual Studio */
     return _byteswap_ulong(in);
-#elif defined (__GNUC__)
+#elif defined (__GNUC__) && (__GNUC__ * 100 + __GNUC_MINOR__ >= 403)
     return __builtin_bswap32(in);
 #else
     return  ((in << 24) & 0xff000000 ) |
@@ -203,7 +207,7 @@ MEM_STATIC U64 MEM_swap64(U64 in)
 {
 #if defined(_MSC_VER)     /* Visual Studio */
     return _byteswap_uint64(in);
-#elif defined (__GNUC__)
+#elif defined (__GNUC__) && (__GNUC__ * 100 + __GNUC_MINOR__ >= 403)
     return __builtin_bswap64(in);
 #else
     return  ((in << 56) & 0xff00000000000000ULL) |

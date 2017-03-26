@@ -1,6 +1,6 @@
 
 /**
- * Copyright (c) 2016 Tino Reichardt
+ * Copyright (c) 2016 - 2017 Tino Reichardt
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
@@ -30,7 +30,7 @@ static void perror_exit(const char *msg)
 
 static void version(void)
 {
-	printf("lz4mt version 0.2\n");
+	printf("lz4mt version " VERSION "\n");
 
 	exit(0);
 }
@@ -39,7 +39,7 @@ static void usage(void)
 {
 	printf("Usage: lz4mt [options] infile outfile\n\n");
 	printf("Otions:\n");
-	printf(" -l N    set level of compression (default: 1)\n");
+	printf(" -#      set compression level to # (1-12, default:1)\n");
 	printf(" -T N    set number of (de)compression threads (default: 2)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
@@ -142,17 +142,15 @@ int main(int argc, char **argv)
 	int opt, opt_threads = 2, opt_level = 1;
 	int opt_mode = MODE_COMPRESS;
 	int opt_iterations = 1, opt_bufsize = 0;
+	int opt_numbers = 0;
 	FILE *fin, *fout;
 
-	while ((opt = getopt(argc, argv, "vhHl:T:i:dcb:")) != -1) {
+	while ((opt = getopt(argc, argv, "vhT:i:dcb:0123456789")) != -1) {
 		switch (opt) {
 		case 'v':	/* version */
 			version();
 		case 'h':	/* help */
 			usage();
-		case 'l':	/* level */
-			opt_level = atoi(optarg);
-			break;
 		case 'T':	/* threads */
 			opt_threads = atoi(optarg);
 			break;
@@ -167,6 +165,15 @@ int main(int argc, char **argv)
 			break;
 		case 'b':	/* input buffer in MB */
 			opt_bufsize = atoi(optarg);
+			break;
+		case '0': case '1': case '2': case '3': case '4':
+		case '5': case '6': case '7': case '8': case '9':
+			if (opt_numbers == 0)
+				opt_level = 0;
+			else
+				opt_level *= 10;
+			opt_level += ((int)opt - 48);
+			opt_numbers++;
 			break;
 		default:
 			usage();
