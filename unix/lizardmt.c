@@ -294,8 +294,6 @@ int main(int argc, char **argv)
 	if (opt_bufsize > 0)
 		opt_bufsize *= 1024;
 
-	exit(0);
-
 	/* File IO */
 	if (argc < optind + 1)
 		if (IS_CONSOLE(stdin)) {

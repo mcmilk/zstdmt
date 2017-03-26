@@ -1,5 +1,7 @@
 
-## Usage of zstdmt
+## Usage of the Testutils under Unix Systems
+
+### [ZStandard](https://github.com/facebook/zstd)
 
 - lz4mt and lz5mt have nearly the same usage (levels are different)
 
@@ -10,14 +12,41 @@ or     cat INPUT | zstdmt [options] -o FILE
 
 Options:
  -o FILE write result to a file named `FILE`
- -l N    set level of compression (default: 3)
- -t N    set number of (de)compression threads (def: #cores)
+ -#      set compression level to # (1-22, default:3)
+ -T N    set number of (de)compression threads (def: #cores)
+ -i N    set number of iterations for testing (default: 1)
+ -b N    set input chunksize to N MiB (default: auto)
+ -c      compress (default mode)
+ -d      use decompress mode
+ -t      print timings and memory usage to stderr
+ -H      print headline for the timing values
+ -h      show usage
+ -v      show version
+```
+
+### [Lizard](https://github.com/inikep/lizard)
+```
+Usage: lizardmt [options] > FILE
+or     cat INPUT | lizardmt [options] > FILE
+or     cat INPUT | lizardmt [options] -o FILE
+
+Options:
+ -o FILE write result to a file named `FILE`
+ -#      set compression level to # (1-10, default:1)
+ -T N    set number of (de)compression threads (def: #cores)
  -i N    set number of iterations for testing (default: 1)
  -b N    set input chunksize to N KiB (default: auto)
  -c      compress (default mode)
  -d      use decompress mode
- -T      print timings and memory usage to stderr
+ -t      print timings and memory usage to stderr
  -H      print headline for the timing values
  -h      show usage
  -v      show version
+
+Method options:
+ -M N    use method M of lizard (default:1)
+    1:   fastLZ4: give better decompression speed than LZ4
+    2:   LIZv1: give better ratio than LZ4 keeping 75% decompression speed
+    3:   fastLZ4 + Huffman: add Huffman coding to fastLZ4
+    4:   LIZv1 + Huffman: add Huffman coding to LIZv1
 ```

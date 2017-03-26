@@ -1,12 +1,12 @@
 
-## Usage of the Testutils @ Windows
+## Usage of the Testutils under Windows
 
 ### [LZ4](https://github.com/lz4/lz4)
 ```
 Usage: lz4mt [options] infile outfile
 
 Otions:
- -l N    set level (1..16) of compression (default: 1)
+ -#      set compression level to # (1-12, default:1)
  -T N    set number of (de)compression threads (default: 2)
  -i N    set number of iterations for testing (default: 1)
  -b N    set input chunksize to N MiB (default: auto)
@@ -21,7 +21,7 @@ Otions:
 Usage: lz5mt [options] infile outfile
 
 Otions:
- -l N    set level (1..16) of compression (default: 1)
+ -#      set compression level to # (1-16, default:1)
  -T N    set number of (de)compression threads (default: 2)
  -i N    set number of iterations for testing (default: 1)
  -b N    set input chunksize to N MiB (default: auto)
@@ -36,7 +36,7 @@ Otions:
 Usage: zstdmt [options] infile outfile
 
 Otions:
- -l N    set level of compression (default: 3)
+ -#      set compression level to # (1-22, default:3)
  -T N    set number of (de)compression threads (default: 2)
  -i N    set number of iterations for testing (default: 1)
  -b N    set input chunksize to N MiB (default: auto)
@@ -44,4 +44,26 @@ Otions:
  -d      use decompress mode
  -h      show usage
  -v      show version
+```
+
+### [Lizard](https://github.com/inikep/lizard)
+```
+Usage: lizard [options] infile outfile
+
+Otions:
+ -#      set compression level to # (1-10, default:1)
+ -T N    set number of (de)compression threads (default: 2)
+ -i N    set number of iterations for testing (default: 1)
+ -b N    set input chunksize to N MiB (default: auto)
+ -c      compress (default mode)
+ -d      use decompress mode
+ -h      show usage
+ -v      show version
+
+Method options:
+ -M N    use method M of lizard (default:1)
+    1:   fastLZ4: give better decompression speed than LZ4
+    2:   LIZv1: give better ratio than LZ4 keeping 75%% decompression speed
+    3:   fastLZ4 + Huffman: add Huffman coding to fastLZ4
+    4:   LIZv1 + Huffman: add Huffman coding to LIZv1
 ```

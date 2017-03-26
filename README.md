@@ -1,5 +1,5 @@
 
-# Multithreading Library for [LZ4], [LZ5] and [ZStandard]
+# Multithreading Library for [LZ4], [LZ5], [ZStandard] and [Lizard]
 
 ## Description
 - works with skippables frame id 0x184D2A50 (12 bytes per compressed frame)
@@ -180,8 +180,9 @@ Level|Threads|InSize|OutSize|Frames|Real|User|Sys|MaxMem
 17|4|211957760|56962464|13|34.900|127.95|0.160|329420
 
 [LZ4]:https://cyan4973.github.io/lz4/
-[LZ5]:https://github.com/inikep/lz5
+[LZ5]:https://github.com/inikep/lz5/
 [ZStandard]:http://facebook.github.io/zstd/
+[Lizard]:https://github.com/inikep/lizard/
 
 
-/TR 2016-09-28
+/TR 2017-03-26

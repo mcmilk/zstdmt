@@ -48,7 +48,7 @@ static void usage(void)
 
 	printf("Options:\n");
 	printf(" -o FILE write result to a file named `FILE`\n");
-	printf(" -#      set compression level to # (1-10, default:1)\n");
+	printf(" -#      set compression level to # (1-12, default:1)\n");
 	printf(" -T N    set number of (de)compression threads (def: #cores)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -b N    set input chunksize to N KiB (default: auto)\n");

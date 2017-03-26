@@ -13,7 +13,7 @@ CFLAGS	+= -fomit-frame-pointer
 
 #CFLAGS += -DDEBUGME
 #CFLAGS += -g
-CFLAGS += -O
+CFLAGS += -O3
 #CFLAGS += -march=native
 #CFLAGS += -Wno-unused-but-set-variable
 #CFLAGS += -Wno-unused-variable
