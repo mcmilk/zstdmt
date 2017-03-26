@@ -36,9 +36,9 @@ static void version(void)
 static void usage(void)
 {
 	printf("Usage: lz4mt [options] INPUT > FILE\n");
-	printf("or     lz4mt [options] -o FILE INPUT\n\n");
-	printf("or     cat INPUT | lz4mt [options] -o FILE\n\n");
-	printf("or     cat INPUT | lz4mt [options] > FILE\n");
+	printf("or     lz4mt [options] -o FILE INPUT\n");
+	printf("or     cat INPUT | lz4mt [options] -o FILE\n");
+	printf("or     cat INPUT | lz4mt [options] > FILE\n\n");
 
 	printf("Options:\n");
 	printf(" -o FILE write result to a file named `FILE`\n");

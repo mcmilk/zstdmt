@@ -36,9 +36,9 @@ static void version(void)
 static void usage(void)
 {
 	printf("Usage: zstdmt [options] INPUT > FILE\n");
-	printf("or     zstdmt [options] -o FILE INPUT\n\n");
-	printf("or     cat INPUT | zstdmt [options] -o FILE\n\n");
-	printf("or     cat INPUT | zstdmt [options] > FILE\n");
+	printf("or     zstdmt [options] -o FILE INPUT\n");
+	printf("or     cat INPUT | zstdmt [options] -o FILE\n");
+	printf("or     cat INPUT | zstdmt [options] > FILE\n\n");
 
 	printf("Options:\n");
 	printf(" -o FILE write result to a file named `FILE`\n");

@@ -36,15 +36,14 @@ static void version(void)
 static void usage(void)
 {
 	printf("Usage: lizardmt [options] INPUT > FILE\n");
-	printf("or     lizardmt [options] -o FILE INPUT\n\n");
-	printf("or     cat INPUT | lizardmt [options] -o FILE\n\n");
-	printf("or     cat INPUT | lizardmt [options] > FILE\n");
+	printf("or     lizardmt [options] -o FILE INPUT\n");
+	printf("or     cat INPUT | lizardmt [options] -o FILE\n");
+	printf("or     cat INPUT | lizardmt [options] > FILE\n\n");
 
 	printf("Options:\n");
 	printf(" -o FILE write result to a file named `FILE`\n");
 	printf(" -#      set compression level to # (1-10, default:1)\n");
-	printf
-	    (" -T N    set number of (de)compression threads (def: #cores)\n");
+	printf(" -T N    set number of (de)compression threads (def: #cores)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
 	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
 	printf(" -c      compress (default mode)\n");
@@ -54,6 +53,12 @@ static void usage(void)
 	printf(" -h      show usage\n");
 	printf(" -v      show version\n\n");
 
+	printf("Method options:\n");
+	printf(" -M N    use method M of lizard (default:1)\n");
+	printf("    1:   fastLZ4: give better decompression speed than LZ4\n");
+	printf("    2:   LIZv1: give better ratio than LZ4 keeping 75%% decompression speed\n");
+	printf("    3:   fastLZ4 + Huffman: add Huffman coding to fastLZ4\n");
+	printf("    4:   LIZv1 + Huffman: add Huffman coding to LIZv1\n\n");
 	exit(0);
 }
 

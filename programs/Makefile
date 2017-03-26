@@ -35,7 +35,7 @@ all:	loadsource $(PRGS)
 again:	clean $(PRGS)
 
 ZSTDMTDIR = ../lib
-COMMON	= platform.c $(ZSTDMTDIR)/threading.c 
+COMMON	= platform.c $(ZSTDMTDIR)/threading.c
 
 LIBLZ4	= $(COMMON) $(ZSTDMTDIR)/lz4mt_common.c $(ZSTDMTDIR)/lz4mt_compress.c \
 	  $(ZSTDMTDIR)/lz4mt_decompress.c lz4mt.c

@@ -9,8 +9,7 @@
 
 ## Usage of the Testutils
 
-- see unix
-- see windows
+- see programs
 
 ## Usage of the Library
 
