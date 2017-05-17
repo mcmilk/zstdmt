@@ -9,8 +9,8 @@
 #WIN_LDFLAGS	= -lwinmm -lpsapi
 #EXTENSION	= -w64.exe
 
-#CC	= $(CROSS)clang
-CC	= $(CROSS)gcc
+CC	= $(CROSS)clang
+#CC	= $(CROSS)gcc
 RANLIB	= $(CROSS)ranlib
 STRIP	= $(CROSS)strip
 SFLAGS	= -R .note -R .comment
@@ -18,7 +18,7 @@ SFLAGS	= -R .note -R .comment
 CFLAGS	= -W -pthread -Wall -pipe
 CFLAGS	+= -fomit-frame-pointer
 CFLAGS	+= -O3
-CFLAGS	+= -flto
+#CFLAGS	+= -flto
 #CFLAGS += -DDEBUGME
 #CFLAGS += -g
 #CFLAGS += -march=native
