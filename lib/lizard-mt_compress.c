@@ -104,7 +104,7 @@ LIZARDMT_CCtx *LIZARDMT_createCCtx(int threads, int level, int inputsize)
 		return 0;
 
 	/* check level */
-	if (level < 1 || level > LIZARDMT_LEVEL_MAX)
+	if (level < LIZARDMT_LEVEL_MIN || level > LIZARDMT_LEVEL_MAX)
 		return 0;
 
 	/* calculate chunksize for one thread */

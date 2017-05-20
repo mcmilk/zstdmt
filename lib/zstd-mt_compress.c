@@ -107,7 +107,7 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize)
 		goto err_ctx;
 
 	/* check level */
-	if (level < 1 || level > ZSTDMT_LEVEL_MAX)
+	if (level < ZSTDMT_LEVEL_MAX || level > ZSTDMT_LEVEL_MAX)
 		goto err_ctx;
 
 	/* calculate chunksize for one thread */

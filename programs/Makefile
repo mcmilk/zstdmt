@@ -3,6 +3,13 @@
 # /TR 2017-05-19
 ##############################################################################
 
+# current versions we're using (tagged in their main repo)
+BRO_VER	= "v0.6.0"
+LIZ_VER	= "v2.0"
+LZ4_VER	= "v1.7.5"
+LZ5_VER	= "v1.5"
+ZSTD_VER= "v1.1.4"
+
 # uncomment, for cross compiling or windows binaries
 #WIN_LDFLAGS	= -lwinmm -lpsapi
 #CROSS		= i686-w64-mingw32-
@@ -14,7 +21,7 @@
 #CC	= $(CROSS)clang
 CC	= $(CROSS)gcc
 RANLIB	= $(CROSS)ranlib
-STRIP	= echo $(CROSS)strip
+STRIP	= $(CROSS)strip
 SFLAGS	= -R .note -R .comment
 
 CFLAGS	= -W -pthread -Wall -pipe
@@ -26,28 +33,14 @@ CFLAGS	+= -O3
 #CFLAGS += -march=native
 LDFLAGS	= $(WIN_LDFLAGS) -lpthread
 
-PRGS	= brotli-mt$(EXTENSION) \
-	  lizard-mt$(EXTENSION) \
+PRGS	= lizard-mt$(EXTENSION) \
 	  lz4-mt$(EXTENSION) \
 	  lz5-mt$(EXTENSION) \
 	  zstd-mt$(EXTENSION)
-
-# current versions we're using:
-BRO_VER	= "v0.6.0"
-LIZ_VER	= "v2.0"
-LZ4_VER	= "v1.7.5"
-LZ5_VER	= "v1.5"
-ZSTD_VER= "v1.1.4"
+#brotli-mt$(EXTENSION)
 
 all:	loadsource $(PRGS)
 again:	clean $(PRGS)
-
-loadsource:
-	test -d lz4    || git clone https://github.com/Cyan4973/lz4  -b $(LZ4_VER)  --depth=1 lz4
-	test -d lz5    || git clone https://github.com/inikep/lz5    -b $(LZ5_VER)  --depth=1 lz5
-	test -d zstd   || git clone https://github.com/facebook/zstd -b $(ZSTD_VER) --depth=1 zstd
-	test -d lizard || git clone https://github.com/inikep/lizard -b $(LIZ_VER)  --depth=1 lizard
-	test -d brotli || git clone https://github.com/google/brotli -b $(BRO_VER)  --depth=1 brotli
 
 ZSTDMTDIR = ../lib
 COMMON	= platform.c $(ZSTDMTDIR)/threading.c
@@ -139,6 +132,13 @@ lz5-mt$(EXTENSION):
 zstd-mt$(EXTENSION):
 	$(CC) $(CF_ZSTD) $(CDFLAGS) -DVERSION='$(ZSTD_VER)' -o $@ $(LIBZSTD) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
+
+loadsource:
+	test -d lz4    || git clone https://github.com/Cyan4973/lz4  -b $(LZ4_VER)  --depth=1 lz4
+	test -d lz5    || git clone https://github.com/inikep/lz5    -b $(LZ5_VER)  --depth=1 lz5
+	test -d zstd   || git clone https://github.com/facebook/zstd -b $(ZSTD_VER) --depth=1 zstd
+	test -d lizard || git clone https://github.com/inikep/lizard -b $(LIZ_VER)  --depth=1 lizard
+	test -d brotli || git clone https://github.com/google/brotli -b $(BRO_VER)  --depth=1 brotli
 
 clean:
 	rm -f $(PRGS)

@@ -104,7 +104,7 @@ LZ5MT_CCtx *LZ5MT_createCCtx(int threads, int level, int inputsize)
 		return 0;
 
 	/* check level */
-	if (level < 1 || level > LZ5MT_LEVEL_MAX)
+	if (level < LZ5MT_LEVEL_MIN || level > LZ5MT_LEVEL_MAX)
 		return 0;
 
 	/* calculate chunksize for one thread */

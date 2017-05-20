@@ -26,6 +26,7 @@ extern "C" {
 
 /* current maximum the library will accept */
 #define BROTLIMT_THREAD_MAX 128
+#define BROTLIMT_LEVEL_MIN    0
 #define BROTLIMT_LEVEL_MAX   11
 
 #define BROFMT_MAGICNUMBER     0x544F5242U /* BROT */
@@ -51,9 +52,6 @@ typedef enum {
   BROTLIMT_error_maxCode
 } BROTLIMT_ErrorCode;
 
-#ifdef ERROR
-#  undef ERROR   /* reported already defined on VS 2015 (Rich Geldreich) */
-#endif
 #define PREFIX(name) BROTLIMT_error_##name
 #define ERROR(name)  ((size_t)-PREFIX(name))
 extern unsigned BROTLIMT_isError(size_t code);

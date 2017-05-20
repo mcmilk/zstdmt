@@ -103,7 +103,7 @@ BROTLIMT_CCtx *BROTLIMT_createCCtx(int threads, int level, int inputsize)
 		return 0;
 
 	/* check level */
-	if (level < 0 || level > BROTLIMT_LEVEL_MAX)
+	if (level < BROTLIMT_LEVEL_MIN || level > BROTLIMT_LEVEL_MAX)
 		return 0;
 
 	/* calculate chunksize for one thread */
