@@ -8,16 +8,16 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  *
  * You can contact the author at:
- * - zstdmt source repository: https://github.com/mcmilk/zstdmt
+ * - bromt source repository: https://github.com/mcmilk/bromt
  */
 
 #include <stdio.h>
 
 #include "platform.h"
-#include "zstdmt.h"
+#include "brotli-mt.h"
 
 /**
- * program for testing threaded stuff on zstd
+ * program for testing threaded stuff on bro
  */
 
 static void perror_exit(const char *msg)
@@ -29,30 +29,30 @@ static void perror_exit(const char *msg)
 
 static void version(void)
 {
-	printf("zstdmt version " VERSION "\n");
+	printf("brotli-mt version " VERSION "\n");
 	exit(0);
 }
 
 static void usage(void)
 {
-	printf("Usage: zstdmt [options] INPUT > FILE\n");
-	printf("or     zstdmt [options] -o FILE INPUT\n");
-	printf("or     cat INPUT | zstdmt [options] -o FILE\n");
-	printf("or     cat INPUT | zstdmt [options] > FILE\n\n");
+	printf("Usage: brotli-mt [options] INPUT > FILE\n");
+	printf("or     brotli-mt [options] -o FILE INPUT\n");
+	printf("or     cat INPUT | brotli-mt [options] -o FILE\n");
+	printf("or     cat INPUT | brotli-mt [options] > FILE\n\n");
 
 	printf("Options:\n");
 	printf(" -o FILE write result to a file named `FILE`\n");
-	printf(" -#      set compression level to # (1-22, default:3)\n");
-	printf
-	    (" -T N    set number of (de)compression threads (def: #cores)\n");
+	printf(" -#      set compression level to # (0-11, default:3)\n");
+	printf(" -T N    set number of (de)compression threads (def: #cores)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
-	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
-	printf(" -c      compress (default mode)\n");
+	printf(" -b N    set input chunksize to N MiB (default: 1MiB * level)\n");
+	printf(" -c      force write to standard output\n");
+	printf(" -z      use compress mode (this is the default)\n");
 	printf(" -d      use decompress mode\n");
 	printf(" -t      print timings and memory usage to stderr\n");
 	printf(" -H      print headline for the timing values\n");
 	printf(" -h      show usage\n");
-	printf(" -v      show version\n\n");
+	printf(" -V      show version\n\n");
 
 	exit(0);
 }
@@ -70,30 +70,28 @@ static void headline(void)
 /* for the -i option */
 #define MAX_ITERATIONS   1000
 
-int my_read_loop(void *arg, ZSTDMT_Buffer * in)
+int my_read_loop(void *arg, BROTLIMT_Buffer * in)
 {
 	FILE *fd = (FILE *) arg;
 	ssize_t done = fread(in->buf, 1, in->size, fd);
 
 #if 0
-	fprintf(stderr, "fread(), todo=%u done=%u\n", (unsigned)in->size,
-		(unsigned)done);
-	fflush(stderr);
+	printf("fread(), todo=%u done=%u\n", in->size, done);
+	fflush(stdout);
 #endif
 
 	in->size = done;
 	return 0;
 }
 
-int my_write_loop(void *arg, ZSTDMT_Buffer * out)
+int my_write_loop(void *arg, BROTLIMT_Buffer * out)
 {
 	FILE *fd = (FILE *) arg;
 	ssize_t done = fwrite(out->buf, 1, out->size, fd);
 
 #if 0
-	fprintf(stderr, "fwrite(), todo=%u done=%u\n", (unsigned)out->size,
-		(unsigned)done);
-	fflush(stderr);
+	printf("fwrite(), todo=%u done=%u\n", out->size, done);
+	fflush(stdout);
 #endif
 
 	out->size = done;
@@ -105,7 +103,7 @@ do_compress(int threads, int level, int bufsize, FILE * fin, FILE * fout,
 	    int opt_timings)
 {
 	static int first = 1;
-	ZSTDMT_RdWr_t rdwr;
+	BROTLIMT_RdWr_t rdwr;
 	size_t ret;
 
 	/* 1) setup read/write functions */
@@ -115,34 +113,34 @@ do_compress(int threads, int level, int bufsize, FILE * fin, FILE * fout,
 	rdwr.arg_write = (void *)fout;
 
 	/* 2) create compression context */
-	ZSTDMT_CCtx *ctx = ZSTDMT_createCCtx(threads, level, bufsize);
+	BROTLIMT_CCtx *ctx = BROTLIMT_createCCtx(threads, level, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = ZSTDMT_compressCCtx(ctx, &rdwr);
-	if (ZSTDMT_isError(ret))
-		perror_exit(ZSTDMT_getErrorString(ret));
+	ret = BROTLIMT_compressCCtx(ctx, &rdwr);
+	if (BROTLIMT_isError(ret))
+		perror_exit(BROTLIMT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first && opt_timings) {
 		fprintf(stderr, "%d;%d;%lu;%lu;%lu",
 			level, threads,
-			(unsigned long)ZSTDMT_GetInsizeCCtx(ctx),
-			(unsigned long)ZSTDMT_GetOutsizeCCtx(ctx),
-			(unsigned long)ZSTDMT_GetFramesCCtx(ctx));
+			(unsigned long)BROTLIMT_GetInsizeCCtx(ctx),
+			(unsigned long)BROTLIMT_GetOutsizeCCtx(ctx),
+			(unsigned long)BROTLIMT_GetFramesCCtx(ctx));
 		first = 0;
 	}
 
 	/* 5) free resources */
-	ZSTDMT_freeCCtx(ctx);
+	BROTLIMT_freeCCtx(ctx);
 }
 
 static void do_decompress(int threads, int bufsize, FILE * fin, FILE *
 			  fout, int opt_timings)
 {
 	static int first = 1;
-	ZSTDMT_RdWr_t rdwr;
+	BROTLIMT_RdWr_t rdwr;
 	size_t ret;
 
 	/* 1) setup read/write functions */
@@ -152,33 +150,33 @@ static void do_decompress(int threads, int bufsize, FILE * fin, FILE *
 	rdwr.arg_write = (void *)fout;
 
 	/* 2) create compression context */
-	ZSTDMT_DCtx *ctx = ZSTDMT_createDCtx(threads, bufsize);
+	BROTLIMT_DCtx *ctx = BROTLIMT_createDCtx(threads, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = ZSTDMT_decompressDCtx(ctx, &rdwr);
-	if (ZSTDMT_isError(ret))
-		perror_exit(ZSTDMT_getErrorString(ret));
+	ret = BROTLIMT_decompressDCtx(ctx, &rdwr);
+	if (BROTLIMT_isError(ret))
+		perror_exit(BROTLIMT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first && opt_timings) {
 		fprintf(stderr, "%d;%d;%lu;%lu;%lu",
 			0, threads,
-			(unsigned long)ZSTDMT_GetInsizeDCtx(ctx),
-			(unsigned long)ZSTDMT_GetOutsizeDCtx(ctx),
-			(unsigned long)ZSTDMT_GetFramesDCtx(ctx));
+			(unsigned long)BROTLIMT_GetInsizeDCtx(ctx),
+			(unsigned long)BROTLIMT_GetOutsizeDCtx(ctx),
+			(unsigned long)BROTLIMT_GetFramesDCtx(ctx));
 		first = 0;
 	}
 
 	/* 5) free resources */
-	ZSTDMT_freeDCtx(ctx);
+	BROTLIMT_freeDCtx(ctx);
 }
 
 int main(int argc, char **argv)
 {
 	/* default options: */
-	int opt, opt_threads = getcpucount(), opt_level = 3;
+	int opt, opt_threads = getcpucount(), opt_level = 1;
 	int opt_mode = MODE_COMPRESS;
 	int opt_iterations = 1, opt_bufsize = 0, opt_timings = 0;
 	int opt_numbers = 0;
@@ -187,9 +185,9 @@ int main(int argc, char **argv)
 	struct timeval tms, tme, tm;
 	FILE *fin = NULL, *fout = NULL;
 
-	while ((opt = getopt(argc, argv, "vhHT:i:dcb:o:t0123456789")) != -1) {
+	while ((opt = getopt(argc, argv, "VhHT:i:dczb:o:t0123456789")) != -1) {
 		switch (opt) {
-		case 'v':	/* version */
+		case 'V':	/* version */
 			version();
 		case 'h':	/* help */
 			usage();
@@ -204,7 +202,11 @@ int main(int argc, char **argv)
 		case 'd':	/* mode = decompress */
 			opt_mode = MODE_DECOMPRESS;
 			break;
-		case 'c':	/* mode = compress */
+		case 'c':	/* to stdout, ignored */
+		case 'v':	/* be verbose, ignored */
+		case 'q':	/* be quiet, ignored */
+			break;
+		case 'z':	/* mode = compress */
 			opt_mode = MODE_COMPRESS;
 			break;
 		case 'b':	/* input buffer in MB */
@@ -243,16 +245,16 @@ int main(int argc, char **argv)
 	 */
 
 	/* opt_level = 1..22 */
-	if (opt_level < 1)
-		opt_level = 1;
-	else if (opt_level > ZSTDMT_LEVEL_MAX)
-		opt_level = ZSTDMT_LEVEL_MAX;
+	if (opt_level < 0)
+		opt_level = 0;
+	else if (opt_level > BROTLIMT_LEVEL_MAX)
+		opt_level = BROTLIMT_LEVEL_MAX;
 
-	/* opt_threads = 1..ZSTDMT_THREAD_MAX */
+	/* opt_threads = 1..BROTLIMT_THREAD_MAX */
 	if (opt_threads < 1)
 		opt_threads = 1;
-	else if (opt_threads > ZSTDMT_THREAD_MAX)
-		opt_threads = ZSTDMT_THREAD_MAX;
+	else if (opt_threads > BROTLIMT_THREAD_MAX)
+		opt_threads = BROTLIMT_THREAD_MAX;
 
 	/* opt_iterations = 1..MAX_ITERATIONS */
 	if (opt_iterations < 1)
@@ -260,9 +262,9 @@ int main(int argc, char **argv)
 	else if (opt_iterations > MAX_ITERATIONS)
 		opt_iterations = MAX_ITERATIONS;
 
-	/* opt_bufsize is in KiB */
+	/* opt_bufsize is in MiB */
 	if (opt_bufsize > 0)
-		opt_bufsize *= 1024;
+		opt_bufsize *= 1024 * 1024;
 
 	/* File IO */
 	if (argc < optind + 1) {

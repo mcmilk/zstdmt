@@ -20,7 +20,7 @@
 #include "memmt.h"
 #include "threading.h"
 #include "list.h"
-#include "lz5mt.h"
+#include "lz5-mt.h"
 
 /**
  * multi threaded lz5 - multiple workers version
@@ -259,7 +259,7 @@ static void *pt_compress(void *arg)
 		rv = ctx->fn_read(ctx->arg_read, &in);
 		if (rv != 0) {
 			pthread_mutex_unlock(&ctx->read_mutex);
-			return (void*)mt_error(rv);
+			return (void *)mt_error(rv);
 		}
 
 		/* eof */
@@ -350,7 +350,7 @@ size_t LZ5MT_compressCCtx(LZ5MT_CCtx * ctx, LZ5MT_RdWr_t * rdwr)
 		free(wl);
 	}
 
-	return (size_t)retval_of_thread;
+	return (size_t) retval_of_thread;
 }
 
 /* returns current uncompressed data size */

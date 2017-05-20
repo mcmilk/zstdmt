@@ -20,10 +20,10 @@
 #include "memmt.h"
 #include "threading.h"
 #include "list.h"
-#include "lz5mt.h"
+#include "lizard-mt.h"
 
 /**
- * multi threaded lz5 - multiple workers version
+ * multi threaded lizard - multiple workers version
  *
  * - each thread works on his own
  * - no main thread which does reading and then starting the work
@@ -37,22 +37,22 @@
 
 /* worker for compression */
 typedef struct {
-	LZ5MT_DCtx *ctx;
+	LIZARDMT_DCtx *ctx;
 	pthread_t pthread;
-	LZ5MT_Buffer in;
+	LIZARDMT_Buffer in;
 	LZ5F_decompressionContext_t dctx;
 } cwork_t;
 
 struct writelist;
 struct writelist {
 	size_t frame;
-	LZ5MT_Buffer out;
+	LIZARDMT_Buffer out;
 	struct list_head node;
 };
 
-struct LZ5MT_DCtx_s {
+struct LIZARDMT_DCtx_s {
 
-	/* threads: 1..LZ5MT_THREAD_MAX */
+	/* threads: 1..LIZARDMT_THREAD_MAX */
 	int threads;
 
 	/* should be used for read from input */
@@ -87,18 +87,18 @@ struct LZ5MT_DCtx_s {
  * Decompression
  ****************************************/
 
-LZ5MT_DCtx *LZ5MT_createDCtx(int threads, int inputsize)
+LIZARDMT_DCtx *LIZARDMT_createDCtx(int threads, int inputsize)
 {
-	LZ5MT_DCtx *ctx;
+	LIZARDMT_DCtx *ctx;
 	int t;
 
 	/* allocate ctx */
-	ctx = (LZ5MT_DCtx *) malloc(sizeof(LZ5MT_DCtx));
+	ctx = (LIZARDMT_DCtx *) malloc(sizeof(LIZARDMT_DCtx));
 	if (!ctx)
 		return 0;
 
 	/* check threads value */
-	if (threads < 1 || threads > LZ5MT_THREAD_MAX)
+	if (threads < 1 || threads > LIZARDMT_THREAD_MAX)
 		return 0;
 
 	/* setup ctx */
@@ -162,7 +162,7 @@ static size_t mt_error(int rv)
 /**
  * pt_write - queue for decompressed output
  */
-static size_t pt_write(LZ5MT_DCtx * ctx, struct writelist *wl)
+static size_t pt_write(LIZARDMT_DCtx * ctx, struct writelist *wl)
 {
 	struct list_head *entry;
 
@@ -189,10 +189,10 @@ static size_t pt_write(LZ5MT_DCtx * ctx, struct writelist *wl)
 /**
  * pt_read - read compressed output
  */
-static size_t pt_read(LZ5MT_DCtx * ctx, LZ5MT_Buffer * in, size_t * frame)
+static size_t pt_read(LIZARDMT_DCtx * ctx, LIZARDMT_Buffer * in, size_t * frame)
 {
 	unsigned char hdrbuf[12];
-	LZ5MT_Buffer hdr;
+	LIZARDMT_Buffer hdr;
 	int rv;
 
 	/* read skippable frame (8 or 12 bytes) */
@@ -227,7 +227,7 @@ static size_t pt_read(LZ5MT_DCtx * ctx, LZ5MT_Buffer * in, size_t * frame)
 		if (hdr.size != 12)
 			goto error_read;
 		if (MEM_readLE32((unsigned char *)hdr.buf + 0) !=
-		    LZ5FMT_MAGIC_SKIPPABLE)
+		    LIZARDFMT_MAGIC_SKIPPABLE)
 			goto error_data;
 	}
 
@@ -283,14 +283,14 @@ static size_t pt_read(LZ5MT_DCtx * ctx, LZ5MT_Buffer * in, size_t * frame)
 static void *pt_decompress(void *arg)
 {
 	cwork_t *w = (cwork_t *) arg;
-	LZ5MT_Buffer *in = &w->in;
-	LZ5MT_DCtx *ctx = w->ctx;
+	LIZARDMT_Buffer *in = &w->in;
+	LIZARDMT_DCtx *ctx = w->ctx;
 	size_t result = 0;
 	struct writelist *wl;
 
 	for (;;) {
 		struct list_head *entry;
-		LZ5MT_Buffer *out;
+		LIZARDMT_Buffer *out;
 
 		/* allocate space for new output */
 		pthread_mutex_lock(&ctx->write_mutex);
@@ -317,7 +317,7 @@ static void *pt_decompress(void *arg)
 
 		/* zero should not happen here! */
 		result = pt_read(ctx, in, &wl->frame);
-		if (LZ5MT_isError(result)) {
+		if (LIZARDMT_isError(result)) {
 			list_move(&wl->node, &ctx->writelist_free);
 			goto error_lock;
 		}
@@ -348,7 +348,7 @@ static void *pt_decompress(void *arg)
 				    in->buf, &in->size, 0);
 
 		if (LZ5F_isError(result)) {
-			lz5mt_errcode = result;
+			lizardmt_errcode = result;
 			result = ERROR(compression_library);
 			goto error_lock;
 		}
@@ -361,7 +361,7 @@ static void *pt_decompress(void *arg)
 		/* write result */
 		pthread_mutex_lock(&ctx->write_mutex);
 		result = pt_write(ctx, wl);
-		if (LZ5MT_isError(result))
+		if (LIZARDMT_isError(result))
 			goto error_unlock;
 		pthread_mutex_unlock(&ctx->write_mutex);
 	}
@@ -387,12 +387,12 @@ static void *pt_decompress(void *arg)
 /* single threaded */
 static size_t st_decompress(void *arg)
 {
-	LZ5MT_DCtx *ctx = (LZ5MT_DCtx *) arg;
+	LIZARDMT_DCtx *ctx = (LIZARDMT_DCtx *) arg;
 	LZ5F_errorCode_t nextToLoad = 0;
 	cwork_t *w = &ctx->cwork[0];
-	LZ5MT_Buffer Out;
-	LZ5MT_Buffer *out = &Out;
-	LZ5MT_Buffer *in = &w->in;
+	LIZARDMT_Buffer Out;
+	LIZARDMT_Buffer *out = &Out;
+	LIZARDMT_Buffer *in = &w->in;
 	void *magic = in->buf;
 	size_t pos = 0;
 	int rv;
@@ -479,12 +479,12 @@ static size_t st_decompress(void *arg)
 	return 0;
 }
 
-size_t LZ5MT_decompressDCtx(LZ5MT_DCtx * ctx, LZ5MT_RdWr_t * rdwr)
+size_t LIZARDMT_decompressDCtx(LIZARDMT_DCtx * ctx, LIZARDMT_RdWr_t * rdwr)
 {
 	unsigned char buf[4];
 	int t, rv;
 	cwork_t *w = &ctx->cwork[0];
-	LZ5MT_Buffer *in = &w->in;
+	LIZARDMT_Buffer *in = &w->in;
 	void *retval_of_thread = 0;
 
 	if (!ctx)
@@ -496,7 +496,7 @@ size_t LZ5MT_decompressDCtx(LZ5MT_DCtx * ctx, LZ5MT_RdWr_t * rdwr)
 	ctx->arg_read = rdwr->arg_read;
 	ctx->arg_write = rdwr->arg_write;
 
-	/* check for LZ5FMT_MAGIC_SKIPPABLE */
+	/* check for LIZARDFMT_MAGIC_SKIPPABLE */
 	in->buf = buf;
 	in->size = 4;
 	rv = ctx->fn_read(ctx->arg_read, in);
@@ -506,10 +506,10 @@ size_t LZ5MT_decompressDCtx(LZ5MT_DCtx * ctx, LZ5MT_RdWr_t * rdwr)
 		return ERROR(data_error);
 
 	/* single threaded with unknown sizes */
-	if (MEM_readLE32(buf) != LZ5FMT_MAGIC_SKIPPABLE) {
+	if (MEM_readLE32(buf) != LIZARDFMT_MAGIC_SKIPPABLE) {
 
 		/* look for correct magic */
-		if (MEM_readLE32(buf) != LZ5FMT_MAGICNUMBER)
+		if (MEM_readLE32(buf) != LIZARDFMT_MAGICNUMBER)
 			return ERROR(data_error);
 
 		/* decompress single threaded */
@@ -560,11 +560,11 @@ size_t LZ5MT_decompressDCtx(LZ5MT_DCtx * ctx, LZ5MT_RdWr_t * rdwr)
 		free(wl);
 	}
 
-	return (size_t)retval_of_thread;
+	return (size_t) retval_of_thread;
 }
 
 /* returns current uncompressed data size */
-size_t LZ5MT_GetInsizeDCtx(LZ5MT_DCtx * ctx)
+size_t LIZARDMT_GetInsizeDCtx(LIZARDMT_DCtx * ctx)
 {
 	if (!ctx)
 		return 0;
@@ -573,7 +573,7 @@ size_t LZ5MT_GetInsizeDCtx(LZ5MT_DCtx * ctx)
 }
 
 /* returns the current compressed data size */
-size_t LZ5MT_GetOutsizeDCtx(LZ5MT_DCtx * ctx)
+size_t LIZARDMT_GetOutsizeDCtx(LIZARDMT_DCtx * ctx)
 {
 	if (!ctx)
 		return 0;
@@ -582,7 +582,7 @@ size_t LZ5MT_GetOutsizeDCtx(LZ5MT_DCtx * ctx)
 }
 
 /* returns the current compressed frames */
-size_t LZ5MT_GetFramesDCtx(LZ5MT_DCtx * ctx)
+size_t LIZARDMT_GetFramesDCtx(LIZARDMT_DCtx * ctx)
 {
 	if (!ctx)
 		return 0;
@@ -590,7 +590,7 @@ size_t LZ5MT_GetFramesDCtx(LZ5MT_DCtx * ctx)
 	return ctx->curframe;
 }
 
-void LZ5MT_freeDCtx(LZ5MT_DCtx * ctx)
+void LIZARDMT_freeDCtx(LIZARDMT_DCtx * ctx)
 {
 	int t;
 

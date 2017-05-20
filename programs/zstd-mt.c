@@ -8,16 +8,16 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  *
  * You can contact the author at:
- * - lz4mt source repository: https://github.com/mcmilk/lz4mt
+ * - zstdmt source repository: https://github.com/mcmilk/zstdmt
  */
 
 #include <stdio.h>
 
 #include "platform.h"
-#include "lz4mt.h"
+#include "zstd-mt.h"
 
 /**
- * program for testing threaded stuff on lz4
+ * program for testing threaded stuff on zstd
  */
 
 static void perror_exit(const char *msg)
@@ -29,30 +29,35 @@ static void perror_exit(const char *msg)
 
 static void version(void)
 {
-	printf("lz4mt version " VERSION "\n");
+	printf("zstd-mt version " VERSION "\n");
 	exit(0);
 }
 
 static void usage(void)
 {
-	printf("Usage: lz4mt [options] INPUT > FILE\n");
-	printf("or     lz4mt [options] -o FILE INPUT\n");
-	printf("or     cat INPUT | lz4mt [options] -o FILE\n");
-	printf("or     cat INPUT | lz4mt [options] > FILE\n\n");
+	printf("Usage: zstd-mt [options] INPUT > FILE\n");
+	printf("or     zstd-mt [options] -o FILE INPUT\n");
+	printf("or     cat INPUT | zstd-mt [options] -o FILE\n");
+	printf("or     cat INPUT | zstd-mt [options] > FILE\n\n");
 
 	printf("Options:\n");
-	printf(" -o FILE write result to a file named `FILE`\n");
-	printf(" -#      set compression level to # (1-12, default:1)\n");
-	printf
-	    (" -T N    set number of (de)compression threads (def: #cores)\n");
-	printf(" -i N    set number of iterations for testing (default: 1)\n");
-	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
-	printf(" -c      compress (default mode)\n");
+	printf(" -c      force write to standard output\n");
 	printf(" -d      use decompress mode\n");
+	printf(" -f      force\n");
+	printf(" -h      Display a help screen and quit.\n");
+
+	printf(" -o FILE write result to a file named `FILE`\n");
+	printf(" -#      set compression level to # (1-22, default:3)\n");
+	printf(" -T N    set number of (de)compression threads (def: #cores)\n");
+	printf(" -i N    set number of iterations for testing (default: 1)\n");
+	printf(" -b N    set input chunksize to N MiB (default: auto)\n");
+	printf(" -z      use compress mode (this is the default)\n");
 	printf(" -t      print timings and memory usage to stderr\n");
 	printf(" -H      print headline for the timing values\n");
-	printf(" -h      show usage\n");
-	printf(" -v      show version\n\n");
+	printf(" -V      show version\n\n");
+
+	printf("Ignored Options:\n");
+	printf(" -a      Ascii text mode converting (not done)\n");
 
 	exit(0);
 }
@@ -70,28 +75,30 @@ static void headline(void)
 /* for the -i option */
 #define MAX_ITERATIONS   1000
 
-int my_read_loop(void *arg, LZ4MT_Buffer * in)
+int my_read_loop(void *arg, ZSTDMT_Buffer * in)
 {
 	FILE *fd = (FILE *) arg;
 	ssize_t done = fread(in->buf, 1, in->size, fd);
 
 #if 0
-	printf("fread(), todo=%u done=%u\n", in->size, done);
-	fflush(stdout);
+	fprintf(stderr, "fread(), todo=%u done=%u\n", (unsigned)in->size,
+		(unsigned)done);
+	fflush(stderr);
 #endif
 
 	in->size = done;
 	return 0;
 }
 
-int my_write_loop(void *arg, LZ4MT_Buffer * out)
+int my_write_loop(void *arg, ZSTDMT_Buffer * out)
 {
 	FILE *fd = (FILE *) arg;
 	ssize_t done = fwrite(out->buf, 1, out->size, fd);
 
 #if 0
-	printf("fwrite(), todo=%u done=%u\n", out->size, done);
-	fflush(stdout);
+	fprintf(stderr, "fwrite(), todo=%u done=%u\n", (unsigned)out->size,
+		(unsigned)done);
+	fflush(stderr);
 #endif
 
 	out->size = done;
@@ -103,7 +110,7 @@ do_compress(int threads, int level, int bufsize, FILE * fin, FILE * fout,
 	    int opt_timings)
 {
 	static int first = 1;
-	LZ4MT_RdWr_t rdwr;
+	ZSTDMT_RdWr_t rdwr;
 	size_t ret;
 
 	/* 1) setup read/write functions */
@@ -113,34 +120,34 @@ do_compress(int threads, int level, int bufsize, FILE * fin, FILE * fout,
 	rdwr.arg_write = (void *)fout;
 
 	/* 2) create compression context */
-	LZ4MT_CCtx *ctx = LZ4MT_createCCtx(threads, level, bufsize);
+	ZSTDMT_CCtx *ctx = ZSTDMT_createCCtx(threads, level, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = LZ4MT_compressCCtx(ctx, &rdwr);
-	if (LZ4MT_isError(ret))
-		perror_exit(LZ4MT_getErrorString(ret));
+	ret = ZSTDMT_compressCCtx(ctx, &rdwr);
+	if (ZSTDMT_isError(ret))
+		perror_exit(ZSTDMT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first && opt_timings) {
 		fprintf(stderr, "%d;%d;%lu;%lu;%lu",
 			level, threads,
-			(unsigned long)LZ4MT_GetInsizeCCtx(ctx),
-			(unsigned long)LZ4MT_GetOutsizeCCtx(ctx),
-			(unsigned long)LZ4MT_GetFramesCCtx(ctx));
+			(unsigned long)ZSTDMT_GetInsizeCCtx(ctx),
+			(unsigned long)ZSTDMT_GetOutsizeCCtx(ctx),
+			(unsigned long)ZSTDMT_GetFramesCCtx(ctx));
 		first = 0;
 	}
 
 	/* 5) free resources */
-	LZ4MT_freeCCtx(ctx);
+	ZSTDMT_freeCCtx(ctx);
 }
 
 static void do_decompress(int threads, int bufsize, FILE * fin, FILE *
 			  fout, int opt_timings)
 {
 	static int first = 1;
-	LZ4MT_RdWr_t rdwr;
+	ZSTDMT_RdWr_t rdwr;
 	size_t ret;
 
 	/* 1) setup read/write functions */
@@ -150,33 +157,33 @@ static void do_decompress(int threads, int bufsize, FILE * fin, FILE *
 	rdwr.arg_write = (void *)fout;
 
 	/* 2) create compression context */
-	LZ4MT_DCtx *ctx = LZ4MT_createDCtx(threads, bufsize);
+	ZSTDMT_DCtx *ctx = ZSTDMT_createDCtx(threads, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = LZ4MT_decompressDCtx(ctx, &rdwr);
-	if (LZ4MT_isError(ret))
-		perror_exit(LZ4MT_getErrorString(ret));
+	ret = ZSTDMT_decompressDCtx(ctx, &rdwr);
+	if (ZSTDMT_isError(ret))
+		perror_exit(ZSTDMT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first && opt_timings) {
 		fprintf(stderr, "%d;%d;%lu;%lu;%lu",
 			0, threads,
-			(unsigned long)LZ4MT_GetInsizeDCtx(ctx),
-			(unsigned long)LZ4MT_GetOutsizeDCtx(ctx),
-			(unsigned long)LZ4MT_GetFramesDCtx(ctx));
+			(unsigned long)ZSTDMT_GetInsizeDCtx(ctx),
+			(unsigned long)ZSTDMT_GetOutsizeDCtx(ctx),
+			(unsigned long)ZSTDMT_GetFramesDCtx(ctx));
 		first = 0;
 	}
 
 	/* 5) free resources */
-	LZ4MT_freeDCtx(ctx);
+	ZSTDMT_freeDCtx(ctx);
 }
 
 int main(int argc, char **argv)
 {
 	/* default options: */
-	int opt, opt_threads = getcpucount(), opt_level = 1;
+	int opt, opt_threads = getcpucount(), opt_level = 3;
 	int opt_mode = MODE_COMPRESS;
 	int opt_iterations = 1, opt_bufsize = 0, opt_timings = 0;
 	int opt_numbers = 0;
@@ -185,9 +192,9 @@ int main(int argc, char **argv)
 	struct timeval tms, tme, tm;
 	FILE *fin = NULL, *fout = NULL;
 
-	while ((opt = getopt(argc, argv, "vhHT:i:dcb:o:t0123456789")) != -1) {
+	while ((opt = getopt(argc, argv, "VhHT:i:dczb:o:t0123456789")) != -1) {
 		switch (opt) {
-		case 'v':	/* version */
+		case 'V':	/* version */
 			version();
 		case 'h':	/* help */
 			usage();
@@ -202,7 +209,9 @@ int main(int argc, char **argv)
 		case 'd':	/* mode = decompress */
 			opt_mode = MODE_DECOMPRESS;
 			break;
-		case 'c':	/* mode = compress */
+		case 'c':	/* to stdout, ignored */
+			break;
+		case 'z':	/* mode = compress */
 			opt_mode = MODE_COMPRESS;
 			break;
 		case 'b':	/* input buffer in MB */
@@ -243,14 +252,14 @@ int main(int argc, char **argv)
 	/* opt_level = 1..22 */
 	if (opt_level < 1)
 		opt_level = 1;
-	else if (opt_level > LZ4MT_LEVEL_MAX)
-		opt_level = LZ4MT_LEVEL_MAX;
+	else if (opt_level > ZSTDMT_LEVEL_MAX)
+		opt_level = ZSTDMT_LEVEL_MAX;
 
-	/* opt_threads = 1..LZ4MT_THREAD_MAX */
+	/* opt_threads = 1..ZSTDMT_THREAD_MAX */
 	if (opt_threads < 1)
 		opt_threads = 1;
-	else if (opt_threads > LZ4MT_THREAD_MAX)
-		opt_threads = LZ4MT_THREAD_MAX;
+	else if (opt_threads > ZSTDMT_THREAD_MAX)
+		opt_threads = ZSTDMT_THREAD_MAX;
 
 	/* opt_iterations = 1..MAX_ITERATIONS */
 	if (opt_iterations < 1)
@@ -258,9 +267,9 @@ int main(int argc, char **argv)
 	else if (opt_iterations > MAX_ITERATIONS)
 		opt_iterations = MAX_ITERATIONS;
 
-	/* opt_bufsize is in KiB */
+	/* opt_bufsize is in MiB */
 	if (opt_bufsize > 0)
-		opt_bufsize *= 1024;
+		opt_bufsize *= 1024 * 1024;
 
 	/* File IO */
 	if (argc < optind + 1) {
@@ -288,7 +297,8 @@ int main(int argc, char **argv)
 		perror_exit("Opening outfile failed");
 
 	/* begin timing */
-	gettimeofday(&tms, NULL);
+	if (opt_timings)
+		gettimeofday(&tms, NULL);
 
 	for (;;) {
 		if (opt_mode == MODE_COMPRESS) {

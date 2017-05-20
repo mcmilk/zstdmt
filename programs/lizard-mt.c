@@ -1,6 +1,6 @@
 
 /**
- * Copyright (c) 2016 - 2017 Tino Reichardt
+ * Copyright (c) 2017 Tino Reichardt
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
@@ -8,16 +8,16 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  *
  * You can contact the author at:
- * - lz5mt source repository: https://github.com/mcmilk/lz5mt
+ * - lizardmt source repository: https://github.com/mcmilk/lizardmt
  */
 
 #include <stdio.h>
 
 #include "platform.h"
-#include "lz5mt.h"
+#include "lizard-mt.h"
 
 /**
- * program for testing threaded stuff on lz5
+ * program for testing threaded stuff on lizard
  */
 
 static void perror_exit(const char *msg)
@@ -29,31 +29,36 @@ static void perror_exit(const char *msg)
 
 static void version(void)
 {
-	printf("lz5mt version " VERSION "\n");
+	printf("lizard-mt version " VERSION "\n");
 	exit(0);
 }
 
 static void usage(void)
 {
-	printf("Usage: lz5mt [options] INPUT > FILE\n");
-	printf("or     lz5mt [options] -o FILE INPUT\n");
-	printf("or     cat INPUT | lz5mt [options] -o FILE\n");
-	printf("or     cat INPUT | lz5mt [options] > FILE\n\n");
+	printf("Usage: lizard-mt [options] INPUT > FILE\n");
+	printf("or     lizard-mt [options] -o FILE INPUT\n");
+	printf("or     cat INPUT | lizard-mt [options] -o FILE\n");
+	printf("or     cat INPUT | lizard-mt [options] > FILE\n\n");
 
 	printf("Options:\n");
 	printf(" -o FILE write result to a file named `FILE`\n");
-	printf(" -#      set compression level to # (1-15, default:1)\n");
-	printf
-	    (" -T N    set number of (de)compression threads (def: #cores)\n");
+	printf(" -#      set compression level to # (10..49, default: 11)\n");
+	printf(" -T N    set number of (de)compression threads (def: #cores)\n");
 	printf(" -i N    set number of iterations for testing (default: 1)\n");
-	printf(" -b N    set input chunksize to N KiB (default: auto)\n");
-	printf(" -c      compress (default mode)\n");
+	printf(" -b N    set input chunksize to N MiB (default: 1MiB * level)\n");
+	printf(" -c      force write to standard output\n");
+	printf(" -z      use compress mode (this is the default)\n");
 	printf(" -d      use decompress mode\n");
 	printf(" -t      print timings and memory usage to stderr\n");
 	printf(" -H      print headline for the timing values\n");
 	printf(" -h      show usage\n");
-	printf(" -v      show version\n\n");
+	printf(" -V      show version\n\n");
 
+	printf("Level description:\n");
+	printf("10..19:  fastLZ4: give better decompression speed than LZ4\n");
+	printf("20..29:  LIZv1: give better ratio than LZ4 keeping 75%% decompression speed\n");
+	printf("30..39:  fastLZ4 + Huffman: add Huffman coding to fastLZ4\n");
+	printf("40..49:  LIZv1 + Huffman: add Huffman coding to LIZv1\n\n");
 	exit(0);
 }
 
@@ -70,7 +75,7 @@ static void headline(void)
 /* for the -i option */
 #define MAX_ITERATIONS   1000
 
-int my_read_loop(void *arg, LZ5MT_Buffer * in)
+int my_read_loop(void *arg, LIZARDMT_Buffer * in)
 {
 	FILE *fd = (FILE *) arg;
 	ssize_t done = fread(in->buf, 1, in->size, fd);
@@ -84,7 +89,7 @@ int my_read_loop(void *arg, LZ5MT_Buffer * in)
 	return 0;
 }
 
-int my_write_loop(void *arg, LZ5MT_Buffer * out)
+int my_write_loop(void *arg, LIZARDMT_Buffer * out)
 {
 	FILE *fd = (FILE *) arg;
 	ssize_t done = fwrite(out->buf, 1, out->size, fd);
@@ -103,7 +108,7 @@ do_compress(int threads, int level, int bufsize, FILE * fin, FILE * fout,
 	    int opt_timings)
 {
 	static int first = 1;
-	LZ5MT_RdWr_t rdwr;
+	LIZARDMT_RdWr_t rdwr;
 	size_t ret;
 
 	/* 1) setup read/write functions */
@@ -113,34 +118,34 @@ do_compress(int threads, int level, int bufsize, FILE * fin, FILE * fout,
 	rdwr.arg_write = (void *)fout;
 
 	/* 2) create compression context */
-	LZ5MT_CCtx *ctx = LZ5MT_createCCtx(threads, level, bufsize);
+	LIZARDMT_CCtx *ctx = LIZARDMT_createCCtx(threads, level, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = LZ5MT_compressCCtx(ctx, &rdwr);
-	if (LZ5MT_isError(ret))
-		perror_exit(LZ5MT_getErrorString(ret));
+	ret = LIZARDMT_compressCCtx(ctx, &rdwr);
+	if (LIZARDMT_isError(ret))
+		perror_exit(LIZARDMT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first && opt_timings) {
 		fprintf(stderr, "%d;%d;%lu;%lu;%lu",
 			level, threads,
-			(unsigned long)LZ5MT_GetInsizeCCtx(ctx),
-			(unsigned long)LZ5MT_GetOutsizeCCtx(ctx),
-			(unsigned long)LZ5MT_GetFramesCCtx(ctx));
+			(unsigned long)LIZARDMT_GetInsizeCCtx(ctx),
+			(unsigned long)LIZARDMT_GetOutsizeCCtx(ctx),
+			(unsigned long)LIZARDMT_GetFramesCCtx(ctx));
 		first = 0;
 	}
 
 	/* 5) free resources */
-	LZ5MT_freeCCtx(ctx);
+	LIZARDMT_freeCCtx(ctx);
 }
 
 static void do_decompress(int threads, int bufsize, FILE * fin, FILE *
 			  fout, int opt_timings)
 {
 	static int first = 1;
-	LZ5MT_RdWr_t rdwr;
+	LIZARDMT_RdWr_t rdwr;
 	size_t ret;
 
 	/* 1) setup read/write functions */
@@ -150,33 +155,33 @@ static void do_decompress(int threads, int bufsize, FILE * fin, FILE *
 	rdwr.arg_write = (void *)fout;
 
 	/* 2) create compression context */
-	LZ5MT_DCtx *ctx = LZ5MT_createDCtx(threads, bufsize);
+	LIZARDMT_DCtx *ctx = LIZARDMT_createDCtx(threads, bufsize);
 	if (!ctx)
 		perror_exit("Allocating ctx failed!");
 
 	/* 3) compress */
-	ret = LZ5MT_decompressDCtx(ctx, &rdwr);
-	if (LZ5MT_isError(ret))
-		perror_exit(LZ5MT_getErrorString(ret));
+	ret = LIZARDMT_decompressDCtx(ctx, &rdwr);
+	if (LIZARDMT_isError(ret))
+		perror_exit(LIZARDMT_getErrorString(ret));
 
 	/* 4) get statistic */
 	if (first && opt_timings) {
 		fprintf(stderr, "%d;%d;%lu;%lu;%lu",
 			0, threads,
-			(unsigned long)LZ5MT_GetInsizeDCtx(ctx),
-			(unsigned long)LZ5MT_GetOutsizeDCtx(ctx),
-			(unsigned long)LZ5MT_GetFramesDCtx(ctx));
+			(unsigned long)LIZARDMT_GetInsizeDCtx(ctx),
+			(unsigned long)LIZARDMT_GetOutsizeDCtx(ctx),
+			(unsigned long)LIZARDMT_GetFramesDCtx(ctx));
 		first = 0;
 	}
 
 	/* 5) free resources */
-	LZ5MT_freeDCtx(ctx);
+	LIZARDMT_freeDCtx(ctx);
 }
 
 int main(int argc, char **argv)
 {
 	/* default options: */
-	int opt, opt_threads = getcpucount(), opt_level = 1;
+	int opt, opt_threads = getcpucount(), opt_level = 11;
 	int opt_mode = MODE_COMPRESS;
 	int opt_iterations = 1, opt_bufsize = 0, opt_timings = 0;
 	int opt_numbers = 0;
@@ -185,9 +190,9 @@ int main(int argc, char **argv)
 	struct timeval tms, tme, tm;
 	FILE *fin = NULL, *fout = NULL;
 
-	while ((opt = getopt(argc, argv, "vhHT:i:dcb:o:t0123456789")) != -1) {
+	while ((opt = getopt(argc, argv, "VhHT:i:dczb:o:t0123456789")) != -1) {
 		switch (opt) {
-		case 'v':	/* version */
+		case 'V':	/* version */
 			version();
 		case 'h':	/* help */
 			usage();
@@ -202,7 +207,9 @@ int main(int argc, char **argv)
 		case 'd':	/* mode = decompress */
 			opt_mode = MODE_DECOMPRESS;
 			break;
-		case 'c':	/* mode = compress */
+		case 'c':	/* to stdout, ignored */
+			break;
+		case 'z':	/* mode = compress */
 			opt_mode = MODE_COMPRESS;
 			break;
 		case 'b':	/* input buffer in MB */
@@ -240,17 +247,22 @@ int main(int argc, char **argv)
 	 * check parameters
 	 */
 
-	/* opt_level = 1..22 */
-	if (opt_level < 1)
-		opt_level = 1;
-	else if (opt_level > LZ5MT_LEVEL_MAX)
-		opt_level = LZ5MT_LEVEL_MAX;
+	/**
+	 * 1) fastLIZARD:           10..19
+	 * 2) LIZv1:                20..29
+	 * 3) fastLIZARD + Huffman: 30..39
+	 * 4) LIZv1 + Huffman:      40..49
+	 */
+	if (opt_level < LIZARDMT_LEVEL_MIN)
+		opt_level = LIZARDMT_LEVEL_MIN;
+	else if (opt_level > LIZARDMT_LEVEL_MAX)
+		opt_level = LIZARDMT_LEVEL_MAX;
 
-	/* opt_threads = 1..LZ5MT_THREAD_MAX */
+	/* opt_threads = 1..LIZARDMT_THREAD_MAX */
 	if (opt_threads < 1)
 		opt_threads = 1;
-	else if (opt_threads > LZ5MT_THREAD_MAX)
-		opt_threads = LZ5MT_THREAD_MAX;
+	else if (opt_threads > LIZARDMT_THREAD_MAX)
+		opt_threads = LIZARDMT_THREAD_MAX;
 
 	/* opt_iterations = 1..MAX_ITERATIONS */
 	if (opt_iterations < 1)
@@ -258,9 +270,9 @@ int main(int argc, char **argv)
 	else if (opt_iterations > MAX_ITERATIONS)
 		opt_iterations = MAX_ITERATIONS;
 
-	/* opt_bufsize is in KiB */
+	/* opt_bufsize is in MiB */
 	if (opt_bufsize > 0)
-		opt_bufsize *= 1024;
+		opt_bufsize *= 1024 * 1024;
 
 	/* File IO */
 	if (argc < optind + 1) {
@@ -288,7 +300,8 @@ int main(int argc, char **argv)
 		perror_exit("Opening outfile failed");
 
 	/* begin timing */
-	gettimeofday(&tms, NULL);
+	if (opt_timings)
+		gettimeofday(&tms, NULL);
 
 	for (;;) {
 		if (opt_mode == MODE_COMPRESS) {

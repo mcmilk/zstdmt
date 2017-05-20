@@ -10,7 +10,7 @@
  */
 
 #include "zstd.h"
-#include "zstdmt.h"
+#include "zstd-mt.h"
 
 /* ****************************************
  * ZSTDMT Error Management

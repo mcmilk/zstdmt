@@ -14,16 +14,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define LZ4F_DISABLE_OBSOLETE_ENUMS
-#include "lz4frame.h"
+#define LZ5F_DISABLE_OBSOLETE_ENUMS
+#include "lz5frame.h"
 
 #include "memmt.h"
 #include "threading.h"
 #include "list.h"
-#include "lz4mt.h"
+#include "lizard-mt.h"
 
 /**
- * multi threaded lz4 - multiple workers version
+ * multi threaded lizard - multiple workers version
  *
  * - each thread works on his own
  * - no main thread which does reading and then starting the work
@@ -37,24 +37,24 @@
 
 /* worker for compression */
 typedef struct {
-	LZ4MT_CCtx *ctx;
-	LZ4F_preferences_t zpref;
+	LIZARDMT_CCtx *ctx;
+	LZ5F_preferences_t zpref;
 	pthread_t pthread;
 } cwork_t;
 
 struct writelist;
 struct writelist {
 	size_t frame;
-	LZ4MT_Buffer out;
+	LIZARDMT_Buffer out;
 	struct list_head node;
 };
 
-struct LZ4MT_CCtx_s {
+struct LIZARDMT_CCtx_s {
 
 	/* level: 1..22 */
 	int level;
 
-	/* threads: 1..LZ4MT_THREAD_MAX */
+	/* threads: 1..LIZARDMT_THREAD_MAX */
 	int threads;
 
 	/* should be used for read from input */
@@ -89,29 +89,29 @@ struct LZ4MT_CCtx_s {
  * Compression
  ****************************************/
 
-LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize)
+LIZARDMT_CCtx *LIZARDMT_createCCtx(int threads, int level, int inputsize)
 {
-	LZ4MT_CCtx *ctx;
+	LIZARDMT_CCtx *ctx;
 	int t;
 
 	/* allocate ctx */
-	ctx = (LZ4MT_CCtx *) malloc(sizeof(LZ4MT_CCtx));
+	ctx = (LIZARDMT_CCtx *) malloc(sizeof(LIZARDMT_CCtx));
 	if (!ctx)
 		return 0;
 
 	/* check threads value */
-	if (threads < 1 || threads > LZ4MT_THREAD_MAX)
+	if (threads < 1 || threads > LIZARDMT_THREAD_MAX)
 		return 0;
 
 	/* check level */
-	if (level < 1 || level > LZ4MT_LEVEL_MAX)
+	if (level < 1 || level > LIZARDMT_LEVEL_MAX)
 		return 0;
 
 	/* calculate chunksize for one thread */
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else
-		ctx->inputsize = 1024 * 64;
+		ctx->inputsize = 1024 * 1024;
 
 	/* setup ctx */
 	ctx->level = level;
@@ -138,12 +138,12 @@ LZ4MT_CCtx *LZ4MT_createCCtx(int threads, int level, int inputsize)
 		w->ctx = ctx;
 
 		/* setup preferences for that thread */
-		memset(&w->zpref, 0, sizeof(LZ4F_preferences_t));
+		memset(&w->zpref, 0, sizeof(LZ5F_preferences_t));
 		w->zpref.compressionLevel = level;
-		w->zpref.frameInfo.blockMode = LZ4F_blockLinked;
+		w->zpref.frameInfo.blockMode = LZ5F_blockLinked;
 		w->zpref.frameInfo.contentSize = 1;
 		w->zpref.frameInfo.contentChecksumFlag =
-		    LZ4F_contentChecksumEnabled;
+		    LZ5F_contentChecksumEnabled;
 
 	}
 
@@ -176,7 +176,7 @@ static size_t mt_error(int rv)
 /**
  * pt_write - queue for compressed output
  */
-static size_t pt_write(LZ4MT_CCtx * ctx, struct writelist *wl)
+static size_t pt_write(LIZARDMT_CCtx * ctx, struct writelist *wl)
 {
 	struct list_head *entry;
 
@@ -208,9 +208,9 @@ static size_t pt_write(LZ4MT_CCtx * ctx, struct writelist *wl)
 static void *pt_compress(void *arg)
 {
 	cwork_t *w = (cwork_t *) arg;
-	LZ4MT_CCtx *ctx = w->ctx;
+	LIZARDMT_CCtx *ctx = w->ctx;
 	size_t result;
-	LZ4MT_Buffer in;
+	LIZARDMT_Buffer in;
 
 	/* inbuf is constant */
 	in.size = ctx->inputsize;
@@ -230,7 +230,7 @@ static void *pt_compress(void *arg)
 			entry = list_first(&ctx->writelist_free);
 			wl = list_entry(entry, struct writelist, node);
 			wl->out.size =
-			    LZ4F_compressFrameBound(ctx->inputsize,
+			    LZ5F_compressFrameBound(ctx->inputsize,
 						    &w->zpref) + 12;
 			list_move(entry, &ctx->writelist_busy);
 		} else {
@@ -242,7 +242,7 @@ static void *pt_compress(void *arg)
 				return (void *)ERROR(memory_allocation);
 			}
 			wl->out.size =
-			    LZ4F_compressFrameBound(ctx->inputsize,
+			    LZ5F_compressFrameBound(ctx->inputsize,
 						    &w->zpref) + 12;;
 			wl->out.buf = malloc(wl->out.size);
 			if (!wl->out.buf) {
@@ -259,7 +259,7 @@ static void *pt_compress(void *arg)
 		rv = ctx->fn_read(ctx->arg_read, &in);
 		if (rv != 0) {
 			pthread_mutex_unlock(&ctx->read_mutex);
-			return (void*)mt_error(rv);
+			return (void *)mt_error(rv);
 		}
 
 		/* eof */
@@ -279,21 +279,21 @@ static void *pt_compress(void *arg)
 
 		/* compress whole frame */
 		result =
-		    LZ4F_compressFrame((unsigned char *)wl->out.buf + 12,
+		    LZ5F_compressFrame((unsigned char *)wl->out.buf + 12,
 				       wl->out.size - 12, in.buf, in.size,
 				       &w->zpref);
-		if (LZ4F_isError(result)) {
+		if (LZ5F_isError(result)) {
 			pthread_mutex_lock(&ctx->write_mutex);
 			list_move(&wl->node, &ctx->writelist_free);
 			pthread_mutex_unlock(&ctx->write_mutex);
 			/* user can lookup that code */
-			lz4mt_errcode = result;
+			lizardmt_errcode = result;
 			return (void *)ERROR(compression_library);
 		}
 
 		/* write skippable frame */
 		MEM_writeLE32((unsigned char *)wl->out.buf + 0,
-			      LZ4FMT_MAGIC_SKIPPABLE);
+			      LIZARDFMT_MAGIC_SKIPPABLE);
 		MEM_writeLE32((unsigned char *)wl->out.buf + 4, 4);
 		MEM_writeLE32((unsigned char *)wl->out.buf + 8, (U32) result);
 		wl->out.size = result + 12;
@@ -302,7 +302,7 @@ static void *pt_compress(void *arg)
 		pthread_mutex_lock(&ctx->write_mutex);
 		result = pt_write(ctx, wl);
 		pthread_mutex_unlock(&ctx->write_mutex);
-		if (LZ4MT_isError(result))
+		if (LIZARDMT_isError(result))
 			return (void *)result;
 	}
 
@@ -310,7 +310,7 @@ static void *pt_compress(void *arg)
 	return 0;
 }
 
-size_t LZ4MT_compressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr)
+size_t LIZARDMT_compressCCtx(LIZARDMT_CCtx * ctx, LIZARDMT_RdWr_t * rdwr)
 {
 	int t;
 	void *retval_of_thread = 0;
@@ -350,11 +350,11 @@ size_t LZ4MT_compressCCtx(LZ4MT_CCtx * ctx, LZ4MT_RdWr_t * rdwr)
 		free(wl);
 	}
 
-	return (size_t)retval_of_thread;
+	return (size_t) retval_of_thread;
 }
 
 /* returns current uncompressed data size */
-size_t LZ4MT_GetInsizeCCtx(LZ4MT_CCtx * ctx)
+size_t LIZARDMT_GetInsizeCCtx(LIZARDMT_CCtx * ctx)
 {
 	if (!ctx)
 		return 0;
@@ -363,7 +363,7 @@ size_t LZ4MT_GetInsizeCCtx(LZ4MT_CCtx * ctx)
 }
 
 /* returns the current compressed data size */
-size_t LZ4MT_GetOutsizeCCtx(LZ4MT_CCtx * ctx)
+size_t LIZARDMT_GetOutsizeCCtx(LIZARDMT_CCtx * ctx)
 {
 	if (!ctx)
 		return 0;
@@ -372,7 +372,7 @@ size_t LZ4MT_GetOutsizeCCtx(LZ4MT_CCtx * ctx)
 }
 
 /* returns the current compressed frames */
-size_t LZ4MT_GetFramesCCtx(LZ4MT_CCtx * ctx)
+size_t LIZARDMT_GetFramesCCtx(LIZARDMT_CCtx * ctx)
 {
 	if (!ctx)
 		return 0;
@@ -380,7 +380,7 @@ size_t LZ4MT_GetFramesCCtx(LZ4MT_CCtx * ctx)
 	return ctx->curframe;
 }
 
-void LZ4MT_freeCCtx(LZ4MT_CCtx * ctx)
+void LIZARDMT_freeCCtx(LIZARDMT_CCtx * ctx)
 {
 	if (!ctx)
 		return;

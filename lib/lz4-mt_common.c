@@ -1,7 +1,7 @@
 
 /**
- * Copyright (c) 2016, Yann Collet, Facebook, Inc.
- * Copyright (c) 2016 - 2017 Tino Reichardt
+ * Copyright (c) 2016-present, Yann Collet, Facebook, Inc.
+ * Copyright (c) 2016 Tino Reichardt
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
@@ -9,34 +9,34 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-#include "lz5frame.h"
-#include "lizardmt.h"
+#include "lz4frame.h"
+#include "lz4-mt.h"
 
 /* will be used for lib errors */
-size_t lz5mt_errcode;
+size_t lz4mt_errcode;
 
 /* ****************************************
- * LIZARDMT Error Management
+ * LZ4MT Error Management
  ******************************************/
 
 /**
- * LIZARDMT_isError() - tells if a return value is an error code
+ * LZ4MT_isError() - tells if a return value is an error code
  */
-unsigned LIZARDMT_isError(size_t code)
+unsigned LZ4MT_isError(size_t code)
 {
 	return (code > ERROR(maxCode));
 }
 
 /**
- * LIZARDMT_getErrorString() - give error code string from function result
+ * LZ4MT_getErrorString() - give error code string from function result
  */
-const char *LIZARDMT_getErrorString(size_t code)
+const char *LZ4MT_getErrorString(size_t code)
 {
-	if (LZ5F_isError(lz5mt_errcode))
-		return LZ5F_getErrorName(lz5mt_errcode);
+	if (LZ4F_isError(lz4mt_errcode))
+		return LZ4F_getErrorName(lz4mt_errcode);
 
 	static const char *notErrorCode = "Unspecified error lz4mt code";
-	switch ((LIZARDMT_ErrorCode) (0 - code)) {
+	switch ((LZ4MT_ErrorCode) (0 - code)) {
 	case PREFIX(no_error):
 		return "No error detected";
 	case PREFIX(memory_allocation):

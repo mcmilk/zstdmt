@@ -20,7 +20,7 @@
 #include "memmt.h"
 #include "threading.h"
 #include "list.h"
-#include "zstdmt.h"
+#include "zstd-mt.h"
 
 /**
  * multi threaded zstd decompression
@@ -839,7 +839,7 @@ size_t ZSTDMT_decompressDCtx(ZSTDMT_DCtx * ctx, ZSTDMT_RdWr_t * rdwr)
 		free(wl);
 	}
 
-	return (size_t)retval_of_thread;
+	return (size_t) retval_of_thread;
 }
 
 /* returns current uncompressed data size */

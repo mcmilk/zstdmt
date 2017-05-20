@@ -1,6 +1,6 @@
 
 /**
- * Copyright (c) 2017 Tino Reichardt
+ * Copyright (c) 2016 - 2017 Tino Reichardt
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
@@ -13,17 +13,17 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
-#define LZ5F_DISABLE_OBSOLETE_ENUMS
-#include "lz5frame.h"
+#include <brotli/encode.h>
 
+#include "brotli-mt.h"
 #include "memmt.h"
 #include "threading.h"
 #include "list.h"
-#include "lizardmt.h"
 
 /**
- * multi threaded lz5 - multiple workers version
+ * multi threaded bro - multiple workers version
  *
  * - each thread works on his own
  * - no main thread which does reading and then starting the work
@@ -37,24 +37,23 @@
 
 /* worker for compression */
 typedef struct {
-	LIZARDMT_CCtx *ctx;
-	LZ5F_preferences_t zpref;
+	BROTLIMT_CCtx *ctx;
 	pthread_t pthread;
 } cwork_t;
 
 struct writelist;
 struct writelist {
 	size_t frame;
-	LIZARDMT_Buffer out;
+	BROTLIMT_Buffer out;
 	struct list_head node;
 };
 
-struct LIZARDMT_CCtx_s {
+struct BROTLIMT_CCtx_s {
 
 	/* level: 1..22 */
 	int level;
 
-	/* threads: 1..LIZARDMT_THREAD_MAX */
+	/* threads: 1..BROTLIMT_THREAD_MAX */
 	int threads;
 
 	/* should be used for read from input */
@@ -89,29 +88,29 @@ struct LIZARDMT_CCtx_s {
  * Compression
  ****************************************/
 
-LIZARDMT_CCtx *LIZARDMT_createCCtx(int threads, int level, int inputsize)
+BROTLIMT_CCtx *BROTLIMT_createCCtx(int threads, int level, int inputsize)
 {
-	LIZARDMT_CCtx *ctx;
+	BROTLIMT_CCtx *ctx;
 	int t;
 
 	/* allocate ctx */
-	ctx = (LIZARDMT_CCtx *) malloc(sizeof(LIZARDMT_CCtx));
+	ctx = (BROTLIMT_CCtx *) malloc(sizeof(BROTLIMT_CCtx));
 	if (!ctx)
 		return 0;
 
 	/* check threads value */
-	if (threads < 1 || threads > LIZARDMT_THREAD_MAX)
+	if (threads < 1 || threads > BROTLIMT_THREAD_MAX)
 		return 0;
 
 	/* check level */
-	if (level < 1 || level > LIZARDMT_LEVEL_MAX)
+	if (level < 0 || level > BROTLIMT_LEVEL_MAX)
 		return 0;
 
 	/* calculate chunksize for one thread */
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else
-		ctx->inputsize = 1024 * 64;
+		ctx->inputsize = 1024 * 1024 * level;
 
 	/* setup ctx */
 	ctx->level = level;
@@ -136,15 +135,6 @@ LIZARDMT_CCtx *LIZARDMT_createCCtx(int threads, int level, int inputsize)
 	for (t = 0; t < threads; t++) {
 		cwork_t *w = &ctx->cwork[t];
 		w->ctx = ctx;
-
-		/* setup preferences for that thread */
-		memset(&w->zpref, 0, sizeof(LZ5F_preferences_t));
-		w->zpref.compressionLevel = level;
-		w->zpref.frameInfo.blockMode = LZ5F_blockLinked;
-		w->zpref.frameInfo.contentSize = 1;
-		w->zpref.frameInfo.contentChecksumFlag =
-		    LZ5F_contentChecksumEnabled;
-
 	}
 
 	return ctx;
@@ -176,7 +166,7 @@ static size_t mt_error(int rv)
 /**
  * pt_write - queue for compressed output
  */
-static size_t pt_write(LIZARDMT_CCtx * ctx, struct writelist *wl)
+static size_t pt_write(BROTLIMT_CCtx * ctx, struct writelist *wl)
 {
 	struct list_head *entry;
 
@@ -208,9 +198,9 @@ static size_t pt_write(LIZARDMT_CCtx * ctx, struct writelist *wl)
 static void *pt_compress(void *arg)
 {
 	cwork_t *w = (cwork_t *) arg;
-	LIZARDMT_CCtx *ctx = w->ctx;
+	BROTLIMT_CCtx *ctx = w->ctx;
 	size_t result;
-	LIZARDMT_Buffer in;
+	BROTLIMT_Buffer in;
 
 	/* inbuf is constant */
 	in.size = ctx->inputsize;
@@ -230,8 +220,7 @@ static void *pt_compress(void *arg)
 			entry = list_first(&ctx->writelist_free);
 			wl = list_entry(entry, struct writelist, node);
 			wl->out.size =
-			    LZ5F_compressFrameBound(ctx->inputsize,
-						    &w->zpref) + 12;
+			    BrotliEncoderMaxCompressedSize(ctx->inputsize) + 16;
 			list_move(entry, &ctx->writelist_busy);
 		} else {
 			/* allocate new one */
@@ -242,8 +231,7 @@ static void *pt_compress(void *arg)
 				return (void *)ERROR(memory_allocation);
 			}
 			wl->out.size =
-			    LZ5F_compressFrameBound(ctx->inputsize,
-						    &w->zpref) + 12;;
+			    BrotliEncoderMaxCompressedSize(ctx->inputsize) + 16;
 			wl->out.buf = malloc(wl->out.size);
 			if (!wl->out.buf) {
 				pthread_mutex_unlock(&ctx->write_mutex);
@@ -259,7 +247,7 @@ static void *pt_compress(void *arg)
 		rv = ctx->fn_read(ctx->arg_read, &in);
 		if (rv != 0) {
 			pthread_mutex_unlock(&ctx->read_mutex);
-			return (void*)mt_error(rv);
+			return (void *)mt_error(rv);
 		}
 
 		/* eof */
@@ -278,31 +266,40 @@ static void *pt_compress(void *arg)
 		pthread_mutex_unlock(&ctx->read_mutex);
 
 		/* compress whole frame */
-		result =
-		    LZ5F_compressFrame((unsigned char *)wl->out.buf + 12,
-				       wl->out.size - 12, in.buf, in.size,
-				       &w->zpref);
-		if (LZ5F_isError(result)) {
-			pthread_mutex_lock(&ctx->write_mutex);
-			list_move(&wl->node, &ctx->writelist_free);
-			pthread_mutex_unlock(&ctx->write_mutex);
-			/* user can lookup that code */
-			lz5mt_errcode = result;
-			return (void *)ERROR(compression_library);
+		{
+			const uint8_t *ibuf = in.buf;
+			uint8_t *obuf = wl->out.buf + 12;
+			wl->out.size -= 12;
+			rv = BrotliEncoderCompress(ctx->level,
+						   BROTLI_MAX_WINDOW_BITS,
+						   BROTLI_MODE_GENERIC, in.size,
+						   ibuf, &wl->out.size, obuf);
+
+			if (rv == BROTLI_FALSE) {
+				pthread_mutex_lock(&ctx->write_mutex);
+				list_move(&wl->node, &ctx->writelist_free);
+				pthread_mutex_unlock(&ctx->write_mutex);
+				/* user can lookup that code */
+				//bromt_errcode = result;
+				return (void *)-1;
+			}
 		}
 
 		/* write skippable frame */
 		MEM_writeLE32((unsigned char *)wl->out.buf + 0,
-			      LZ5FMT_MAGIC_SKIPPABLE);
+			      BROFMT_MAGIC_SKIPPABLE);
 		MEM_writeLE32((unsigned char *)wl->out.buf + 4, 4);
-		MEM_writeLE32((unsigned char *)wl->out.buf + 8, (U32) result);
-		wl->out.size = result + 12;
+		MEM_writeLE32((unsigned char *)wl->out.buf + 8,
+			      (U32) wl->out.size);
+		MEM_writeLE32((unsigned char *)wl->out.buf + 12,
+			      (U32) BROFMT_MAGICNUMBER);
+		wl->out.size += 16;
 
 		/* write result */
 		pthread_mutex_lock(&ctx->write_mutex);
 		result = pt_write(ctx, wl);
 		pthread_mutex_unlock(&ctx->write_mutex);
-		if (LIZARDMT_isError(result))
+		if (BROTLIMT_isError(result))
 			return (void *)result;
 	}
 
@@ -310,7 +307,7 @@ static void *pt_compress(void *arg)
 	return 0;
 }
 
-size_t LIZARDMT_compressCCtx(LIZARDMT_CCtx * ctx, LIZARDMT_RdWr_t * rdwr)
+size_t BROTLIMT_compressCCtx(BROTLIMT_CCtx * ctx, BROTLIMT_RdWr_t * rdwr)
 {
 	int t;
 	void *retval_of_thread = 0;
@@ -350,11 +347,11 @@ size_t LIZARDMT_compressCCtx(LIZARDMT_CCtx * ctx, LIZARDMT_RdWr_t * rdwr)
 		free(wl);
 	}
 
-	return (size_t)retval_of_thread;
+	return (size_t) retval_of_thread;
 }
 
 /* returns current uncompressed data size */
-size_t LIZARDMT_GetInsizeCCtx(LIZARDMT_CCtx * ctx)
+size_t BROTLIMT_GetInsizeCCtx(BROTLIMT_CCtx * ctx)
 {
 	if (!ctx)
 		return 0;
@@ -363,7 +360,7 @@ size_t LIZARDMT_GetInsizeCCtx(LIZARDMT_CCtx * ctx)
 }
 
 /* returns the current compressed data size */
-size_t LIZARDMT_GetOutsizeCCtx(LIZARDMT_CCtx * ctx)
+size_t BROTLIMT_GetOutsizeCCtx(BROTLIMT_CCtx * ctx)
 {
 	if (!ctx)
 		return 0;
@@ -372,7 +369,7 @@ size_t LIZARDMT_GetOutsizeCCtx(LIZARDMT_CCtx * ctx)
 }
 
 /* returns the current compressed frames */
-size_t LIZARDMT_GetFramesCCtx(LIZARDMT_CCtx * ctx)
+size_t BROTLIMT_GetFramesCCtx(BROTLIMT_CCtx * ctx)
 {
 	if (!ctx)
 		return 0;
@@ -380,7 +377,7 @@ size_t LIZARDMT_GetFramesCCtx(LIZARDMT_CCtx * ctx)
 	return ctx->curframe;
 }
 
-void LIZARDMT_freeCCtx(LIZARDMT_CCtx * ctx)
+void BROTLIMT_freeCCtx(BROTLIMT_CCtx * ctx)
 {
 	if (!ctx)
 		return;

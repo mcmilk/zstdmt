@@ -20,7 +20,7 @@
 #include "memmt.h"
 #include "threading.h"
 #include "list.h"
-#include "lz4mt.h"
+#include "lz4-mt.h"
 
 /**
  * multi threaded lz4 - multiple workers version
@@ -560,7 +560,7 @@ size_t LZ4MT_decompressDCtx(LZ4MT_DCtx * ctx, LZ4MT_RdWr_t * rdwr)
 		free(wl);
 	}
 
-	return (size_t)retval_of_thread;
+	return (size_t) retval_of_thread;
 }
 
 /* returns current uncompressed data size */

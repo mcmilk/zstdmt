@@ -1,6 +1,6 @@
 
 /**
- * Copyright (c) 2017 Tino Reichardt
+ * Copyright (c) 2016 - 2017 Tino Reichardt
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
@@ -26,16 +26,17 @@ extern "C" {
 
 /* current maximum the library will accept */
 #define LIZARDMT_THREAD_MAX 128
-#define LIZARDMT_LEVEL_MAX   10 /* 0..9 for each method */
+#define LIZARDMT_LEVEL_MIN   10
+#define LIZARDMT_LEVEL_MAX   49
 
-#define LZ5FMT_MAGICNUMBER     0x184D2206U
-#define LZ5FMT_MAGIC_SKIPPABLE 0x184D2A50U
+#define LIZARDFMT_MAGICNUMBER     0x184D2206U
+#define LIZARDFMT_MAGIC_SKIPPABLE 0x184D2A50U
 
 /* **************************************
  * Error Handling
  ****************************************/
 
-extern size_t lz5mt_errcode;
+extern size_t lizardmt_errcode;
 
 typedef enum {
   LIZARDMT_error_no_error,
@@ -55,7 +56,7 @@ typedef enum {
 #  undef ERROR   /* reported already defined on VS 2015 (Rich Geldreich) */
 #endif
 #define PREFIX(name) LIZARDMT_error_##name
-#define ERROR(name) ((size_t)-PREFIX(name))
+#define ERROR(name)  ((size_t)-PREFIX(name))
 extern unsigned LIZARDMT_isError(size_t code);
 extern const char* LIZARDMT_getErrorString(size_t code);
 
@@ -73,7 +74,9 @@ typedef struct {
  * reading and writing functions
  * - you can use stdio functions or plain read/write
  * - just write some wrapper on your own
- * - a sample is given in 7-Zip ZS
+ * - a sample is given in 7-Zip ZS or lizardmt.c
+ * - the function should return -1 on error and zero on success
+ * - the read or written bytes will go to in->size or out->size
  */
 typedef int (fn_read) (void *args, LIZARDMT_Buffer * in);
 typedef int (fn_write) (void *args, LIZARDMT_Buffer * out);
@@ -95,7 +98,7 @@ typedef struct LIZARDMT_CCtx_s LIZARDMT_CCtx;
  * 1) allocate new cctx
  * - return cctx or zero on error
  *
- * @level   - 1 .. 16
+ * @level   - 1 .. 9
  * @threads - 1 .. LIZARDMT_THREAD_MAX
  * @inputsize - if zero, becomes some optimal value for the level
  *            - if nonzero, the given value is taken
@@ -104,7 +107,7 @@ LIZARDMT_CCtx *LIZARDMT_createCCtx(int threads, int level, int inputsize);
 
 /**
  * 2) threaded compression
- * - return -1 on error
+ * - errorcheck via 
  */
 size_t LIZARDMT_compressCCtx(LIZARDMT_CCtx * ctx, LIZARDMT_RdWr_t * rdwr);
 
@@ -122,7 +125,7 @@ size_t LIZARDMT_GetOutsizeCCtx(LIZARDMT_CCtx * ctx);
 void LIZARDMT_freeCCtx(LIZARDMT_CCtx * ctx);
 
 /* **************************************
- * Decompression - TODO, but it's easy...
+ * Decompression
  ****************************************/
 
 typedef struct LIZARDMT_DCtx_s LIZARDMT_DCtx;
@@ -131,10 +134,8 @@ typedef struct LIZARDMT_DCtx_s LIZARDMT_DCtx;
  * 1) allocate new cctx
  * - return cctx or zero on error
  *
- * @level   - 10..19 / 20..29 / 30..39 / 40..49
  * @threads - 1 .. LIZARDMT_THREAD_MAX
- * @srclen  - the max size of src for LIZARDMT_CompressCCtx()
- * @dstlen  - the min size of dst
+ * @ inputsize - used for single threaded standard lizard format without skippable frames
  */
 LIZARDMT_DCtx *LIZARDMT_createDCtx(int threads, int inputsize);
 

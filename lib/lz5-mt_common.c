@@ -9,34 +9,34 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-#include "lz4frame.h"
-#include "lz4mt.h"
+#include "lz5frame.h"
+#include "lz5-mt.h"
 
 /* will be used for lib errors */
-size_t lz4mt_errcode;
+size_t lz5mt_errcode;
 
 /* ****************************************
- * LZ4MT Error Management
+ * LZ5MT Error Management
  ******************************************/
 
 /**
- * LZ4MT_isError() - tells if a return value is an error code
+ * LZ5MT_isError() - tells if a return value is an error code
  */
-unsigned LZ4MT_isError(size_t code)
+unsigned LZ5MT_isError(size_t code)
 {
 	return (code > ERROR(maxCode));
 }
 
 /**
- * LZ4MT_getErrorString() - give error code string from function result
+ * LZ5MT_getErrorString() - give error code string from function result
  */
-const char *LZ4MT_getErrorString(size_t code)
+const char *LZ5MT_getErrorString(size_t code)
 {
-	if (LZ4F_isError(lz4mt_errcode))
-		return LZ4F_getErrorName(lz4mt_errcode);
+	if (LZ5F_isError(lz5mt_errcode))
+		return LZ5F_getErrorName(lz5mt_errcode);
 
-	static const char *notErrorCode = "Unspecified error lz4mt code";
-	switch ((LZ4MT_ErrorCode) (0 - code)) {
+	static const char *notErrorCode = "Unspecified error lz5mt code";
+	switch ((LZ5MT_ErrorCode) (0 - code)) {
 	case PREFIX(no_error):
 		return "No error detected";
 	case PREFIX(memory_allocation):
