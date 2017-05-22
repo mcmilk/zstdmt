@@ -1,5 +1,5 @@
 
-## Usage of the zstdmt by some testutils
+## Usage of the testing utilities
 
 ### [LZ4](https://github.com/lz4/lz4)
 ```

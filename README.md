@@ -3,20 +3,14 @@
 
 ## Description
 - works with skippables frame id 0x184D2A50 (12 bytes per compressed frame)
-- three small test utils (which only work @ linux)
-- the library itself works on windows already
-- multithreaded 7-Zip ZS is currently in testing
 
 ## Usage of the Testutils
-
 - see programs
 
 ## Usage of the Library
-
 - see lib
 
 ## Benchmarks
-
 - version 0.1 was used for them
 
 ### [LZ4]

@@ -1,0 +1,30 @@
+#!/bin/sh
+# /TR 2017-05-22
+
+function generate() {
+ PROGNAME="$1"
+ ALGORITHM="$2"
+ LMIN="$3"
+ LMAX="$4"
+ LDEF="$5"
+ VERSION="$6"
+ SUFFIX="$7"
+ HOMEPAGE="$8"
+ cat generic.man | sed \
+ -e "s|%PROGNAME%|$PROGNAME|g" \
+ -e "s|%ALGORITHM%|$ALGORITHM|g" \
+ -e "s|%LMIN%|$LMIN|g" \
+ -e "s|%LMAX%|$LMAX|g" \
+ -e "s|%LDEF%|$LDEF|g" \
+ -e "s|%VERSION%|$VERSION|g" \
+ -e "s|%SUFFIX%|$SUFFIX|g" \
+ -e "s|%HOMEPAGE%|$HOMEPAGE|g" \
+ > "$PROGNAME.1"
+}
+
+#         progname    algo     min max def version   suffix homepage
+generate "brotli-mt" "brotli"  0   11  3   "v0.6.0"  "brot" "https://github.com/google/brotli"
+generate "lizard-mt" "lizard"  10  49  3   "v2.0"    "liz"  "https://github.com/inikep/lizard"
+generate "lz4-mt"    "lz4"     1   12  3   "v1.7.5"  "lz4"  "https://github.com/lz4/lz4"
+generate "lz5-mt"    "lz5"     1   15  3   "v1.5"    "lz5"  "https://github.com/inikep/lz5"
+generate "zstd-mt"   "zstd"    1   22  3   "v1.2.0"  "zst"  "https://github.com/facebook/zstd"

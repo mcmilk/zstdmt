@@ -2,6 +2,7 @@
 v0.4
 - added brotli
 - added lizard (was lz5 v2.0)
+- add man pages for the sample programs
 - merged the target platforms unix and windows to "programs"
 - changed options, the tools are like bzip2 or gzip now
 

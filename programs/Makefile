@@ -36,8 +36,8 @@ LDFLAGS	= $(WIN_LDFLAGS) -lpthread
 PRGS	= lizard-mt$(EXTENSION) \
 	  lz4-mt$(EXTENSION) \
 	  lz5-mt$(EXTENSION) \
-	  zstd-mt$(EXTENSION)
-#brotli-mt$(EXTENSION)
+	  zstd-mt$(EXTENSION) \
+	  brotli-mt$(EXTENSION)
 
 all:	loadsource $(PRGS)
 again:	clean $(PRGS)
