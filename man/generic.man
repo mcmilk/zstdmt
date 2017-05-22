@@ -5,7 +5,7 @@
 
 .SH SYNOPSIS
 .B %PROGNAME%
-.RB [ -123456789cdfghlNnOqrtv ]
+.RB [ -1234567890cdzfhklLqrtvV ]
 .RB [ "-o filename" ]
 .RB [ "-S suffix" ]
 .RB [ "file ..." ]
@@ -36,7 +36,11 @@ are modified (force zcat mode).
 
 .TP
 .BI -d
-Decompress the source files instead of compressing them (force uncompress mode).
+Decompress the source files instead of compressing them.
+
+.TP
+.BI -z
+The complement to -d: forces compression.
 
 .TP
 .BI -f
