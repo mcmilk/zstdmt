@@ -14,6 +14,10 @@
 .B %PROGNAME%
 is a multithreaded compression utility for %ALGORITHM% with a command line
 syntax similar to gzip or bzip2.
+.br
+It's based on the zstdmt library version %ZSTDMT% and version %VERSION% of the %ALGORITHM% algorithm.
+.br
+More information about %ALGORITHM% can be found here: %HOMEPAGE%
 
 .SH OPTIONS
 
@@ -50,7 +54,7 @@ Additionally, files are overwritten without prompting for confirmation.
 
 .TP
 .BI -h
-Print a short help message.
+Display a help screen and quit.
 
 .TP
 .BI -k
@@ -123,14 +127,11 @@ cat source | %PROGNAME% \-o out.%SUFFIX%
 .B # decompress using shell pipe:
 cat somefile.%SUFFIX% | %PROGNAME% -d > somefile
 
-.SH HOMEPAGE
-More information about %ALGORITHM% can be found here: %HOMEPAGE%
+.SH LICENSE
+Copyright \[co] 2016 - 2017, Tino Reichardt, BSD License
 
 .SH BUGS
 Please report any bugs to https://github.com/mcmilk/zstdmt/issues
-
-.SH LICENSE
-Copyright \[co] 2016 - 2017, Tino Reichardt, BSD License
 
 .SH "SEE ALSO"
 .BR bzip2 (1),

@@ -1,6 +1,9 @@
 #!/bin/sh
 # /TR 2017-05-22
 
+# our version
+ZSTDMT="v0.4"
+
 function generate() {
  PROGNAME="$1"
  ALGORITHM="$2"
@@ -19,6 +22,7 @@ function generate() {
  -e "s|%VERSION%|$VERSION|g" \
  -e "s|%SUFFIX%|$SUFFIX|g" \
  -e "s|%HOMEPAGE%|$HOMEPAGE|g" \
+ -e "s|%ZSTDMT%|$ZSTDMT|g" \
  > "$PROGNAME.1"
 }
 
