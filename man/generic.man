@@ -4,7 +4,7 @@
 .SH NAME
 %PROGNAME% \- Compress or decompress .%SUFFIX% files
 
-.BR un%PROGNAME% "\ is equivalent to\ " "%PROGNAME% \-dcf"
+.BR un%PROGNAME% "\ is equivalent to\ " "%PROGNAME% \-d"
 .br
 .BR %ALGORITHM%cat-mt "\ is equivalent to\ " "%PROGNAME% \-dcf"
 .br

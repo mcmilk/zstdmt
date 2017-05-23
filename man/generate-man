@@ -1,7 +1,7 @@
 #!/bin/sh
 # /TR 2017-05-22
 
-# our version
+# lib version
 ZSTDMT="v0.4"
 
 function generate() {
