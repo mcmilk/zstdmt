@@ -11,6 +11,9 @@
 #include "lz5-mt.h"
 
 #define PROGNAME "lz5-mt"
+#define UNZIP    "unlz5-mt"
+#define ZCAT     "lz5cat-mt"
+#define SUFFIX   ".lz5"
 
 #define LEVEL_DEF          3
 #define LEVEL_MIN          LZ5MT_LEVEL_MIN

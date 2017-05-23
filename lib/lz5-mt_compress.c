@@ -263,7 +263,7 @@ static void *pt_compress(void *arg)
 		}
 
 		/* eof */
-		if (in.size == 0) {
+		if (in.size == 0 && ctx->frames > 0) {
 			free(in.buf);
 			pthread_mutex_unlock(&ctx->read_mutex);
 

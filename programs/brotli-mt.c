@@ -11,6 +11,9 @@
 #include "brotli-mt.h"
 
 #define PROGNAME "brotli-mt"
+#define UNZIP    "unbrotli-mt"
+#define ZCAT     "brotlicat-mt"
+#define SUFFIX   ".brot"
 
 #define LEVEL_DEF          3
 #define LEVEL_MIN          BROTLIMT_LEVEL_MIN

@@ -107,7 +107,7 @@ ZSTDMT_CCtx *ZSTDMT_createCCtx(int threads, int level, int inputsize)
 		goto err_ctx;
 
 	/* check level */
-	if (level < ZSTDMT_LEVEL_MAX || level > ZSTDMT_LEVEL_MAX)
+	if (level < ZSTDMT_LEVEL_MIN || level > ZSTDMT_LEVEL_MAX)
 		goto err_ctx;
 
 	/* calculate chunksize for one thread */
@@ -270,7 +270,7 @@ static void *pt_compress(void *arg)
 		}
 
 		/* eof */
-		if (in.size == 0) {
+		if (in.size == 0 && ctx->frames > 0) {
 			free(in.buf);
 			pthread_mutex_unlock(&ctx->read_mutex);
 

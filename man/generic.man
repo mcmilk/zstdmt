@@ -1,14 +1,19 @@
-.TH %PROGNAME% 1 "2017-05-22" "%PROGNAME% %VERSION%"
+.\" Author: Tino Reichardt
+.TH %PROGNAME% 1 "2017-05-23" "%PROGNAME% %VERSION%"
 
 .SH NAME
 %PROGNAME% \- Compress or decompress .%SUFFIX% files
 
+.BR un%PROGNAME% "\ is equivalent to\ " "%PROGNAME% \-dcf"
+.br
+.BR %ALGORITHM%cat-mt "\ is equivalent to\ " "%PROGNAME% \-dcf"
+.br
+
 .SH SYNOPSIS
 .B %PROGNAME%
 .RB [ -1234567890cdzfhklLqrtvV ]
-.RB [ "-o filename" ]
-.RB [ "-S suffix" ]
-.RB [ "file ..." ]
+.RB [ "-S \fIsuffix\fP" ]
+.RB [ "\fIfile\fP ..." ]
 
 .SH DESCRIPTION
 .B %PROGNAME%
@@ -81,57 +86,59 @@ Recursive mode: compress will descend into specified directories.
 Set the suffix for compressed files. Default: .%SUFFIX%
 
 .TP
-.BI -o \ filename
-Set the output file name.
-
-.TP
 .BI -t
 Test the integrity of each file leaving any files intact.
 
 .TP
 .BI -v
-Print the percentage reduction of each file and other information.
+Be more verbose.
 
 .TP
 .BI -V
-Print the version and exit.
+Show version information and quit.
 
 .SH EXIT STATUS
 The %PROGNAME% utility exits with one of the following values:
+
 .TP 5
 .BI 0
 Success.
+
 .TP 5
 .BI 1
 An error occurred.
+
 .TP 5
 .BI 2
-At least one of the specified files was not compressed since -f was not
-specified and compression would have resulted in a size increase.
+An warning occurred.
 
 .SH EXAMPLES
+
 .TP 0
-.B # compress using shell pipe:
+.B compress using shell pipe:
 cat somefile | %PROGNAME% > somefile.%SUFFIX%
 .br
 echo "hello *world*" | %PROGNAME% > hello.%SUFFIX%
+
 .TP 0
 .B # compress using the -o option:
 %PROGNAME% \-o out.%SUFFIX% inputfile
 .br
 cat source | %PROGNAME% \-o out.%SUFFIX%
+
 .TP 0
 .B # compress all files in the current directory with level %LDEF%:
 %PROGNAME% \-%LDEF% *
+
 .TP 0
 .B # decompress using shell pipe:
 cat somefile.%SUFFIX% | %PROGNAME% -d > somefile
 
-.SH LICENSE
-Copyright \[co] 2016 - 2017, Tino Reichardt, BSD License
-
 .SH BUGS
 Please report any bugs to https://github.com/mcmilk/zstdmt/issues
+
+.SH AUTHOR
+This manual page was written by Tino Reichardt <milky-7zip (at) mcmilk dot de>
 
 .SH "SEE ALSO"
 .BR bzip2 (1),

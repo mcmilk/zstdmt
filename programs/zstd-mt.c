@@ -11,6 +11,9 @@
 #include "zstd-mt.h"
 
 #define PROGNAME "zstd-mt"
+#define UNZIP    "unzstd-mt"
+#define ZCAT     "zstdcat-mt"
+#define SUFFIX   ".zst"
 
 #define LEVEL_DEF          3
 #define LEVEL_MIN          ZSTDMT_LEVEL_MIN

@@ -16,6 +16,7 @@ ZSTD_VER= "v1.1.4"
 #EXTENSION	= -w32.exe
 #CROSS		= x86_64-w64-mingw32-
 #EXTENSION	= -w64.exe
+#LN		= REM ln
 
 #CC	= $(CROSS)musl-gcc
 #CC	= $(CROSS)clang
@@ -23,10 +24,11 @@ CC	= $(CROSS)gcc
 RANLIB	= $(CROSS)ranlib
 STRIP	= $(CROSS)strip
 SFLAGS	= -R .note -R .comment
+LN	= ln
 
 CFLAGS	= -W -pthread -Wall -pipe
 CFLAGS	+= -fomit-frame-pointer
-CFLAGS	+= -O3
+CFLAGS	+= -O
 #CFLAGS	+= -flto
 #CFLAGS += -DDEBUGME
 #CFLAGS += -g
@@ -38,6 +40,8 @@ PRGS	= lizard-mt$(EXTENSION) \
 	  lz5-mt$(EXTENSION) \
 	  zstd-mt$(EXTENSION) \
 	  brotli-mt$(EXTENSION)
+
+#PRGS	= lz4-mt$(EXTENSION)
 
 all:	loadsource $(PRGS)
 again:	clean $(PRGS)
@@ -116,22 +120,32 @@ CFLAGS	+= -I. -I$(ZSTDMTDIR)
 brotli-mt$(EXTENSION):
 	$(CC) $(CF_BRO) $(CDFLAGS)  -DVERSION='$(BRO_VER)' -o $@ $(LIBBRO) $(LDFLAGS) -lm
 	$(STRIP) $(SFLAGS) $@
+	$(LN) -s $@ un$@
+	$(LN) -s $@ brotlicat-mt
 
 lizard-mt$(EXTENSION):
 	$(CC) $(CF_LIZ) $(CDFLAGS)  -DVERSION='$(LIZ_VER)' -o $@ $(LIBLIZ) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
+	$(LN) -s $@ un$@
+	$(LN) -s $@ lizardcat-mt
 
 lz4-mt$(EXTENSION):
 	$(CC) $(CF_LZ4) $(CDFLAGS)  -DVERSION='$(LZ4_VER)' -o $@ $(LIBLZ4) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
+	$(LN) -s $@ un$@
+	$(LN) -s $@ lz4cat-mt
 
 lz5-mt$(EXTENSION):
 	$(CC) $(CF_LZ5) $(CDFLAGS)  -DVERSION='$(LZ5_VER)' -o $@ $(LIBLZ5) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
+	$(LN) -s $@ un$@
+	$(LN) -s $@ lz5cat-mt
 
 zstd-mt$(EXTENSION):
 	$(CC) $(CF_ZSTD) $(CDFLAGS) -DVERSION='$(ZSTD_VER)' -o $@ $(LIBZSTD) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
+	$(LN) -s $@ un$@
+	$(LN) -s $@ zstdcat-mt
 
 loadsource:
 	test -d lz4    || git clone https://github.com/Cyan4973/lz4  -b $(LZ4_VER)  --depth=1 lz4
@@ -140,8 +154,13 @@ loadsource:
 	test -d lizard || git clone https://github.com/inikep/lizard -b $(LIZ_VER)  --depth=1 lizard
 	test -d brotli || git clone https://github.com/google/brotli -b $(BRO_VER)  --depth=1 brotli
 
+install:
+	echo TODO ;)
+
 clean:
 	rm -f $(PRGS)
+	rm -f unbrotli-mt unlizard-mt unlz4-mt unlz5-mt unzstd-mt
+	rm -f brotlicat-mt lizardcat-mt lz4cat-mt lz5cat-mt zstdcat-mt
 
 mrproper: clean
 	rm -rf brotli lizard lz4 lz5 zstd

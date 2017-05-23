@@ -11,6 +11,9 @@
 #include "lz4-mt.h"
 
 #define PROGNAME "lz4-mt"
+#define UNZIP    "unlz4-mt"
+#define ZCAT     "lz4cat-mt"
+#define SUFFIX   ".lz4"
 
 #define LEVEL_DEF          3
 #define LEVEL_MIN          LZ4MT_LEVEL_MIN

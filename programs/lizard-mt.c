@@ -11,6 +11,9 @@
 #include "lizard-mt.h"
 
 #define PROGNAME "lizard-mt"
+#define UNZIP    "unlizard-mt"
+#define ZCAT     "lizardcat-mt"
+#define SUFFIX   ".liz"
 
 #define LEVEL_DEF          40
 #define LEVEL_MIN          LIZARDMT_LEVEL_MIN
