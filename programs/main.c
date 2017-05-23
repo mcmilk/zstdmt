@@ -75,42 +75,36 @@ static void panic(const char *msg)
 static void version(void)
 {
 	printf(
-	PROGNAME " version " VERSION "\n"
+	PROGNAME " version " VERSION ", zstdmt v0.4\n"
 	"\nCopyright © 2016 - 2017 Tino Reichardt"
-	"\n"
-	"\nYou can contact the author at:"
-	"\n- zstdmt source repository: https://github.com/mcmilk/zstdmt"
-	);
+	"\n");
 	exit(0);
 }
 
 static void license(void)
 {
 	printf(
-	"\nCopyright © 2016 - 2017 Tino Reichardt"
-	"\n"
-	"\nThis program is free software; you can redistribute it and/or modify"
-	"\nit under the terms of the GNU General Public License Version 2, as"
-	"\npublished by the Free Software Foundation."
-	"\n"
-	"\nThis program is distributed in the hope that it will be useful,"
-	"\nbut WITHOUT ANY WARRANTY; without even the implied warranty of"
-	"\nMERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the"
-	"\nGNU General Public License for more details."
-	"\n"
-	"\nYou can contact the author at:"
-	"\n- zstdmt source repository: https://github.com/mcmilk/zstdmt"
+	"\n " PROGNAME " version " VERSION "\n"
+	"\n Copyright © 2016 - 2017 Tino Reichardt"
+	"\n "
+	"\n This program is free software; you can redistribute it and/or modify"
+	"\n it under the terms of the GNU General Public License Version 2, as"
+	"\n published by the Free Software Foundation."
+	"\n "
+	"\n This program is distributed in the hope that it will be useful,"
+	"\n but WITHOUT ANY WARRANTY; without even the implied warranty of"
+	"\n MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the"
+	"\n GNU General Public License for more details."
+	"\n "
+	"\n Report bugs to: https://github.com/mcmilk/zstdmt/issues"
 	"\n");
 	exit(0);
 }
 
 static void usage(void)
 {
-	printf("Usage: " PROGNAME " [options] INPUT > FILE\n");
-	printf("or     " PROGNAME " [options] -o FILE INPUT\n");
-	printf("or     cat INPUT | " PROGNAME " [options] -o FILE\n");
-	printf("or     cat INPUT | " PROGNAME " [options] > FILE\n\n");
-
+	printf("Usage: " PROGNAME " [OPTION]... [FILE]...\n");
+	printf("Compress or uncompress FILEs (by default, compress FILES in-place).\n\n");
 	printf("Gzip/Bzip2 Like Options:\n");
 	printf(" -#    Set compression level to # (%d-%d, default:%d).\n",
 	       LEVEL_MIN, LEVEL_MAX, LEVEL_DEF);
