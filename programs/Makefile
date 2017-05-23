@@ -8,7 +8,7 @@ BRO_VER	= "v0.6.0"
 LIZ_VER	= "v2.0"
 LZ4_VER	= "v1.7.5"
 LZ5_VER	= "v1.5"
-ZSTD_VER= "v1.1.4"
+ZSTD_VER= "v1.2.0"
 
 # uncomment, for cross compiling or windows binaries
 #WIN_LDFLAGS	= -lwinmm -lpsapi
@@ -16,7 +16,7 @@ ZSTD_VER= "v1.1.4"
 #EXTENSION	= -w32.exe
 #CROSS		= x86_64-w64-mingw32-
 #EXTENSION	= -w64.exe
-#LN		= REM ln
+#LN	= REM have no ln -s
 
 #CC	= $(CROSS)musl-gcc
 #CC	= $(CROSS)clang
@@ -24,7 +24,7 @@ CC	= $(CROSS)gcc
 RANLIB	= $(CROSS)ranlib
 STRIP	= $(CROSS)strip
 SFLAGS	= -R .note -R .comment
-LN	= ln
+LN	= ln -sf
 
 CFLAGS	= -W -pthread -Wall -pipe
 CFLAGS	+= -fomit-frame-pointer
@@ -40,8 +40,6 @@ PRGS	= lizard-mt$(EXTENSION) \
 	  lz5-mt$(EXTENSION) \
 	  zstd-mt$(EXTENSION) \
 	  brotli-mt$(EXTENSION)
-
-#PRGS	= lz4-mt$(EXTENSION)
 
 all:	loadsource $(PRGS)
 again:	clean $(PRGS)
@@ -144,8 +142,8 @@ lz5-mt$(EXTENSION):
 zstd-mt$(EXTENSION):
 	$(CC) $(CF_ZSTD) $(CDFLAGS) -DVERSION='$(ZSTD_VER)' -o $@ $(LIBZSTD) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
-	$(LN) -s $@ un$@
-	$(LN) -s $@ zstdcat-mt
+	$(LN) $@ un$@
+	$(LN) $@ zstdcat-mt
 
 loadsource:
 	test -d lz4    || git clone https://github.com/Cyan4973/lz4  -b $(LZ4_VER)  --depth=1 lz4

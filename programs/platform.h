@@ -8,11 +8,11 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  *
  * You can contact the author at:
- * - lz5mt source repository: https://github.com/mcmilk/zstdmt
+ * - zstdmt source repository: https://github.com/mcmilk/zstdmt
  */
 
-#ifndef PLATFORM_H_MODULE
-#define PLATFORM_H_MODULE
+#ifndef PLATFORM_H
+#define PLATFORM_H
 
 #if defined (__cplusplus)
 extern "C" {
@@ -20,10 +20,15 @@ extern "C" {
 
 #include "../lib/memmt.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <fcntl.h>
+#include <stdio.h>
+#include <errno.h>
 
 extern int getcpucount(void);
 
@@ -32,7 +37,6 @@ extern int getcpucount(void);
 #if defined(_MSC_VER) || defined(__MINGW32__)
 
 /* Windows */
-#include <sys/time.h>
 #include <windows.h>
 #include <processthreadsapi.h> /* GetProcessTimes() */
 #include <timezoneapi.h> /* FileTimeToSystemTime() */
@@ -81,7 +85,6 @@ extern int getrusage(int who, struct rusage *uv_rusage);
 /* POSIX */
 
 #include <sys/resource.h> /* getrusage() */
-#include <sys/time.h>
 #define IS_CONSOLE(stdStream) (isatty(fileno(stdStream)))
 
 #endif /* POSIX */
@@ -90,4 +93,4 @@ extern int getrusage(int who, struct rusage *uv_rusage);
 }
 #endif
 
-#endif /* PLATFORM_H_MODULE */
+#endif /* PLATFORM_H */

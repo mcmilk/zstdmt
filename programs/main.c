@@ -19,10 +19,6 @@
  * gzip compatible wrapper for the compression types of this library
  */
 
-#include <alloca.h>
-#include <stdio.h>
-#include <errno.h>
-
 #include "platform.h"
 
 /* exit codes */
@@ -43,7 +39,7 @@ static int opt_mode = MODE_COMPRESS;
 static int opt_stdout = 0;
 static int opt_level = 3;
 static int opt_force = 0;
-static int opt_keep = 1;	// XXX
+static int opt_keep = 0;
 static int opt_threads;
 
 /* 0 = quiet | 1 = normal | >1 = verbose */
@@ -65,8 +61,8 @@ static size_t bytes_written = 0;
 /* when set, do not change fout */
 static int global_fout = 0;
 
-MT_CCtx *cctx = 0;
-MT_DCtx *dctx = 0;
+static MT_CCtx *cctx = 0;
+static MT_DCtx *dctx = 0;
 
 static void panic(const char *msg)
 {
@@ -78,15 +74,33 @@ static void panic(const char *msg)
 
 static void version(void)
 {
-	printf(PROGNAME " version " VERSION "\n");
+	printf(
+	PROGNAME " version " VERSION "\n"
+	"\nCopyright © 2016 - 2017 Tino Reichardt"
+	"\n"
+	"\nYou can contact the author at:"
+	"\n- zstdmt source repository: https://github.com/mcmilk/zstdmt"
+	);
 	exit(0);
 }
 
 static void license(void)
 {
-	printf
-	    ("Copyright (c) 2016 - 2017, Tino Reichardt, All rights reserved.\n");
-	printf("License: BSD License\n");
+	printf(
+	"\nCopyright © 2016 - 2017 Tino Reichardt"
+	"\n"
+	"\nThis program is free software; you can redistribute it and/or modify"
+	"\nit under the terms of the GNU General Public License Version 2, as"
+	"\npublished by the Free Software Foundation."
+	"\n"
+	"\nThis program is distributed in the hope that it will be useful,"
+	"\nbut WITHOUT ANY WARRANTY; without even the implied warranty of"
+	"\nMERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the"
+	"\nGNU General Public License for more details."
+	"\n"
+	"\nYou can contact the author at:"
+	"\n- zstdmt source repository: https://github.com/mcmilk/zstdmt"
+	"\n");
 	exit(0);
 }
 
@@ -98,35 +112,31 @@ static void usage(void)
 	printf("or     cat INPUT | " PROGNAME " [options] > FILE\n\n");
 
 	printf("Gzip/Bzip2 Like Options:\n");
-	printf(" -#       Set compression level to # (%d-%d, default:%d).\n",
+	printf(" -#    Set compression level to # (%d-%d, default:%d).\n",
 	       LEVEL_MIN, LEVEL_MAX, LEVEL_DEF);
-	printf(" -c       Force write to standard output.\n");
-	printf(" -d       Use decompress mode.\n");
-	printf(" -z       Use compress mode.\n");
-	printf(" -f       Force overwriting files and/or compression.\n");
-	printf(" -h       Display a help screen and quit.\n");
-	printf
-	    (" -k       Keep input files after compression or decompression.\n");
-	printf
-	    (" -l       List information for the specified compressed files.\n");
-	printf(" -L       Display License and quit.\n");
-	printf(" -q       Be quiet: suppress all messages.\n");
-	printf
-	    (" -S SUF   Use suffix `SUF` for compressed files. Default: \"%s\"\n",
+	printf(" -c    Force write to standard output.\n");
+	printf(" -d    Use decompress mode.\n");
+	printf(" -z    Use compress mode.\n");
+	printf(" -f    Force overwriting files and/or compression.\n");
+	printf(" -h    Display a help screen and quit.\n");
+	printf(" -k    Keep input files after compression or decompression.\n");
+	printf(" -l    List information for the specified compressed files.\n");
+	printf(" -L    Display License and quit.\n");
+	printf(" -q    Be quiet: suppress all messages.\n");
+	printf(" -S X  Use suffix `X` for compressed files. Default: \"%s\"\n",
 	     SUFFIX);
-	printf
-	    (" -t       Test the integrity of each file leaving any files intact.\n");
-	printf(" -v       Be more verbose.\n");
-	printf(" -V       Show version information and quit.\n\n");
+	printf(" -t    Test the integrity of each file leaving any files intact.\n");
+	printf(" -v    Be more verbose.\n");
+	printf(" -V    Show version information and quit.\n\n");
 
 	printf("Additional Options:\n");
-	printf
-	    (" -T N     Set number of (de)compression threads (def: #cores).\n");
-	printf(" -b N     Set input chunksize to N MiB (default: auto).\n");
-	printf
-	    (" -i N     Set number of iterations for testing (default: 1).\n");
-	printf(" -H       Print headline for the timing values and quit.\n");
-	printf(" -B       Print timings and memory usage to stderr.\n");
+	printf(" -T N  Set number of (de)compression threads (def: #cores).\n");
+	printf(" -b N  Set input chunksize to N MiB (default: auto).\n");
+	printf(" -i N  Set number of iterations for testing (default: 1).\n");
+	printf(" -H    Print headline for the timing values and quit.\n");
+	printf(" -B    Print timings and memory usage to stderr.\n\n");
+	printf("With no FILE, or when FILE is -, read standard input.\n\n");
+	printf("Report bugs to: https://github.com/mcmilk/zstdmt/issues\n");
 
 	exit(0);
 }
@@ -180,8 +190,7 @@ static const char *do_compress(FILE * in, FILE * out)
 	rdwr.arg_write = (void *)out;
 
 	/* 2) create compression context */
-	if (!cctx)
-		cctx = MT_createCCtx(opt_threads, opt_level, opt_bufsize);
+	cctx = MT_createCCtx(opt_threads, opt_level, opt_bufsize);
 	if (!cctx)
 		return "Allocating compression context failed!";
 
@@ -199,6 +208,8 @@ static const char *do_compress(FILE * in, FILE * out)
 			(unsigned long)MT_GetFramesCCtx(cctx));
 		first = 0;
 	}
+
+	MT_freeCCtx(cctx);
 
 	return 0;
 }
@@ -225,8 +236,7 @@ static const char *do_decompress(FILE * in, FILE * out)
 	rdwr.arg_write = (void *)out;
 
 	/* 2) create compression context */
-	if (!dctx)
-		dctx = MT_createDCtx(opt_threads, opt_bufsize);
+	dctx = MT_createDCtx(opt_threads, opt_bufsize);
 	if (!dctx)
 		return "Allocating decompression context failed!";
 
@@ -245,10 +255,16 @@ static const char *do_decompress(FILE * in, FILE * out)
 		first = 0;
 	}
 
+	MT_freeDCtx(dctx);
+
 	return 0;
 }
 
-/* free resources, used for compression/decompression */
+#if 0
+/**
+ * free resources, used for compression/decompression
+ * big XXX here, we save time, when re-using the initialized context
+ */
 static void compress_cleanup(void)
 {
 	if (cctx) {
@@ -261,6 +277,7 @@ static void compress_cleanup(void)
 		dctx = 0;
 	}
 }
+#endif
 
 static int has_suffix(const char *filename, const char *suffix)
 {
@@ -276,19 +293,28 @@ static int has_suffix(const char *filename, const char *suffix)
 	return 0;
 }
 
-static void add_suffix(const char *filename, char *newname)
-{
-	newname[0] = 0;
-	strcat(newname, filename);
-	strcat(newname, opt_suffix);
-
-	return;
-}
-
-static void remove_suffix(const char *filename, char *newname)
+static char *add_suffix(const char *filename)
 {
 	int flen = strlen(filename);
 	int xlen = strlen(opt_suffix);
+	char *newname = malloc(flen + xlen + 1);
+
+	if (!newname)
+		panic("nomem!");
+	strcpy(newname, filename);
+	strcat(newname, opt_suffix);
+
+	return newname;
+}
+
+static char *remove_suffix(const char *filename)
+{
+	int flen = strlen(filename);
+	int xlen = strlen(opt_suffix);
+	char *newname = malloc(flen + xlen + 5);
+
+	if (!newname)
+		panic("nomem!");
 
 	if (has_suffix(filename, opt_suffix)) {
 		/* just remove the suffix */
@@ -296,12 +322,11 @@ static void remove_suffix(const char *filename, char *newname)
 		newname[flen - xlen] = 0;
 	} else {
 		/* append .out to filename */
-		newname[0] = 0;
-		strcat(newname, opt_suffix);
+		strcpy(newname, filename);
 		strcat(newname, ".out");
 	}
 
-	return;
+	return newname;
 }
 
 /**
@@ -331,6 +356,35 @@ static void print_testmode(const char *filename)
 	printf(PROGNAME ": %s: %s\n", filename, errmsg ? errmsg : "OK");
 }
 
+static void check_stdout(void)
+{
+	if (IS_CONSOLE(fout) && !opt_force)
+		panic("Data not written to terminal. Use -f to force!");
+}
+
+/**
+ * check_infile() - check if file can be compressed
+ *
+ * return: zero on success, or errmsg
+ */
+static char *check_infile(const char *filename)
+{
+	struct stat s;
+	int r;
+
+	r = lstat(filename, &s);
+	if (r == -1)
+		return strerror(errno);
+
+	if (S_ISDIR(s.st_mode))
+		return "Is a directory";
+
+	if (S_ISREG(s.st_mode))
+		return 0;
+
+	return "Is not regular file";
+}
+
 /**
  * check_overwrite() - check if file exists
  *
@@ -341,7 +395,14 @@ static void print_testmode(const char *filename)
 static int check_overwrite(const char *filename)
 {
 	int c, yes = -1;
-	FILE *f = fopen(filename, "r");
+	FILE *f;
+
+	/* force, so always okay */
+	if (opt_force)
+		return 1;
+
+	/* test it ... */
+	f = fopen(filename, "r");
 
 	/* no file there, we can create a new one */
 	if (f == NULL && errno == ENOENT)
@@ -365,13 +426,16 @@ static int check_overwrite(const char *filename)
 		if (c == 'n' || c == 'N')
 			yes = 0;
 
-		if (yes != -1)
-			break;
-
 		while (c != '\n' && c != EOF)
 			c = getchar();
+
+		if (yes != -1)
+			break;
 	}
 
+	if (yes == 0 && opt_verbose) {
+		fprintf(stderr, "not overwriting %s\n", filename);
+	}
 	return yes;
 }
 
@@ -381,8 +445,10 @@ static void treat_stdin()
 
 	/* setup fin and fout */
 	fin = stdin;
-	if (!global_fout)
+	if (!fout) {
 		fout = stdout;
+		check_stdout();
+	}
 
 	/* do some work */
 	if (opt_mode == MODE_COMPRESS)
@@ -407,41 +473,59 @@ static void treat_stdin()
 
 static void treat_file(char *filename)
 {
-	FILE *local_fout = NULL;
-	int fn2len = strlen(filename) + 10;
-	char *fn2 = alloca(fn2len + 1);
 	static int first = 1;
-
-	if (!fn2)
-		panic("Out of memory!");
+	FILE *local_fout = NULL;
+	char *fn2 = 0;
 
 	/* reset counter */
-	if (opt_mode == MODE_LIST)
-		bytes_written = bytes_read = 0;
+	bytes_written = bytes_read = 0;
 
 	/* reset errmsg */
 	errmsg = 0;
 
-	fin = fopen(filename, "rb");
+	/* setup fin stream */
+	if (strcmp(filename, "-") == 0) {
+		fin = stdin;
+	} else {
+		errmsg = check_infile(filename);
+		if (errmsg) {
+			if (opt_verbose)
+				fprintf(stderr,
+					"%s: %s: %s\n",
+					progname,
+					filename,
+					errmsg);
+			return;
+		}
+		fin = fopen(filename, "rb");
+	}
+
+	/* setup fout stream */
 	if (global_fout) {
 		local_fout = fout;
+		check_stdout();
 	} else {
 		/* setup input / output */
 		switch (opt_mode) {
 		case MODE_COMPRESS:
-			add_suffix(filename, fn2);
+			if (has_suffix(filename, opt_suffix) && !opt_force) {
+				fprintf(stderr, "%s already has %s suffix -- unchanged\n",
+					filename, opt_suffix);
+				return;
+			}
+			fn2 = add_suffix(filename);
 			if (check_overwrite(fn2) == 0) {
-				fprintf(stderr, "Skipping %s...\n", fn2);
 				exit_code = E_WARNING;
+				free(fn2);
 				return;
 			}
 			local_fout = fopen(fn2, "wb");
 			break;
 		case MODE_DECOMPRESS:
-			remove_suffix(filename, fn2);
+			fn2 = remove_suffix(filename);
 			if (check_overwrite(fn2) == 0) {
-				fprintf(stderr, "Skipping %s...\n", fn2);
 				exit_code = E_WARNING;
+				free(fn2);
 				return;
 			}
 			local_fout = fopen(fn2, "wb");
@@ -449,17 +533,25 @@ static void treat_file(char *filename)
 		}
 	}
 
-	if (fin == NULL)
+	if (fin == NULL) {
 		errmsg = "Opening infile failed.";
+		return;
+	}
 
-	if (local_fout == NULL)
+	if (local_fout == NULL) {
 		errmsg = "Opening outfile failed.";
+		return;
+	}
 
 	/* do some work */
 	if (opt_mode == MODE_COMPRESS)
 		errmsg = do_compress(fin, local_fout);
 	else
 		errmsg = do_decompress(fin, local_fout);
+
+	#if 0
+	printf("errmsg nach decompress: %s\n", errmsg?errmsg:"NIL");
+	#endif
 
 	/* remember, that we had some error */
 	if (errmsg)
@@ -471,8 +563,8 @@ static void treat_file(char *filename)
 			fprintf(stderr, "Closing infile failed.");
 
 	/* close outstream */
-	if (!global_fout)
-		if (local_fout && fclose(local_fout) != 0 && opt_verbose)
+	if (!global_fout && local_fout != stdout)
+		if (fclose(local_fout) != 0 && opt_verbose)
 			fprintf(stderr, "Closing outfile failed.");
 
 	/* listing mode */
@@ -486,6 +578,14 @@ static void treat_file(char *filename)
 	/* remove input file */
 	if (!errmsg && !opt_keep)
 		remove(filename);
+
+	/* remove outfile with errors */
+	if (errmsg && !global_fout)
+		remove(fn2);
+
+	/* free, if allocated */
+	if (fn2)
+		free(fn2);
 
 	first = 0;
 
@@ -657,8 +757,6 @@ int main(int argc, char **argv)
 
 	/* -c was used */
 	if (opt_stdout) {
-		if (IS_CONSOLE(stdout) && !opt_force)
-			usage();
 		fout = stdout;
 		global_fout = 1;
 	}
@@ -678,8 +776,7 @@ int main(int argc, char **argv)
 	/* main work */
 	if (files == 0) {
 		if (opt_iterations != 1)
-			panic
-			    ("You can not use stdin together with the -i option.");
+			panic("You can not use stdin together with the -i option.");
 
 		/* use stdin */
 		treat_stdin();
@@ -709,7 +806,9 @@ int main(int argc, char **argv)
 	}
 
 	/* free ressources */
+	#if 0
 	compress_cleanup();
+	#endif
 
 	/* exit should flush stdout */
 	exit(exit_code);
