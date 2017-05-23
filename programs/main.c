@@ -1,15 +1,20 @@
 
 /**
- * Copyright (c) 2016 - 2017 Tino Reichardt
- * All rights reserved.
+ * Copyright © 2016 - 2017 Tino Reichardt
  *
- * This source code is licensed under the BSD-style license found in the
- * LICENSE file in the root directory of this source tree. An additional grant
- * of patent rights can be found in the PATENTS file in the same directory.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License Version 2, as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
  * You can contact the author at:
  * - zstdmt source repository: https://github.com/mcmilk/zstdmt
  */
+
 
 /**
  * gzip compatible wrapper for the compression types of this lib
