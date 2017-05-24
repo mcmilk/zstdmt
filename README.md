@@ -13,7 +13,7 @@
 size    | value             | description
 --------|-------------------|------------
 4 bytes | 0x184D2A50U       | magic for skippable frame
-4 bytes | 8                 | size of skippable frame (4)
+4 bytes | 4                 | size of skippable frame
 4 bytes | compressed size   | size of the following frame (compressed data)
 
 
@@ -24,10 +24,10 @@ size    | value             | description
 size    | value             | description
 --------|-------------------|------------
 4 bytes | 0x184D2A50U       | magic for skippable frame (like zstd)
-4 bytes | 8                 | size of skippable frame (8)
+4 bytes | 8                 | size of skippable frame
 4 bytes | compressed size   | size of the following frame (compressed data)
 2 bytes | 0x5242U           | magic for brotli "BR"
-2 bytes | uncompressed size | allocation hint for decompressor (64KB * this size here)
+2 bytes | uncompressed size | allocation hint for decompressor (64KB * this size)
 
 
 ## Usage of the Testutils
