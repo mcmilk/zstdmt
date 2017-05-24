@@ -465,17 +465,17 @@ static char *check_overwrite(const char *filename)
 	if (r == -1)
 		return strerror(errno);
 
+	/**
+	 * when we get input from stdin, we
+	 * can't use it for input here!
+	 */
+	if (fin == stdin || fout == stdout)
+		panic("Can not read user input, cause you're piping data.");
+
 	/* when we are here, we ask the user what to do */
 	for (;;) {
 		printf("%s: '%s' already exists. Overwrite (y/N) ? ",
 		       progname, filename);
-
-		/**
-		 * when we get input from stdin, we
-		 * can't use it for input here!
-		 */
-		if (fin == stdin)
-			return "Can not read stdin, choosed `N` for you!";
 
 		c = getchar();
 
@@ -531,10 +531,7 @@ static void treat_stdin()
 {
 	const char *filename = "(stdin)";
 
-	/* setup fin and fout */
-	fin = stdin;
-	SET_BINARY(fin);
-
+	/* setup fout, when needed */
 	if (!fout) {
 		fout = stdout;
 		SET_BINARY(fout);
@@ -820,9 +817,9 @@ int main(int argc, char **argv)
 
 	/* make opt_level valid */
 	if (opt_level < LEVEL_MIN)
-		opt_level = LEVEL_MIN;
+		usage();
 	else if (opt_level > LEVEL_MAX)
-		opt_level = LEVEL_MAX;
+		usage();
 
 	/* opt_threads = 1..THREAD_MAX */
 	if (opt_threads < 1)
@@ -842,6 +839,12 @@ int main(int argc, char **argv)
 
 	/* number of args, which are not options */
 	files = argc - optind;
+
+	/* no files given, use stdin */
+	if (files == 0) {
+		fin = stdin;
+		SET_BINARY(fin);
+	}
 
 	/* -c was used */
 	if (opt_stdout) {
@@ -883,11 +886,10 @@ int main(int argc, char **argv)
 
 	/* main work */
 	if (files == 0) {
+		/* use stdin */
 		if (opt_iterations != 1)
 			panic
 			    ("You can not use stdin together with the -i option.");
-
-		/* use stdin */
 		treat_stdin();
 	} else {
 		/* use input files */

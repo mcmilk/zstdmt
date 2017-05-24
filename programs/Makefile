@@ -11,24 +11,24 @@ LZ5_VER	= "v1.5"
 ZSTD_VER= "v1.2.0"
 
 # uncomment, for cross compiling or windows binaries
-#WIN_LDFLAGS	= -lwinmm -lpsapi
-#CROSS		= i686-w64-mingw32-
-#EXTENSION	= -w32.exe
+WIN_LDFLAGS	= -lwinmm -lpsapi
+CROSS		= i686-w64-mingw32-
+EXTENSION	= -w32.exe
 #CROSS		= x86_64-w64-mingw32-
 #EXTENSION	= -w64.exe
-#LN	= @echo
+LN	= @echo
 
+#LN	= ln -sf
 #CC	= $(CROSS)musl-gcc
 #CC	= $(CROSS)clang
 CC	= $(CROSS)gcc
 RANLIB	= $(CROSS)ranlib
 STRIP	= $(CROSS)strip
 SFLAGS	= -R .note -R .comment
-LN	= ln -sf
 
 CFLAGS	= -W -pthread -Wall -pipe
 CFLAGS	+= -fomit-frame-pointer
-CFLAGS	+= -O
+CFLAGS	+= -O3
 #CFLAGS	+= -flto
 #CFLAGS += -DDEBUGME
 #CFLAGS += -g
