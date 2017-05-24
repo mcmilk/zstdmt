@@ -679,11 +679,9 @@ int main(int argc, char **argv)
 		progname = argv[0];
 
 	/* change defaults, if needed */
-	if (str_casestart(progname, UNZIP) != 0) {
+	if (str_casestart(progname, UNZIP)) {
 		opt_mode = MODE_DECOMPRESS;
-		printf("unzip");
-	} else if (str_casestart(progname, ZCAT) != 0) {
-		printf("zcatzip");
+	} else if (str_casestart(progname, ZCAT)) {
 		opt_mode = MODE_DECOMPRESS;
 		opt_stdout = 1;
 		opt_force = 1;
