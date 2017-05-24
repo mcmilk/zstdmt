@@ -50,6 +50,7 @@ static int opt_timings = 0;
 static int opt_nocrc = 0;
 
 static char *progname;
+static char *opt_filename;
 static char *opt_suffix = SUFFIX;
 static const char *errmsg = 0;
 
@@ -120,6 +121,7 @@ static void usage(void)
 	       "\n  -d    Use decompress mode."
 	       "\n  -z    Use compress mode."
 	       "\n  -f    Force overwriting files and/or compression."
+	       "\n  -o F  Write output to file `F`."
 	       "\n  -h    Display a help screen and quit."
 	       "\n  -k    Keep input files after compression or decompression."
 	       "\n  -l    List information for the specified compressed files."
@@ -463,10 +465,19 @@ static char *check_overwrite(const char *filename)
 	if (r == -1)
 		return strerror(errno);
 
+
 	/* when we are here, we ask the user what to do */
 	for (;;) {
 		printf("%s: '%s' already exists. Overwrite (y/N) ? ",
 		       progname, filename);
+
+		/**
+		 * when we can input from stdin, we
+		 * can not use it for input here!
+		 */
+		if (fin == stdin)
+			return "Can not read stdin, choosed `N` for you!";
+
 		c = getchar();
 
 		if (c == 'y' || c == 'Y')
@@ -482,7 +493,7 @@ static char *check_overwrite(const char *filename)
 	}
 
 	if (yes == 0 && opt_verbose) {
-		return "not overwriting.";
+		return "Not overwriting.";
 	}
 
 	remove(filename);
@@ -523,10 +534,14 @@ static void treat_stdin()
 
 	/* setup fin and fout */
 	fin = stdin;
+	SET_BINARY(fin);
+
 	if (!fout) {
 		fout = stdout;
+		SET_BINARY(fout);
 		check_stdout();
 	}
+
 
 	/* do some work */
 	if (opt_mode == MODE_COMPRESS)
@@ -565,6 +580,7 @@ static void treat_file(char *filename)
 	/* setup fin stream */
 	if (strcmp(filename, "-") == 0) {
 		fin = stdin;
+		SET_BINARY(fin);
 	} else {
 		errmsg = check_infile(filename);
 		if (errmsg && opt_verbose)
@@ -693,7 +709,7 @@ int main(int argc, char **argv)
 	/* same order as in help option -h */
 	while ((opt =
 		getopt(argc, argv,
-		       "1234567890cdzfhklLqrS:tvVT:b:i:BC")) != -1) {
+		       "1234567890cdzfo:hklLqrS:tvVT:b:i:BC")) != -1) {
 		switch (opt) {
 
 			/* 1) Gzip Like Options: */
@@ -729,6 +745,10 @@ int main(int argc, char **argv)
 
 		case 'f':	/* force overwriting */
 			opt_force = 1;
+			break;
+
+		case 'o':	/* output file */
+			opt_filename = optarg;
 			break;
 
 		case 'h':	/* show help */
@@ -828,6 +848,25 @@ int main(int argc, char **argv)
 	/* -c was used */
 	if (opt_stdout) {
 		fout = stdout;
+		SET_BINARY(fout);
+		global_fout = 1;
+	}
+
+	/* -o filename was used */
+	if (opt_filename) {
+		if (global_fout)
+			panic("Can not use -o FILE together with -c :(");
+
+		if (strcmp(opt_filename, "-") == 0) {
+			fout = stdout;
+			SET_BINARY(fout);
+		} else {
+			errmsg = check_overwrite(opt_filename);
+			if (!errmsg)
+				fout = fopen(opt_filename, "wb");
+			if (!fout)
+				panic("Opening output file failed!");
+		}
 		global_fout = 1;
 	}
 
@@ -835,7 +874,7 @@ int main(int argc, char **argv)
 	if (opt_mode == MODE_LIST || opt_mode == MODE_TEST) {
 		fout = fopen(DEVNULL, "wb");
 		if (!fout)
-			panic("Opening output file failed!");
+			panic("Opening dummy output failed!");
 		global_fout = 1;
 	}
 

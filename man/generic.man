@@ -58,6 +58,10 @@ Force compression of file, even if it is not actually reduced in size.
 Additionally, files are overwritten without prompting for confirmation.
 
 .TP
+.BI -o \ FILE
+Use filename `FILE` for output of (de)compression.
+
+.TP
 .BI -h
 Display a help screen and quit.
 
