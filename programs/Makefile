@@ -28,7 +28,7 @@ LN	= ln -sf
 
 CFLAGS	= -W -pthread -Wall -pipe
 CFLAGS	+= -fomit-frame-pointer
-CFLAGS	+= -O3
+CFLAGS	+= -O
 #CFLAGS	+= -flto
 #CFLAGS += -DDEBUGME
 #CFLAGS += -g
@@ -40,6 +40,8 @@ PRGS	= lizard-mt$(EXTENSION) \
 	  lz5-mt$(EXTENSION) \
 	  zstd-mt$(EXTENSION) \
 	  brotli-mt$(EXTENSION)
+
+PRGS	= lizard-mt$(EXTENSION)
 
 all:	loadsource $(PRGS)
 again:	clean $(PRGS)

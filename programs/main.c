@@ -53,7 +53,7 @@ static char *progname;
 static char *opt_suffix = SUFFIX;
 static const char *errmsg = 0;
 
-/* pointer to current infile, outfile and /dev/null  */
+/* pointer to current infile, outfile */
 static FILE *fin = NULL;
 static FILE *fout = NULL;
 static size_t bytes_read = 0;
@@ -615,8 +615,10 @@ static void treat_file(char *filename)
 		remove(filename);
 
 	/* remove outfile with errors */
-	if (errmsg && !global_fout)
+	if (errmsg && !global_fout) {
+		fprintf(stderr, errmsg);
 		remove(fn2);
+	}
 
 	/* free, if allocated */
 	if (fn2)
@@ -801,7 +803,7 @@ int main(int argc, char **argv)
 
 	/* -l or -t given, then we write to /dev/null */
 	if (opt_mode == MODE_LIST || opt_mode == MODE_TEST) {
-		fout = fopen("/dev/null", "wb");
+		fout = fopen(DEVNULL, "wb");
 		if (!fout)
 			panic("Opening output file failed!");
 		global_fout = 1;

@@ -44,6 +44,7 @@ extern int getcpucount(void);
 #include <psapi.h> /* GetProcessMemoryInfo() */
 #include <io.h> /* _isatty */
 
+#define DEVNULL "NUL"
 #define IS_CONSOLE(stdStream) (_isatty(_fileno(stdStream)))
 
 # ifndef _TIMEVAL_DEFINED
@@ -85,6 +86,7 @@ extern int getrusage(int who, struct rusage *uv_rusage);
 /* POSIX */
 
 #include <sys/resource.h> /* getrusage() */
+#define DEVNULL "/dev/null"
 #define IS_CONSOLE(stdStream) (isatty(fileno(stdStream)))
 
 #endif /* POSIX */

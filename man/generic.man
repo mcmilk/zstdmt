@@ -78,10 +78,6 @@ Display the %PROGNAME% license and quit.
 Be quiet: suppress all messages.
 
 .TP
-.BI -r
-Recursive mode: compress will descend into specified directories.
-
-.TP
 .BI -S \ suffix
 Set the suffix for compressed files. Default: .%SUFFIX%
 
@@ -96,6 +92,34 @@ Be more verbose.
 .TP
 .BI -V
 Show version information and quit.
+
+.SH EXTRA OPTIONS
+
+.TP
+.BI -T \ N
+Set number of compression or decompression threads. Defaults to the
+number of cores of the cpu.
+
+.TP
+.BI -b \ N
+Set input chunksize to N MiB (default: auto).
+An overview of the default values is here: https://github.com/mcmilk/zstdmt/tree/master/lib
+
+.TP
+.BI -i \ N
+Set number of iterations for testing (default: 1).
+
+.TP
+.BI -H
+Print headline for the timing values and quit.
+
+.TP
+.BI -B
+Print timings and memory usage to stderr.
+
+.TP
+.BI -C
+Disable crc32 calculation in verbose listing mode.
 
 .SH EXIT STATUS
 The %PROGNAME% utility exits with one of the following values:
