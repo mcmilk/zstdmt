@@ -71,7 +71,6 @@ static unsigned int crc32_table[1][256];
 static unsigned int crc32(const unsigned char *buf, size_t size,
 			  unsigned int crc);
 
-
 static void panic(const char *msg)
 {
 	if (opt_verbose)
@@ -208,7 +207,7 @@ static const char *do_compress(FILE * in, FILE * out)
 	if (MT_isError(ret))
 		return MT_getErrorString(ret);
 
-	/* 4) get statistic - xxx */
+	/* 4) get statistic - XXX, find a better place ... */
 	if (first && opt_timings) {
 		fprintf(stderr, "%d;%d;%lu;%lu;%lu",
 			opt_level, opt_threads,
@@ -250,7 +249,7 @@ static const char *do_decompress(FILE * in, FILE * out)
 	if (MT_isError(ret))
 		return MT_getErrorString(ret);
 
-	/* 4) get statistic - xxx */
+	/* 4) get statistic - XXX, find better place */
 	if (first && opt_timings) {
 		fprintf(stderr, "%d;%d;%lu;%lu;%lu",
 			0, opt_threads,
@@ -264,25 +263,6 @@ static const char *do_decompress(FILE * in, FILE * out)
 
 	return 0;
 }
-
-#if 0
-/**
- * free resources, used for compression/decompression
- * big XXX here, we save time, when re-using the initialized context
- */
-static void compress_cleanup(void)
-{
-	if (cctx) {
-		MT_freeCCtx(cctx);
-		cctx = 0;
-	}
-
-	if (dctx) {
-		MT_freeDCtx(dctx);
-		dctx = 0;
-	}
-}
-#endif
 
 static int has_suffix(const char *filename, const char *suffix)
 {
@@ -366,43 +346,42 @@ static unsigned int crc32(const unsigned char *buf, size_t size,
 	return ~crc;
 }
 
-/**
- * Maybe TODO, -l -v should also these:
- * method crc date time
- */
 static void print_listmode(int headline, const char *filename)
 {
 	if (headline && opt_verbose > 1)
 		printf("%8s %8s %10s %8s %20s %20s %7s %s\n",
-		       "method", "crc32", "date", "time", "compressed", "uncompressed", "ratio",
-		       "uncompressed_name");
+		       "method", "crc32", "date", "time", "compressed",
+		       "uncompressed", "ratio", "uncompressed_name");
 	else if (headline)
 		printf("%20s %20s %7s %s\n",
 		       "compressed", "uncompressed", "ratio",
 		       "uncompressed_name");
 
 	if (errmsg) {
-		printf("%8s %8s %10s %8s %20s %20s %7s %s\n",
-		"-", "-", "-","-", "-", "-", "-", filename);
+		if (opt_verbose == 1)
+			printf("%20s %20s %7s %s\n", "-", "-", "-", filename);
+		else if (opt_verbose > 1)
+			printf("%8s %8s %10s %8s %20s %20s %7s %s\n",
+			       "-", "-", "-", "-", "-", "-", "-", filename);
 	}
 
 	if (opt_verbose == 1) {
-		    printf("%20lu %20lu %6.2f%% %s\n",
-			   (unsigned long)bytes_read,
-			   (unsigned long)bytes_written,
-			   100 - (double)bytes_read * 100 / bytes_written,
-			   filename);
+		printf("%20lu %20lu %6.2f%% %s\n",
+		       (unsigned long)bytes_read,
+		       (unsigned long)bytes_written,
+		       100 - (double)bytes_read * 100 / bytes_written,
+		       filename);
 	}
 
 	if (opt_verbose > 1) {
 		char buf[30];
-		strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&mtime));
-		printf("%8s %08x %12s %20lu %20lu %6.2f%% %s\n",
-			   METHOD, crc, buf,
-			   (unsigned long)bytes_read,
-			   (unsigned long)bytes_written,
-			   100 - (double)bytes_read * 100 / bytes_written,
-			   filename);
+		strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S",
+			 localtime(&mtime));
+		printf("%8s %08x %12s %20lu %20lu %6.2f%% %s\n", METHOD, crc,
+		       buf, (unsigned long)bytes_read,
+		       (unsigned long)bytes_written,
+		       100 - (double)bytes_read * 100 / bytes_written,
+		       filename);
 	}
 
 	return;
@@ -585,7 +564,7 @@ static void treat_file(char *filename)
 		errmsg = "Opening destination file failed.";
 
 	if (errmsg) {
-		fprintf(stderr, "%s: %s\n", progname, errmsg);
+		fprintf(stderr, "%s: %s: %s\n", progname, filename, errmsg);
 		exit_code = E_WARNING;
 		if (fn2)
 			free(fn2);
@@ -597,10 +576,6 @@ static void treat_file(char *filename)
 		errmsg = do_compress(fin, local_fout);
 	else
 		errmsg = do_decompress(fin, local_fout);
-
-#if 0
-	printf("errmsg nach decompress: %s\n", errmsg ? errmsg : "NIL");
-#endif
 
 	/* remember, that we had some error */
 	if (errmsg)
@@ -853,11 +828,6 @@ int main(int argc, char **argv)
 			ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 1000,
 			(long unsigned)ru.ru_maxrss);
 	}
-
-	/* free ressources */
-#if 0
-	compress_cleanup();
-#endif
 
 	/* exit should flush stdout / stderr */
 	exit(exit_code);
