@@ -16,10 +16,10 @@ size    | value             | description
 2 bytes | uncompressed size | allocation hint for decompressor (64KB * this size here)
 
 ## Usage of the Testutils
-- see programs
+- see [programs](https://github.com/mcmilk/zstdmt/tree/master/programs)
 
 ## Usage of the Library
-- see lib
+- see [lib](https://github.com/mcmilk/zstdmt/tree/master/lib)
 
 [Brotli]:https://github.com/google/brotli/
 [LZ4]:https://cyan4973.github.io/lz4/
@@ -28,4 +28,4 @@ size    | value             | description
 [Lizard]:https://github.com/inikep/lizard/
 
 
-/TR 2017-03-26
+/TR 2017-05-24
