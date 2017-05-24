@@ -121,7 +121,7 @@ static void usage(void)
 	       "\n  -d    Use decompress mode."
 	       "\n  -z    Use compress mode."
 	       "\n  -f    Force overwriting files and/or compression."
-	       "\n  -o F  Write output to file `F`."
+	       "\n  -o F  Write output to file `F`, stdout is used for `-`."
 	       "\n  -h    Display a help screen and quit."
 	       "\n  -k    Keep input files after compression or decompression."
 	       "\n  -l    List information for the specified compressed files."
@@ -465,15 +465,14 @@ static char *check_overwrite(const char *filename)
 	if (r == -1)
 		return strerror(errno);
 
-
 	/* when we are here, we ask the user what to do */
 	for (;;) {
 		printf("%s: '%s' already exists. Overwrite (y/N) ? ",
 		       progname, filename);
 
 		/**
-		 * when we can input from stdin, we
-		 * can not use it for input here!
+		 * when we get input from stdin, we
+		 * can't use it for input here!
 		 */
 		if (fin == stdin)
 			return "Can not read stdin, choosed `N` for you!";
@@ -541,7 +540,6 @@ static void treat_stdin()
 		SET_BINARY(fout);
 		check_stdout();
 	}
-
 
 	/* do some work */
 	if (opt_mode == MODE_COMPRESS)
@@ -910,14 +908,14 @@ int main(int argc, char **argv)
 		timersub(&tme, &tms, &tm);
 		getrusage(RUSAGE_SELF, &ru);
 
-			fprintf(stderr, "Real;User;Sys;MaxMem\n");
-			fprintf(stderr, "%ld.%ld;%ld.%ld;%ld.%ld;%ld\n",
-				tm.tv_sec, tm.tv_usec / 1000,
-				ru.ru_utime.tv_sec,
-				ru.ru_utime.tv_usec / 1000,
-				ru.ru_stime.tv_sec,
-				ru.ru_stime.tv_usec / 1000,
-				(long unsigned)ru.ru_maxrss);
+		fprintf(stderr, "Real;User;Sys;MaxMem\n");
+		fprintf(stderr, "%ld.%ld;%ld.%ld;%ld.%ld;%ld\n",
+			tm.tv_sec, tm.tv_usec / 1000,
+			ru.ru_utime.tv_sec,
+			ru.ru_utime.tv_usec / 1000,
+			ru.ru_stime.tv_sec,
+			ru.ru_stime.tv_usec / 1000,
+			(long unsigned)ru.ru_maxrss);
 	}
 
 	/* exit should flush stdout / stderr */

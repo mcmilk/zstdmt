@@ -9,39 +9,44 @@
 - do not use them for production systems yet!
 
 
-### Information given by the -h option
+### Information given by the help option
 
-- this is a sample output of the usage of lz4-mt
+- this is a sample output of the usage of brotli-mt
 - the other ones are just the same, with some differences with in the levels
 
 ```
-Usage: lz4-mt [OPTION]... [FILE]...
-Compress or uncompress FILEs (by default, compress FILES in-place).
+ Usage: brotli-mt [OPTION]... [FILE]...
+ Compress or uncompress FILEs (by default, compress FILES in-place).
 
-Gzip/Bzip2 Like Options:
- -#    Set compression level to # (1-12, default:3).
- -c    Force write to standard output.
- -d    Use decompress mode.
- -z    Use compress mode.
- -f    Force overwriting files and/or compression.
- -h    Display a help screen and quit.
- -k    Keep input files after compression or decompression.
- -l    List information for the specified compressed files.
- -L    Display License and quit.
- -q    Be quiet: suppress all messages.
- -S X  Use suffix `X` for compressed files. Default: ".lz4"
- -t    Test the integrity of each file leaving any files intact.
- -v    Be more verbose.
- -V    Show version information and quit.
+ Standard Options:
+  -#    Set compression level to # (0-11, default:3).
+  -c    Force write to standard output.
+  -d    Use decompress mode.
+  -z    Use compress mode.
+  -f    Force overwriting files and/or compression.
+  -o F  Write output to file `F`, stdout is used for `-`.
+  -h    Display a help screen and quit.
+  -k    Keep input files after compression or decompression.
+  -l    List information for the specified compressed files.
+  -L    Display License and quit.
+  -q    Be quiet: suppress all messages.
+  -S X  Use suffix 'X' for compressed files. Default: ".brot"
+  -t    Test the integrity of each file leaving any files intact.
+  -v    Be more verbose.
+  -V    Show version information and quit.
 
-Additional Options:
- -T N  Set number of (de)compression threads (def: #cores).
- -b N  Set input chunksize to N MiB (default: auto).
- -i N  Set number of iterations for testing (default: 1).
- -H    Print headline for the timing values and quit.
- -B    Print timings and memory usage to stderr.
+ Additional Options:
+  -T N  Set number of (de)compression threads (def: #cores).
+  -b N  Set input chunksize to N MiB (default: auto).
+  -i N  Set number of iterations for testing (default: 1).
+  -B    Print timings and memory usage to stderr.
+  -C    Disable crc32 calculation in verbose listing mode.
 
-With no FILE, or when FILE is -, read standard input.
+ If invoked as 'brotli-mt', default action is to compress.
+             as 'unbrotli-mt',  default action is to decompress.
+             as 'brotlicat-mt', then: force decompress to stdout.
 
-Report bugs to: https://github.com/mcmilk/zstdmt/issues
+ With no FILE, or when FILE is -, read standard input.
+
+ Report bugs to: https://github.com/mcmilk/zstdmt/issues
 ```
