@@ -39,9 +39,9 @@ size    | value             | description
 
 
 [Brotli]:https://github.com/google/brotli/
-[LZ4]:https://cyan4973.github.io/lz4/
+[LZ4]:https://github.com/lz4/lz4/
 [LZ5]:https://github.com/inikep/lz5/
-[ZStandard]:http://facebook.github.io/zstd/
+[ZStandard]:https://github.com/facebook/zstd/
 [Lizard]:https://github.com/inikep/lizard/
 
 
