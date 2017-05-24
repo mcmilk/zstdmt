@@ -13,7 +13,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
 
 #include <brotli/encode.h>
 
@@ -283,7 +282,7 @@ static void *pt_compress(void *arg)
 		/* write skippable frame */
 		MEM_writeLE32((unsigned char *)wl->out.buf + 0,
 			      BROTLIMT_MAGIC_SKIPPABLE);
-		MEM_writeLE32((unsigned char *)wl->out.buf + 4, 4);
+		MEM_writeLE32((unsigned char *)wl->out.buf + 4, 8);
 		MEM_writeLE32((unsigned char *)wl->out.buf + 8,
 			      (U32) wl->out.size);
 		/* BR */

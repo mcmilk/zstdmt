@@ -11,7 +11,6 @@
  * - zstdmt source repository: https://github.com/mcmilk/zstdmt
  */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -228,7 +227,7 @@ static size_t pt_read(BROTLIMT_DCtx * ctx, BROTLIMT_Buffer * in, size_t * frame,
 	}
 
 	/* check header data */
-	if (MEM_readLE32((unsigned char *)hdr.buf + 4) != 4)
+	if (MEM_readLE32((unsigned char *)hdr.buf + 4) != 8)
 		goto error_data;
 	if (MEM_readLE16((unsigned char *)hdr.buf + 12) != BROTLIMT_MAGICNUMBER)
 		goto error_data;
@@ -329,11 +328,6 @@ static void *pt_decompress(void *arg)
 
 		if (in->size == 0)
 			break;
-
-		#if 0
-		printf("decompress() out->size = %zu\n", out->size);
-		fflush(stdout);
-		#endif
 
 		if (out->allocated < out->size) {
 			if (out->allocated)
