@@ -65,6 +65,9 @@ static int global_fout = 0;
 static MT_CCtx *cctx = 0;
 static MT_DCtx *dctx = 0;
 
+/* for benchmarks */
+static struct timeval tms, tme, tm;
+
 /* for -l with verbose > 1 */
 static time_t mtime;
 static unsigned int crc = 0;
@@ -82,7 +85,7 @@ static void panic(const char *msg)
 static void version(void)
 {
 	printf("%s version %s, zstdmt v0.4\n"
-	       "\nCopyright © 2016 - 2017 Tino Reichardt" "\n"
+	       "\nCopyright (C) 2016 - 2017 Tino Reichardt" "\n"
 	       "\n", progname, VERSION);
 	exit(0);
 }
@@ -90,7 +93,7 @@ static void version(void)
 static void license(void)
 {
 	printf("\n %s version %s\n"
-	       "\n Copyright © 2016 - 2017 Tino Reichardt"
+	       "\n Copyright (C) 2016 - 2017 Tino Reichardt"
 	       "\n "
 	       "\n This program is free software; you can redistribute it and/or modify"
 	       "\n it under the terms of the GNU General Public License Version 2, as"
@@ -131,7 +134,6 @@ static void usage(void)
 	       "\n  -T N  Set number of (de)compression threads (def: #cores)."
 	       "\n  -b N  Set input chunksize to N MiB (default: auto)."
 	       "\n  -i N  Set number of iterations for testing (default: 1)."
-	       "\n  -H    Print headline for the timing values and quit."
 	       "\n  -B    Print timings and memory usage to stderr."
 	       "\n  -C    Disable crc32 calculation in verbose listing mode."
 	       "\n"
@@ -151,13 +153,8 @@ static void usage(void)
 
 static void headline(void)
 {
-	if (opt_mode == MODE_LIST || opt_mode == MODE_TEST)
-		fprintf(stderr,
-			"Level;Threads;Real;User;Sys;MaxMem\n");
-	else
-		fprintf(stderr,
-			"Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
-	exit(0);
+	if (opt_timings && opt_verbose && opt_mode <= MODE_DECOMPRESS)
+		fprintf(stderr, "Level;Threads;InSize;OutSize;Frames\n");
 }
 
 static int ReadData(void *arg, MT_Buffer * in)
@@ -165,8 +162,8 @@ static int ReadData(void *arg, MT_Buffer * in)
 	FILE *fd = (FILE *) arg;
 	size_t done = fread(in->buf, 1, in->size, fd);
 	in->size = done;
-	
-	if (opt_verbose > 1)
+
+	if (opt_mode == MODE_LIST && opt_verbose)
 		bytes_read += done;
 
 	return 0;
@@ -184,7 +181,7 @@ static int WriteData(void *arg, MT_Buffer * out)
 
 	out->size = done;
 
-	if (opt_verbose > 1)
+	if (opt_mode == MODE_LIST && opt_verbose)
 		bytes_written += done;
 
 	return 0;
@@ -200,6 +197,14 @@ static const char *do_compress(FILE * in, FILE * out)
 	static int first = 1;
 	MT_RdWr_t rdwr;
 	size_t ret;
+
+	if (first) {
+		headline();
+		first = 0;
+	}
+
+	if (opt_timings && opt_verbose && opt_mode == MODE_COMPRESS)
+		gettimeofday(&tms, NULL);
 
 	/* 1) setup read/write functions */
 	rdwr.fn_read = ReadData;
@@ -217,15 +222,13 @@ static const char *do_compress(FILE * in, FILE * out)
 	if (MT_isError(ret))
 		return MT_getErrorString(ret);
 
-	/* 4) get statistic - XXX, find a better place ... */
-	if (first && opt_timings) {
-		fprintf(stderr, "%d;%d;%lu;%lu;%lu",
+	/* 4) get compression statistic */
+	if (opt_timings && opt_verbose && opt_mode == MODE_COMPRESS)
+		fprintf(stderr, "%d;%d;%lu;%lu;%lu\n",
 			opt_level, opt_threads,
 			(unsigned long)MT_GetInsizeCCtx(cctx),
 			(unsigned long)MT_GetOutsizeCCtx(cctx),
 			(unsigned long)MT_GetFramesCCtx(cctx));
-		first = 0;
-	}
 
 	MT_freeCCtx(cctx);
 
@@ -243,6 +246,14 @@ static const char *do_decompress(FILE * in, FILE * out)
 	MT_RdWr_t rdwr;
 	size_t ret;
 
+	if (first) {
+		headline();
+		first = 0;
+	}
+
+	if (opt_timings && opt_verbose && opt_mode == MODE_DECOMPRESS)
+		gettimeofday(&tms, NULL);
+
 	/* 1) setup read/write functions */
 	rdwr.fn_read = ReadData;
 	rdwr.fn_write = WriteData;
@@ -259,15 +270,13 @@ static const char *do_decompress(FILE * in, FILE * out)
 	if (MT_isError(ret))
 		return MT_getErrorString(ret);
 
-	/* 4) get statistic - XXX, find better place */
-	if (first && opt_timings) {
-		fprintf(stderr, "%d;%d;%lu;%lu;%lu",
-			0, opt_threads,
+	/* 4) get decompression statistic */
+	if (opt_timings && opt_verbose && opt_mode == MODE_DECOMPRESS)
+		fprintf(stderr, "%d;%d;%lu;%lu;%lu\n",
+			opt_level, opt_threads,
 			(unsigned long)MT_GetInsizeDCtx(dctx),
 			(unsigned long)MT_GetOutsizeDCtx(dctx),
 			(unsigned long)MT_GetFramesDCtx(dctx));
-		first = 0;
-	}
 
 	MT_freeDCtx(dctx);
 
@@ -376,9 +385,7 @@ static void print_listmode(int headline, const char *filename)
 		else if (opt_verbose > 1)
 			printf("%8s %8s %10s %8s %20s %20s %7s %s\n",
 			       "-", "-", "-", "-", "-", "-", "-", filename);
-	}
-
-	if (opt_verbose == 1) {
+	} else if (opt_verbose == 1) {
 		printf("%20lu %20lu %6.2f%% %s\n",
 		       (unsigned long)bytes_read,
 		       (unsigned long)bytes_written,
@@ -479,6 +486,34 @@ static char *check_overwrite(const char *filename)
 	}
 
 	remove(filename);
+	return 0;
+}
+
+static int str_casestart(const char *a, const char *b)
+{
+	const char *s = a;
+	const char *t = b;
+	for (;;) {
+		unsigned char x, y;
+		if (!*t)
+			return 1;
+		x = *s - 'A';
+		if (x <= 'Z' - 'A')
+			x += 'a';
+		else
+			x += 'A';
+		y = *t - 'A';
+		if (y <= 'Z' - 'A')
+			y += 'a';
+		else
+			y += 'A';
+		if (x != y)
+			break;
+		if (!x)
+			break;
+		++s;
+		++t;
+	}
 	return 0;
 }
 
@@ -632,22 +667,23 @@ int main(int argc, char **argv)
 {
 	/* default options: */
 	struct rusage ru;
-	struct timeval tms, tme, tm;
 	int opt;		/* for getopt */
 	int files;		/* number of files in cmdline */
 	int levelnumbers = 0;
 
 	/* get programm name */
-	progname = strrchr(argv[0], '/');
+	progname = strrchr(argv[0], PATH_SEPERATOR);
 	if (progname)
 		++progname;
 	else
 		progname = argv[0];
 
 	/* change defaults, if needed */
-	if (strcmp(progname, UNZIP) == 0) {
+	if (str_casestart(progname, UNZIP) != 0) {
 		opt_mode = MODE_DECOMPRESS;
-	} else if (strcmp(progname, ZCAT) == 0) {
+		printf("unzip");
+	} else if (str_casestart(progname, ZCAT) != 0) {
+		printf("zcatzip");
 		opt_mode = MODE_DECOMPRESS;
 		opt_stdout = 1;
 		opt_force = 1;
@@ -659,7 +695,7 @@ int main(int argc, char **argv)
 	/* same order as in help option -h */
 	while ((opt =
 		getopt(argc, argv,
-		       "1234567890cdzfhklLqrS:tvVT:b:i:HBC")) != -1) {
+		       "1234567890cdzfhklLqrS:tvVT:b:i:BC")) != -1) {
 		switch (opt) {
 
 			/* 1) Gzip Like Options: */
@@ -748,10 +784,6 @@ int main(int argc, char **argv)
 			opt_iterations = atoi(optarg);
 			break;
 
-		case 'H':	/* headline */
-			headline();
-			/* not reached */
-
 		case 'B':	/* print timings */
 			opt_timings = 1;
 			break;
@@ -810,8 +842,9 @@ int main(int argc, char **argv)
 	}
 
 	/* begin timing */
-	if (opt_timings)
-		gettimeofday(&tms, NULL);
+	if (opt_timings && opt_verbose)
+		if (opt_mode == MODE_LIST || opt_mode == MODE_TEST)
+			gettimeofday(&tms, NULL);
 
 	/* main work */
 	if (files == 0) {
@@ -834,16 +867,20 @@ int main(int argc, char **argv)
 		}
 	}
 
-	/* show timings */
-	if (opt_timings) {
+	/* end timing */
+	if (opt_timings && opt_verbose) {
 		gettimeofday(&tme, NULL);
 		timersub(&tme, &tms, &tm);
 		getrusage(RUSAGE_SELF, &ru);
-		fprintf(stderr, ";%ld.%ld;%ld.%ld;%ld.%ld;%ld\n",
-			tm.tv_sec, tm.tv_usec / 1000,
-			ru.ru_utime.tv_sec, ru.ru_utime.tv_usec / 1000,
-			ru.ru_stime.tv_sec, ru.ru_stime.tv_usec / 1000,
-			(long unsigned)ru.ru_maxrss);
+
+			fprintf(stderr, "Real;User;Sys;MaxMem\n");
+			fprintf(stderr, "%ld.%ld;%ld.%ld;%ld.%ld;%ld\n",
+				tm.tv_sec, tm.tv_usec / 1000,
+				ru.ru_utime.tv_sec,
+				ru.ru_utime.tv_usec / 1000,
+				ru.ru_stime.tv_sec,
+				ru.ru_stime.tv_usec / 1000,
+				(long unsigned)ru.ru_maxrss);
 	}
 
 	/* exit should flush stdout / stderr */

@@ -110,10 +110,6 @@ An overview of the default values is here: https://github.com/mcmilk/zstdmt/tree
 Set number of iterations for testing (default: 1).
 
 .TP
-.BI -H
-Print headline for the timing values and quit.
-
-.TP
 .BI -B
 Print timings and memory usage to stderr.
 
