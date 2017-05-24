@@ -21,21 +21,22 @@
 
 #include "platform.h"
 
+#define MODE_COMPRESS    1	/* -z (default) */
+#define MODE_DECOMPRESS  2	/* -d */
+#define MODE_LIST        3	/* -l */
+#define MODE_TEST        4	/* -t */
+static int opt_mode = MODE_COMPRESS;
+
+/* for the -i option */
+#define MAX_ITERATIONS   1000
+static int opt_iterations = 1;
+
 /* exit codes */
 #define E_OK      0
 #define E_ERROR   1
 #define E_WARNING 2
 static int exit_code = E_OK;
 
-#define MODE_COMPRESS    1	/* -z (default) */
-#define MODE_DECOMPRESS  2	/* -d */
-#define MODE_LIST        3	/* -l */
-#define MODE_TEST        4	/* -t */
-
-/* for the -i option */
-#define MAX_ITERATIONS   1000
-
-static int opt_mode = MODE_COMPRESS;
 static int opt_stdout = 0;
 static int opt_level = 3;
 static int opt_force = 0;
@@ -44,9 +45,9 @@ static int opt_threads;
 
 /* 0 = quiet | 1 = normal | >1 = verbose */
 static int opt_verbose = 1;
-static int opt_iterations = 1;
 static int opt_bufsize = 0;
 static int opt_timings = 0;
+static int opt_nocrc = 0;
 
 static char *progname;
 static char *opt_suffix = SUFFIX;
@@ -132,6 +133,7 @@ static void usage(void)
 	       "\n  -i N  Set number of iterations for testing (default: 1)."
 	       "\n  -H    Print headline for the timing values and quit."
 	       "\n  -B    Print timings and memory usage to stderr."
+	       "\n  -C    Disable crc32 calculation in verbose listing mode."
 	       "\n"
 	       "\n If invoked as '%s', default action is to compress."
 	       "\n             as '%s',  default action is to decompress."
@@ -149,8 +151,12 @@ static void usage(void)
 
 static void headline(void)
 {
-	fprintf(stderr,
-		"Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
+	if (opt_mode == MODE_LIST || opt_mode == MODE_TEST)
+		fprintf(stderr,
+			"Level;Threads;Real;User;Sys;MaxMem\n");
+	else
+		fprintf(stderr,
+			"Level;Threads;InSize;OutSize;Frames;Real;User;Sys;MaxMem\n");
 	exit(0);
 }
 
@@ -159,7 +165,9 @@ static int ReadData(void *arg, MT_Buffer * in)
 	FILE *fd = (FILE *) arg;
 	size_t done = fread(in->buf, 1, in->size, fd);
 	in->size = done;
-	bytes_read += done;
+	
+	if (opt_verbose > 1)
+		bytes_read += done;
 
 	return 0;
 }
@@ -175,7 +183,9 @@ static int WriteData(void *arg, MT_Buffer * out)
 	/* printf("crc for %zu bytes, %8x\n", out->size, crc); */
 
 	out->size = done;
-	bytes_written += done;
+
+	if (opt_verbose > 1)
+		bytes_written += done;
 
 	return 0;
 }
@@ -319,6 +329,9 @@ static unsigned int crc32(const unsigned char *buf, size_t size,
 			  unsigned int crc)
 {
 	static int initdone = 0;
+
+	if (opt_nocrc)
+		return 0;
 
 	if (!initdone) {
 		unsigned int b, i, r, poly32 = 0xEDB88320U;
@@ -646,7 +659,7 @@ int main(int argc, char **argv)
 	/* same order as in help option -h */
 	while ((opt =
 		getopt(argc, argv,
-		       "1234567890cdzfhklLqrS:tvVT:b:i:HB")) != -1) {
+		       "1234567890cdzfhklLqrS:tvVT:b:i:HBC")) != -1) {
 		switch (opt) {
 
 			/* 1) Gzip Like Options: */
@@ -741,6 +754,10 @@ int main(int argc, char **argv)
 
 		case 'B':	/* print timings */
 			opt_timings = 1;
+			break;
+
+		case 'C':	/* disable crc32 in verbose listing */
+			opt_nocrc = 1;
 			break;
 
 		default:
