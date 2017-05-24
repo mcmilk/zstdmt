@@ -384,9 +384,7 @@ static void print_listmode(int headline, const char *filename)
 		       (unsigned long)bytes_written,
 		       100 - (double)bytes_read * 100 / bytes_written,
 		       filename);
-	}
-
-	if (opt_verbose > 1) {
+	} else if (opt_verbose > 1) {
 		char buf[30];
 		strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S",
 			 localtime(&mtime));

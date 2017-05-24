@@ -107,7 +107,7 @@ BROTLIMT_CCtx *BROTLIMT_createCCtx(int threads, int level, int inputsize)
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else
-		ctx->inputsize = 1024 * 1024 * level;
+		ctx->inputsize = 1024 * 1024 * (level ? level : 1);
 
 	/* setup ctx */
 	ctx->level = level;
@@ -270,6 +270,8 @@ static void *pt_compress(void *arg)
 						   BROTLI_MAX_WINDOW_BITS,
 						   BROTLI_MODE_GENERIC, in.size,
 						   ibuf, &wl->out.size, obuf);
+
+			/* printf("BrotliEncoderCompress() rv=%d in=%zu out=%zu\n", rv, in.size, wl->out.size); */
 
 			if (rv == BROTLI_FALSE) {
 				pthread_mutex_lock(&ctx->write_mutex);
