@@ -10,6 +10,7 @@
 
 #include "lz4-mt.h"
 
+#define METHOD   "lz4"
 #define PROGNAME "lz4-mt"
 #define UNZIP    "unlz4-mt"
 #define ZCAT     "lz4cat-mt"

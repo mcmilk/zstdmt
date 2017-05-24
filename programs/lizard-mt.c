@@ -10,6 +10,7 @@
 
 #include "lizard-mt.h"
 
+#define METHOD   "lizard"
 #define PROGNAME "lizard-mt"
 #define UNZIP    "unlizard-mt"
 #define ZCAT     "lizardcat-mt"

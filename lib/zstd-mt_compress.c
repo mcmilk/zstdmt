@@ -79,7 +79,6 @@ struct ZSTDMT_CCtx_s {
 
 	/* error handling */
 	pthread_mutex_t error_mutex;
-	size_t zstd_errcode;
 	size_t zstdmt_errcode;
 
 	/* lists for writing queue */
@@ -173,7 +172,6 @@ static size_t mt_error(int rv)
 		return ZSTDMT_ERROR(memory_allocation);
 	}
 
-	/* XXX, some catch all other errors */
 	return ZSTDMT_ERROR(read_fail);
 }
 

@@ -10,6 +10,7 @@
 
 #include "zstd-mt.h"
 
+#define METHOD   "zstd"
 #define PROGNAME "zstd-mt"
 #define UNZIP    "unzstd-mt"
 #define ZCAT     "zstdcat-mt"

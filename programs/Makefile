@@ -16,7 +16,7 @@ ZSTD_VER= "v1.2.0"
 #EXTENSION	= -w32.exe
 #CROSS		= x86_64-w64-mingw32-
 #EXTENSION	= -w64.exe
-#LN	= REM have no ln -s
+#LN	= @echo
 
 #CC	= $(CROSS)musl-gcc
 #CC	= $(CROSS)clang
@@ -28,7 +28,7 @@ LN	= ln -sf
 
 CFLAGS	= -W -pthread -Wall -pipe
 CFLAGS	+= -fomit-frame-pointer
-CFLAGS	+= -O
+CFLAGS	+= -O3
 #CFLAGS	+= -flto
 #CFLAGS += -DDEBUGME
 #CFLAGS += -g

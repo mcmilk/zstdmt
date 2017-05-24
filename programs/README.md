@@ -1,94 +1,47 @@
 
-## Usage of the testing utilities
+## Usage of the threaded compression utilities
 
-### [LZ4](https://github.com/lz4/lz4)
+- all utilities can be used like gzip or bzip2
+- you can do also some benchmarking with the different methods
+  - ```-T``` can be used to define some thread count (max is 128)
+  - ```-B``` will show you the timings and RAM usage
+- a just finished the testing tools, so be kindly to me, when you find errors
+- do not use them for production systems yet!
+
+
+### Information given by the -h option
+
+- this is a sample output of the usage of lz4-mt
+- the other ones are just the same, with some differences with in the levels
+
 ```
-Usage: lz4mt [options] INPUT > FILE
-or     lz4mt [options] -o FILE INPUT
-or     cat INPUT | lz4mt [options] -o FILE
-or     cat INPUT | lz4mt [options] > FILE
+Usage: lz4-mt [OPTION]... [FILE]...
+Compress or uncompress FILEs (by default, compress FILES in-place).
 
-Options:
- -o FILE write result to a file named `FILE`
- -#      set compression level to # (1-12, default:1)
- -T N    set number of (de)compression threads (def: #cores)
- -i N    set number of iterations for testing (default: 1)
- -b N    set input chunksize to N KiB (default: auto)
- -c      compress (default mode)
- -d      use decompress mode
- -t      print timings and memory usage to stderr
- -H      print headline for the timing values
- -h      show usage
- -v      show version
-```
+Gzip/Bzip2 Like Options:
+ -#    Set compression level to # (1-12, default:3).
+ -c    Force write to standard output.
+ -d    Use decompress mode.
+ -z    Use compress mode.
+ -f    Force overwriting files and/or compression.
+ -h    Display a help screen and quit.
+ -k    Keep input files after compression or decompression.
+ -l    List information for the specified compressed files.
+ -L    Display License and quit.
+ -q    Be quiet: suppress all messages.
+ -S X  Use suffix `X` for compressed files. Default: ".lz4"
+ -t    Test the integrity of each file leaving any files intact.
+ -v    Be more verbose.
+ -V    Show version information and quit.
 
+Additional Options:
+ -T N  Set number of (de)compression threads (def: #cores).
+ -b N  Set input chunksize to N MiB (default: auto).
+ -i N  Set number of iterations for testing (default: 1).
+ -H    Print headline for the timing values and quit.
+ -B    Print timings and memory usage to stderr.
 
-### [LZ5](https://github.com/inikep/lz5)
-```
-Usage: lz5mt [options] INPUT > FILE
-or     lz5mt [options] -o FILE INPUT
-or     cat INPUT | lz5mt [options] -o FILE
-or     cat INPUT | lz5mt [options] > FILE
+With no FILE, or when FILE is -, read standard input.
 
-Options:
- -o FILE write result to a file named `FILE`
- -#      set compression level to # (1-15, default:1)
- -T N    set number of (de)compression threads (def: #cores)
- -i N    set number of iterations for testing (default: 1)
- -b N    set input chunksize to N KiB (default: auto)
- -c      compress (default mode)
- -d      use decompress mode
- -t      print timings and memory usage to stderr
- -H      print headline for the timing values
- -h      show usage
- -v      show version
-```
-
-### [ZStandard](https://github.com/facebook/zstd)
-```
-Usage: zstdmt [options] INPUT > FILE
-or     zstdmt [options] -o FILE INPUT
-or     cat INPUT | zstdmt [options] -o FILE
-or     cat INPUT | zstdmt [options] > FILE
-
-Options:
- -o FILE write result to a file named `FILE`
- -#      set compression level to # (1-22, default:3)
- -T N    set number of (de)compression threads (def: #cores)
- -i N    set number of iterations for testing (default: 1)
- -b N    set input chunksize to N KiB (default: auto)
- -c      compress (default mode)
- -d      use decompress mode
- -t      print timings and memory usage to stderr
- -H      print headline for the timing values
- -h      show usage
- -v      show version
-```
-
-### [Lizard](https://github.com/inikep/lizard)
-```
-Usage: lizardmt [options] INPUT > FILE
-or     lizardmt [options] -o FILE INPUT
-or     cat INPUT | lizardmt [options] -o FILE
-or     cat INPUT | lizardmt [options] > FILE
-
-Options:
- -o FILE write result to a file named `FILE`
- -#      set compression level to # (1-10, default:1)
- -T N    set number of (de)compression threads (def: #cores)
- -i N    set number of iterations for testing (default: 1)
- -b N    set input chunksize to N KiB (default: auto)
- -c      compress (default mode)
- -d      use decompress mode
- -t      print timings and memory usage to stderr
- -H      print headline for the timing values
- -h      show usage
- -v      show version
-
-Method options:
- -M N    use method M of lizard (default:1)
-    1:   fastLZ4: give better decompression speed than LZ4
-    2:   LIZv1: give better ratio than LZ4 keeping 75% decompression speed
-    3:   fastLZ4 + Huffman: add Huffman coding to fastLZ4
-    4:   LIZv1 + Huffman: add Huffman coding to LIZv1
+Report bugs to: https://github.com/mcmilk/zstdmt/issues
 ```

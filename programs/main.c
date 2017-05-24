@@ -64,73 +64,86 @@ static int global_fout = 0;
 static MT_CCtx *cctx = 0;
 static MT_DCtx *dctx = 0;
 
+/* for -l with verbose > 1 */
+static time_t mtime;
+static unsigned int crc = 0;
+static unsigned int crc32_table[1][256];
+static unsigned int crc32(const unsigned char *buf, size_t size,
+			  unsigned int crc);
+
+
 static void panic(const char *msg)
 {
 	if (opt_verbose)
 		fprintf(stderr, "%s\n", msg);
-	fflush(stdout);
 	exit(1);
 }
 
 static void version(void)
 {
-	printf(
-	PROGNAME " version " VERSION ", zstdmt v0.4\n"
-	"\nCopyright © 2016 - 2017 Tino Reichardt"
-	"\n");
+	printf("%s version %s, zstdmt v0.4\n"
+	       "\nCopyright © 2016 - 2017 Tino Reichardt" "\n"
+	       "\n", progname, VERSION);
 	exit(0);
 }
 
 static void license(void)
 {
-	printf(
-	"\n " PROGNAME " version " VERSION "\n"
-	"\n Copyright © 2016 - 2017 Tino Reichardt"
-	"\n "
-	"\n This program is free software; you can redistribute it and/or modify"
-	"\n it under the terms of the GNU General Public License Version 2, as"
-	"\n published by the Free Software Foundation."
-	"\n "
-	"\n This program is distributed in the hope that it will be useful,"
-	"\n but WITHOUT ANY WARRANTY; without even the implied warranty of"
-	"\n MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the"
-	"\n GNU General Public License for more details."
-	"\n "
-	"\n Report bugs to: https://github.com/mcmilk/zstdmt/issues"
-	"\n");
+	printf("\n %s version %s\n"
+	       "\n Copyright © 2016 - 2017 Tino Reichardt"
+	       "\n "
+	       "\n This program is free software; you can redistribute it and/or modify"
+	       "\n it under the terms of the GNU General Public License Version 2, as"
+	       "\n published by the Free Software Foundation."
+	       "\n "
+	       "\n This program is distributed in the hope that it will be useful,"
+	       "\n but WITHOUT ANY WARRANTY; without even the implied warranty of"
+	       "\n MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the"
+	       "\n GNU General Public License for more details."
+	       "\n "
+	       "\n Report bugs to: https://github.com/mcmilk/zstdmt/issues"
+	       "\n", progname, VERSION);
 	exit(0);
 }
 
 static void usage(void)
 {
-	printf("Usage: " PROGNAME " [OPTION]... [FILE]...\n");
-	printf("Compress or uncompress FILEs (by default, compress FILES in-place).\n\n");
-	printf("Gzip/Bzip2 Like Options:\n");
-	printf(" -#    Set compression level to # (%d-%d, default:%d).\n",
-	       LEVEL_MIN, LEVEL_MAX, LEVEL_DEF);
-	printf(" -c    Force write to standard output.\n");
-	printf(" -d    Use decompress mode.\n");
-	printf(" -z    Use compress mode.\n");
-	printf(" -f    Force overwriting files and/or compression.\n");
-	printf(" -h    Display a help screen and quit.\n");
-	printf(" -k    Keep input files after compression or decompression.\n");
-	printf(" -l    List information for the specified compressed files.\n");
-	printf(" -L    Display License and quit.\n");
-	printf(" -q    Be quiet: suppress all messages.\n");
-	printf(" -S X  Use suffix `X` for compressed files. Default: \"%s\"\n",
-	     SUFFIX);
-	printf(" -t    Test the integrity of each file leaving any files intact.\n");
-	printf(" -v    Be more verbose.\n");
-	printf(" -V    Show version information and quit.\n\n");
-
-	printf("Additional Options:\n");
-	printf(" -T N  Set number of (de)compression threads (def: #cores).\n");
-	printf(" -b N  Set input chunksize to N MiB (default: auto).\n");
-	printf(" -i N  Set number of iterations for testing (default: 1).\n");
-	printf(" -H    Print headline for the timing values and quit.\n");
-	printf(" -B    Print timings and memory usage to stderr.\n\n");
-	printf("With no FILE, or when FILE is -, read standard input.\n\n");
-	printf("Report bugs to: https://github.com/mcmilk/zstdmt/issues\n");
+	printf("\n Usage: %s [OPTION]... [FILE]..."
+	       "\n Compress or uncompress FILEs (by default, compress FILES in-place)."
+	       "\n"
+	       "\n Standard Options:"
+	       "\n  -#    Set compression level to # (%d-%d, default:%d)."
+	       "\n  -c    Force write to standard output."
+	       "\n  -d    Use decompress mode."
+	       "\n  -z    Use compress mode."
+	       "\n  -f    Force overwriting files and/or compression."
+	       "\n  -h    Display a help screen and quit."
+	       "\n  -k    Keep input files after compression or decompression."
+	       "\n  -l    List information for the specified compressed files."
+	       "\n  -L    Display License and quit."
+	       "\n  -q    Be quiet: suppress all messages."
+	       "\n  -S X  Use suffix 'X' for compressed files. Default: \"%s\""
+	       "\n  -t    Test the integrity of each file leaving any files intact."
+	       "\n  -v    Be more verbose."
+	       "\n  -V    Show version information and quit."
+	       "\n"
+	       "\n Additional Options:"
+	       "\n  -T N  Set number of (de)compression threads (def: #cores)."
+	       "\n  -b N  Set input chunksize to N MiB (default: auto)."
+	       "\n  -i N  Set number of iterations for testing (default: 1)."
+	       "\n  -H    Print headline for the timing values and quit."
+	       "\n  -B    Print timings and memory usage to stderr."
+	       "\n"
+	       "\n If invoked as '%s', default action is to compress."
+	       "\n             as '%s',  default action is to decompress."
+	       "\n             as '%s', then: force decompress to stdout."
+	       "\n"
+	       "\n With no FILE, or when FILE is -, read standard input."
+	       "\n"
+	       "\n Report bugs to: https://github.com/mcmilk/zstdmt/issues"
+	       "\n",
+	       PROGNAME, LEVEL_MIN, LEVEL_MAX, LEVEL_DEF, SUFFIX,
+	       PROGNAME, UNZIP, ZCAT);
 
 	exit(0);
 }
@@ -156,6 +169,12 @@ static int WriteData(void *arg, MT_Buffer * out)
 {
 	FILE *fd = (FILE *) arg;
 	ssize_t done = fwrite(out->buf, 1, out->size, fd);
+
+	/* generate crc32 of uncompressed file */
+	if (opt_mode == MODE_LIST && opt_verbose > 1)
+		crc = crc32(out->buf, out->size, crc);
+	/* printf("crc for %zu bytes, %8x\n", out->size, crc); */
+
 	out->size = done;
 	bytes_written += done;
 
@@ -172,10 +191,6 @@ static const char *do_compress(FILE * in, FILE * out)
 	static int first = 1;
 	MT_RdWr_t rdwr;
 	size_t ret;
-
-	/* input or output not okay */
-	if (errmsg)
-		return errmsg;
 
 	/* 1) setup read/write functions */
 	rdwr.fn_read = ReadData;
@@ -218,10 +233,6 @@ static const char *do_decompress(FILE * in, FILE * out)
 	static int first = 1;
 	MT_RdWr_t rdwr;
 	size_t ret;
-
-	/* input or output not okay */
-	if (errmsg)
-		return errmsg;
 
 	/* 1) setup read/write functions */
 	rdwr.fn_read = ReadData;
@@ -295,6 +306,7 @@ static char *add_suffix(const char *filename)
 
 	if (!newname)
 		panic("nomem!");
+
 	strcpy(newname, filename);
 	strcat(newname, opt_suffix);
 
@@ -323,26 +335,77 @@ static char *remove_suffix(const char *filename)
 	return newname;
 }
 
+static unsigned int crc32(const unsigned char *buf, size_t size,
+			  unsigned int crc)
+{
+	static int initdone = 0;
+
+	if (!initdone) {
+		unsigned int b, i, r, poly32 = 0xEDB88320U;
+
+		for (b = 0; b < 256; ++b) {
+			r = b;
+			for (i = 0; i < 8; ++i) {
+				if (r & 1)
+					r = (r >> 1) ^ poly32;
+				else
+					r >>= 1;
+			}
+
+			crc32_table[0][b] = r;
+		}
+		initdone++;
+	}
+	crc = ~crc;
+
+	while (size != 0) {
+		crc = crc32_table[0][*buf++ ^ (crc & 0xFF)] ^ (crc >> 8);
+		--size;
+	}
+
+	return ~crc;
+}
+
 /**
  * Maybe TODO, -l -v should also these:
  * method crc date time
  */
 static void print_listmode(int headline, const char *filename)
 {
-	if (headline)
+	if (headline && opt_verbose > 1)
+		printf("%8s %8s %10s %8s %20s %20s %7s %s\n",
+		       "method", "crc32", "date", "time", "compressed", "uncompressed", "ratio",
+		       "uncompressed_name");
+	else if (headline)
 		printf("%20s %20s %7s %s\n",
 		       "compressed", "uncompressed", "ratio",
 		       "uncompressed_name");
 
 	if (errmsg) {
-		printf("%20s %20s %7s %s\n", "-", "-", "-", filename);
-	} else {
-		printf("%20lu %20lu %6.2f%% %s\n",
-		       (unsigned long)bytes_read,
-		       (unsigned long)bytes_written,
-		       100 - (double)bytes_read * 100 / bytes_written,
-		       filename);
+		printf("%8s %8s %10s %8s %20s %20s %7s %s\n",
+		"-", "-", "-","-", "-", "-", "-", filename);
 	}
+
+	if (opt_verbose == 1) {
+		    printf("%20lu %20lu %6.2f%% %s\n",
+			   (unsigned long)bytes_read,
+			   (unsigned long)bytes_written,
+			   100 - (double)bytes_read * 100 / bytes_written,
+			   filename);
+	}
+
+	if (opt_verbose > 1) {
+		char buf[30];
+		strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&mtime));
+		printf("%8s %08x %12s %20lu %20lu %6.2f%% %s\n",
+			   METHOD, crc, buf,
+			   (unsigned long)bytes_read,
+			   (unsigned long)bytes_written,
+			   100 - (double)bytes_read * 100 / bytes_written,
+			   filename);
+	}
+
+	return;
 }
 
 static void print_testmode(const char *filename)
@@ -366,15 +429,17 @@ static char *check_infile(const char *filename)
 	struct stat s;
 	int r;
 
-	r = lstat(filename, &s);
+	r = stat(filename, &s);
 	if (r == -1)
 		return strerror(errno);
 
 	if (S_ISDIR(s.st_mode))
 		return "Is a directory";
 
-	if (S_ISREG(s.st_mode))
+	if (S_ISREG(s.st_mode)) {
+		mtime = s.st_mtime;
 		return 0;
+	}
 
 	return "Is not regular file";
 }
@@ -382,37 +447,29 @@ static char *check_infile(const char *filename)
 /**
  * check_overwrite() - check if file exists
  *
- * return:
- * 0 -> do not create new file
- * 1 -> can create new file
+ * return: zero on success, or errmsg
  */
-static int check_overwrite(const char *filename)
+static char *check_overwrite(const char *filename)
 {
-	int c, yes = -1;
-	FILE *f;
+	struct stat s;
+	int r, c, yes = -1;
 
 	/* force, so always okay */
 	if (opt_force)
-		return 1;
-
-	/* test it ... */
-	f = fopen(filename, "r");
-
-	/* no file there, we can create a new one */
-	if (f == NULL && errno == ENOENT)
-		return 1;
-
-	/* file there, but can not open?! */
-	if (f == NULL)
 		return 0;
 
-	fclose(f);
+	/* test it ... */
+	r = stat(filename, &s);
+	if (r == -1 && errno == ENOENT)
+		return 0;	/* ok, not found */
+
+	if (r == -1)
+		return strerror(errno);
 
 	/* when we are here, we ask the user what to do */
 	for (;;) {
-		printf(PROGNAME
-		       ": `%s` already exists. Overwrite (y/N) ? ",
-		       filename);
+		printf("%s: '%s' already exists. Overwrite (y/N) ? ",
+		       progname, filename);
 		c = getchar();
 
 		if (c == 'y' || c == 'Y')
@@ -428,9 +485,11 @@ static int check_overwrite(const char *filename)
 	}
 
 	if (yes == 0 && opt_verbose) {
-		fprintf(stderr, "not overwriting %s\n", filename);
+		return "not overwriting.";
 	}
-	return yes;
+
+	remove(filename);
+	return 0;
 }
 
 static void treat_stdin()
@@ -476,21 +535,18 @@ static void treat_file(char *filename)
 
 	/* reset errmsg */
 	errmsg = 0;
+	crc = 0;
 
 	/* setup fin stream */
 	if (strcmp(filename, "-") == 0) {
 		fin = stdin;
 	} else {
 		errmsg = check_infile(filename);
-		if (errmsg) {
-			if (opt_verbose)
-				fprintf(stderr,
-					"%s: %s: %s\n",
-					progname,
-					filename,
-					errmsg);
+		if (errmsg && opt_verbose)
+			fprintf(stderr, "%s: %s: %s\n",
+				progname, filename, errmsg);
+		if (errmsg)
 			return;
-		}
 		fin = fopen(filename, "rb");
 	}
 
@@ -503,49 +559,48 @@ static void treat_file(char *filename)
 		switch (opt_mode) {
 		case MODE_COMPRESS:
 			if (has_suffix(filename, opt_suffix) && !opt_force) {
-				fprintf(stderr, "%s already has %s suffix -- unchanged\n",
+				fprintf(stderr,
+					"%s already has %s suffix -- unchanged\n",
 					filename, opt_suffix);
 				return;
 			}
 			fn2 = add_suffix(filename);
-			if (check_overwrite(fn2) == 0) {
-				exit_code = E_WARNING;
-				free(fn2);
-				return;
-			}
-			local_fout = fopen(fn2, "wb");
+			errmsg = check_overwrite(fn2);
+			if (!errmsg)
+				local_fout = fopen(fn2, "wb");
 			break;
 		case MODE_DECOMPRESS:
 			fn2 = remove_suffix(filename);
-			if (check_overwrite(fn2) == 0) {
-				exit_code = E_WARNING;
-				free(fn2);
-				return;
-			}
-			local_fout = fopen(fn2, "wb");
+			errmsg = check_overwrite(fn2);
+			if (!errmsg)
+				local_fout = fopen(fn2, "wb");
 			break;
 		}
 	}
 
-	if (fin == NULL) {
-		errmsg = "Opening infile failed.";
-		return;
-	}
+	if (!errmsg && fin == NULL)
+		errmsg = "Opening source file failed.";
 
-	if (local_fout == NULL) {
-		errmsg = "Opening outfile failed.";
+	if (!errmsg && local_fout == NULL)
+		errmsg = "Opening destination file failed.";
+
+	if (errmsg) {
+		fprintf(stderr, "%s: %s\n", progname, errmsg);
+		exit_code = E_WARNING;
+		if (fn2)
+			free(fn2);
 		return;
 	}
 
 	/* do some work */
-	if (opt_mode == MODE_COMPRESS)
+	if (!errmsg && opt_mode == MODE_COMPRESS)
 		errmsg = do_compress(fin, local_fout);
 	else
 		errmsg = do_decompress(fin, local_fout);
 
-	#if 0
-	printf("errmsg nach decompress: %s\n", errmsg?errmsg:"NIL");
-	#endif
+#if 0
+	printf("errmsg nach decompress: %s\n", errmsg ? errmsg : "NIL");
+#endif
 
 	/* remember, that we had some error */
 	if (errmsg)
@@ -582,7 +637,6 @@ static void treat_file(char *filename)
 		free(fn2);
 
 	first = 0;
-
 	return;
 }
 
@@ -770,7 +824,8 @@ int main(int argc, char **argv)
 	/* main work */
 	if (files == 0) {
 		if (opt_iterations != 1)
-			panic("You can not use stdin together with the -i option.");
+			panic
+			    ("You can not use stdin together with the -i option.");
 
 		/* use stdin */
 		treat_stdin();
@@ -800,10 +855,10 @@ int main(int argc, char **argv)
 	}
 
 	/* free ressources */
-	#if 0
+#if 0
 	compress_cleanup();
-	#endif
+#endif
 
-	/* exit should flush stdout */
+	/* exit should flush stdout / stderr */
 	exit(exit_code);
 }

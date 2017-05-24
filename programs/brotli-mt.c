@@ -10,6 +10,7 @@
 
 #include "brotli-mt.h"
 
+#define METHOD   "brotli"
 #define PROGNAME "brotli-mt"
 #define UNZIP    "unbrotli-mt"
 #define ZCAT     "brotlicat-mt"

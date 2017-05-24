@@ -10,6 +10,7 @@
 
 #include "lz5-mt.h"
 
+#define METHOD   "lz5"
 #define PROGNAME "lz5-mt"
 #define UNZIP    "unlz5-mt"
 #define ZCAT     "lz5cat-mt"

@@ -29,6 +29,7 @@ extern "C" {
 #include <fcntl.h>
 #include <stdio.h>
 #include <errno.h>
+#include <time.h>
 
 extern int getcpucount(void);
 
@@ -41,7 +42,6 @@ extern int getcpucount(void);
 #include <processthreadsapi.h> /* GetProcessTimes() */
 #include <timezoneapi.h> /* FileTimeToSystemTime() */
 #include <psapi.h> /* GetProcessMemoryInfo() */
-#include <time.h>
 #include <io.h> /* _isatty */
 
 #define IS_CONSOLE(stdStream) (_isatty(_fileno(stdStream)))

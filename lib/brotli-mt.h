@@ -29,14 +29,12 @@ extern "C" {
 #define BROTLIMT_LEVEL_MIN    0
 #define BROTLIMT_LEVEL_MAX   11
 
-#define BROFMT_MAGICNUMBER     0x544F5242U /* BROT */
-#define BROFMT_MAGIC_SKIPPABLE 0x184D2A50U
+#define BROTLIMT_MAGICNUMBER     0x5242U /* BR */
+#define BROTLIMT_MAGIC_SKIPPABLE 0x184D2A50U
 
 /* **************************************
  * Error Handling
  ****************************************/
-
-extern size_t bromt_errcode;
 
 typedef enum {
   BROTLIMT_error_no_error,
@@ -53,7 +51,7 @@ typedef enum {
 } BROTLIMT_ErrorCode;
 
 #define PREFIX(name) BROTLIMT_error_##name
-#define ERROR(name)  ((size_t)-PREFIX(name))
+#define MT_ERROR(name)  ((size_t)-PREFIX(name))
 extern unsigned BROTLIMT_isError(size_t code);
 extern const char* BROTLIMT_getErrorString(size_t code);
 

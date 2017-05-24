@@ -169,7 +169,6 @@ static size_t mt_error(int rv)
 		return ERROR(memory_allocation);
 	}
 
-	/* XXX, some catch all other errors */
 	return ERROR(read_fail);
 }
 
