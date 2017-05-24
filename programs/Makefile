@@ -14,8 +14,8 @@ ZSTD_VER= "v1.2.0"
 WIN_LDFLAGS	= -lwinmm -lpsapi
 CROSS		= i686-w64-mingw32-
 EXTENSION	= -w32.exe
-#CROSS		= x86_64-w64-mingw32-
-#EXTENSION	= -w64.exe
+CROSS		= x86_64-w64-mingw32-
+EXTENSION	= -w64.exe
 LN	= @echo
 
 #LN	= ln -sf
