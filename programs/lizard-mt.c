@@ -16,7 +16,7 @@
 #define ZCAT     "lizardcat-mt"
 #define SUFFIX   ".liz"
 
-#define LEVEL_DEF          40
+#define LEVEL_DEF          17
 #define LEVEL_MIN          LIZARDMT_LEVEL_MIN
 #define LEVEL_MAX          LIZARDMT_LEVEL_MAX
 #define THREAD_MAX         LIZARDMT_THREAD_MAX

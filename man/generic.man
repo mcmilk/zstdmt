@@ -162,7 +162,7 @@ cat somefile.%SUFFIX% | %PROGNAME% -d > somefile
 Please report any bugs to https://github.com/mcmilk/zstdmt/issues
 
 .SH AUTHOR
-This manual page was written by Tino Reichardt <milky-7zip (at) mcmilk dot de>
+This manual page was written by Tino Reichardt <milky-zstdmt (at) mcmilk dot de>
 
 .SH "SEE ALSO"
 .BR bzip2 (1),
