@@ -11,14 +11,14 @@ LZ5_VER	= "v1.5"
 ZSTD_VER= "v1.2.0"
 
 # uncomment, for cross compiling or windows binaries
-WIN_LDFLAGS	= -lwinmm -lpsapi
-CROSS		= i686-w64-mingw32-
-EXTENSION	= -w32.exe
-CROSS		= x86_64-w64-mingw32-
-EXTENSION	= -w64.exe
-LN	= @echo
+#WIN_LDFLAGS	= -lwinmm -lpsapi
+#CROSS		= i686-w64-mingw32-
+#EXTENSION	= -w32.exe
+#CROSS		= x86_64-w64-mingw32-
+#EXTENSION	= -w64.exe
+#LN	= @echo
 
-#LN	= ln -sf
+LN	= ln -sf
 #CC	= $(CROSS)musl-gcc
 #CC	= $(CROSS)clang
 CC	= $(CROSS)gcc
@@ -116,25 +116,25 @@ CF_ZSTD	= $(CFLAGS) -I$(ZSTDDIR) -I$(ZSTDDIR)/common -I$(ZSTDDIR)/compress \
 CFLAGS	+= -I. -I$(ZSTDMTDIR)
 
 brotli-mt$(EXTENSION):
-	$(CC) $(CF_BRO) $(CDFLAGS)  -DVERSION='$(BRO_VER)' -o $@ $(LIBBRO) $(LDFLAGS) -lm
+	$(CC) $(CF_BRO) -DVERSION='$(BRO_VER)' -o $@ $(LIBBRO) $(LDFLAGS) -lm
 	$(STRIP) $(SFLAGS) $@
 	$(LN) -s $@ un$@
 	$(LN) -s $@ brotlicat-mt
 
 lizard-mt$(EXTENSION):
-	$(CC) $(CF_LIZ) $(CDFLAGS)  -DVERSION='$(LIZ_VER)' -o $@ $(LIBLIZ) $(LDFLAGS)
+	$(CC) $(CF_LIZ) -DVERSION='$(LIZ_VER)' -o $@ $(LIBLIZ) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
 	$(LN) -s $@ un$@
 	$(LN) -s $@ lizardcat-mt
 
 lz4-mt$(EXTENSION):
-	$(CC) $(CF_LZ4) $(CDFLAGS)  -DVERSION='$(LZ4_VER)' -o $@ $(LIBLZ4) $(LDFLAGS)
+	$(CC) $(CF_LZ4) -DVERSION='$(LZ4_VER)' -o $@ $(LIBLZ4) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
 	$(LN) -s $@ un$@
 	$(LN) -s $@ lz4cat-mt
 
 lz5-mt$(EXTENSION):
-	$(CC) $(CF_LZ5) $(CDFLAGS)  -DVERSION='$(LZ5_VER)' -o $@ $(LIBLZ5) $(LDFLAGS)
+	$(CC) $(CF_LZ5) -DVERSION='$(LZ5_VER)' -o $@ $(LIBLZ5) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
 	$(LN) -s $@ un$@
 	$(LN) -s $@ lz5cat-mt

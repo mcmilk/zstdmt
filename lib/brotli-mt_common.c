@@ -9,8 +9,8 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-#include <brotli/encode.h>
-#include <brotli/decode.h>
+#include "encode.h"
+#include "decode.h"
 
 #include "brotli-mt.h"
 

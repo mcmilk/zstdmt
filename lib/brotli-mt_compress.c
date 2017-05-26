@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <brotli/encode.h>
+#include "encode.h"
 
 #include "brotli-mt.h"
 #include "memmt.h"
@@ -264,7 +264,7 @@ static void *pt_compress(void *arg)
 		/* compress whole frame */
 		{
 			const uint8_t *ibuf = in.buf;
-			uint8_t *obuf = wl->out.buf + 16;
+			uint8_t *obuf = (uint8_t*)wl->out.buf + 16;
 			wl->out.size -= 16;
 			rv = BrotliEncoderCompress(ctx->level,
 						   BROTLI_MAX_WINDOW_BITS,
@@ -294,8 +294,8 @@ static void *pt_compress(void *arg)
 		/* number of 64KB blocks needed for decompression */
 		{
 		U16 hintsize;
-		if ((size_t)ctx->inputsize > in.size) {
-			hintsize = in.size >> 16;
+		if (ctx->inputsize > (int)in.size) {
+			hintsize = (U16)(in.size >> 16);
 			hintsize += 1;
 		} else
 			hintsize = ctx->inputsize >> 16;
