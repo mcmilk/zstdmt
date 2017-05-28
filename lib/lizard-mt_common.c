@@ -9,7 +9,7 @@
  * of patent rights can be found in the PATENTS file in the same directory.
  */
 
-#include "lz5frame.h"
+#include "lizard_frame.h"
 #include "lizard-mt.h"
 
 /* will be used for lib errors */
@@ -32,8 +32,8 @@ unsigned LIZARDMT_isError(size_t code)
  */
 const char *LIZARDMT_getErrorString(size_t code)
 {
-	if (LZ5F_isError(lizardmt_errcode))
-		return LZ5F_getErrorName(lizardmt_errcode);
+	if (LizardF_isError(lizardmt_errcode))
+		return LizardF_getErrorName(lizardmt_errcode);
 
 	static const char *noErrorCode = "Unspecified lizardmt error code";
 	switch ((LIZARDMT_ErrorCode) (0 - code)) {

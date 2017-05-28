@@ -5,7 +5,7 @@
 
 # current versions we're using (tagged in their main repo)
 BRO_VER	= "v0.6.0"
-LIZ_VER	= "v2.0"
+LIZ_VER	= "v1.0"
 LZ4_VER	= "v1.7.5"
 LZ5_VER	= "v1.5"
 ZSTD_VER= "v1.2.0"
@@ -60,17 +60,27 @@ LIBZSTD	= $(COMMON) $(ZSTDMTDIR)/zstd-mt_common.c $(ZSTDMTDIR)/zstd-mt_compress.
 
 # Brotli, https://github.com/google/brotli
 BRODIR	= brotli
-LIBBRO	+= $(BRODIR)/common/dictionary.c $(BRODIR)/dec/bit_reader.c \
-	  $(BRODIR)/dec/decode.c $(BRODIR)/dec/huffman.c \
-	  $(BRODIR)/dec/state.c $(BRODIR)/enc/backward_references.c \
-	  $(BRODIR)/enc/backward_references_hq.c $(BRODIR)/enc/bit_cost.c \
-	  $(BRODIR)/enc/block_splitter.c $(BRODIR)/enc/brotli_bit_stream.c \
-	  $(BRODIR)/enc/cluster.c $(BRODIR)/enc/compress_fragment.c \
+LIBBRO	+= $(BRODIR)/common/dictionary.c \
+	  $(BRODIR)/dec/bit_reader.c \
+	  $(BRODIR)/dec/decode.c \
+	  $(BRODIR)/dec/huffman.c \
+	  $(BRODIR)/dec/state.c \
+	  $(BRODIR)/enc/backward_references.c \
+	  $(BRODIR)/enc/backward_references_hq.c \
+	  $(BRODIR)/enc/bit_cost.c \
+	  $(BRODIR)/enc/block_splitter.c \
+	  $(BRODIR)/enc/brotli_bit_stream.c \
+	  $(BRODIR)/enc/cluster.c \
+	  $(BRODIR)/enc/compress_fragment.c \
 	  $(BRODIR)/enc/compress_fragment_two_pass.c \
-	  $(BRODIR)/enc/dictionary_hash.c $(BRODIR)/enc/encode.c \
-	  $(BRODIR)/enc/entropy_encode.c $(BRODIR)/enc/histogram.c \
-	  $(BRODIR)/enc/literal_cost.c $(BRODIR)/enc/memory.c \
-	  $(BRODIR)/enc/metablock.c $(BRODIR)/enc/static_dict.c \
+	  $(BRODIR)/enc/dictionary_hash.c \
+	  $(BRODIR)/enc/encode.c \
+	  $(BRODIR)/enc/entropy_encode.c \
+	  $(BRODIR)/enc/histogram.c \
+	  $(BRODIR)/enc/literal_cost.c \
+	  $(BRODIR)/enc/memory.c \
+	  $(BRODIR)/enc/metablock.c \
+	  $(BRODIR)/enc/static_dict.c \
 	  $(BRODIR)/enc/utf8_util.c
 CF_BRO	= $(CFLAGS) -Ibrotli/include
 
@@ -86,10 +96,14 @@ CF_LZ5	= $(CFLAGS) -Ilz5/lib
 
 # Lizard, https://github.com/inikep/lizard
 LIZDIR	= lizard/lib
-LIBLIZ	+= $(LIZDIR)/lz5_compress.c $(LIZDIR)/lz5_decompress.c \
-	  $(LIZDIR)/lz5frame.c $(LIZDIR)/xxhash/xxhash.c \
-	  $(LIZDIR)/entropy/entropy_common.c $(LIZDIR)/entropy/fse_compress.c \
-	  $(LIZDIR)/entropy/fse_decompress.c $(LIZDIR)/entropy/huf_compress.c \
+LIBLIZ	+= $(LIZDIR)/lizard_compress.c \
+	  $(LIZDIR)/lizard_decompress.c \
+	  $(LIZDIR)/lizard_frame.c \
+	  $(LIZDIR)/xxhash/xxhash.c \
+	  $(LIZDIR)/entropy/entropy_common.c \
+	  $(LIZDIR)/entropy/fse_compress.c \
+	  $(LIZDIR)/entropy/fse_decompress.c \
+	  $(LIZDIR)/entropy/huf_compress.c \
 	  $(LIZDIR)/entropy/huf_decompress.c
 CF_LIZ	= $(CFLAGS) -Ilizard/lib
 

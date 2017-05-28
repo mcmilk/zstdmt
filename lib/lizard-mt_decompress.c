@@ -14,8 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define LZ5F_DISABLE_OBSOLETE_ENUMS
-#include "lz5frame.h"
+#define LizardF_DISABLE_OBSOLETE_ENUMS
+#include "lizard_frame.h"
 
 #include "memmt.h"
 #include "threading.h"
@@ -40,7 +40,7 @@ typedef struct {
 	LIZARDMT_DCtx *ctx;
 	pthread_t pthread;
 	LIZARDMT_Buffer in;
-	LZ5F_decompressionContext_t dctx;
+	LizardF_decompressionContext_t dctx;
 } cwork_t;
 
 struct writelist;
@@ -130,7 +130,7 @@ LIZARDMT_DCtx *LIZARDMT_createDCtx(int threads, int inputsize)
 		w->ctx = ctx;
 
 		/* setup thread work */
-		LZ5F_createDecompressionContext(&w->dctx, LZ5F_VERSION);
+		LizardF_createDecompressionContext(&w->dctx, LIZARDF_VERSION);
 	}
 
 	return ctx;
@@ -348,10 +348,10 @@ static void *pt_decompress(void *arg)
 		}
 
 		result =
-		    LZ5F_decompress(w->dctx, out->buf, &out->size,
+		    LizardF_decompress(w->dctx, out->buf, &out->size,
 				    in->buf, &in->size, 0);
 
-		if (LZ5F_isError(result)) {
+		if (LizardF_isError(result)) {
 			lizardmt_errcode = result;
 			result = ERROR(compression_library);
 			goto error_lock;
@@ -392,7 +392,7 @@ static void *pt_decompress(void *arg)
 static size_t st_decompress(void *arg)
 {
 	LIZARDMT_DCtx *ctx = (LIZARDMT_DCtx *) arg;
-	LZ5F_errorCode_t nextToLoad = 0;
+	LizardF_errorCode_t nextToLoad = 0;
 	cwork_t *w = &ctx->cwork[0];
 	LIZARDMT_Buffer Out;
 	LIZARDMT_Buffer *out = &Out;
@@ -420,8 +420,8 @@ static size_t st_decompress(void *arg)
 	memcpy(in->buf, magic, in->size);
 
 	nextToLoad =
-	    LZ5F_decompress(w->dctx, out->buf, &pos, in->buf, &in->size, 0);
-	if (LZ5F_isError(nextToLoad)) {
+	    LizardF_decompress(w->dctx, out->buf, &pos, in->buf, &in->size, 0);
+	if (LizardF_isError(nextToLoad)) {
 		free(in->buf);
 		free(out->buf);
 		return ERROR(compression_library);
@@ -451,10 +451,10 @@ static size_t st_decompress(void *arg)
 
 			/* decompress */
 			nextToLoad =
-			    LZ5F_decompress(w->dctx, out->buf, &out->size,
+			    LizardF_decompress(w->dctx, out->buf, &out->size,
 					    (unsigned char *)in->buf + pos,
 					    &remaining, NULL);
-			if (LZ5F_isError(nextToLoad)) {
+			if (LizardF_isError(nextToLoad)) {
 				free(in->buf);
 				free(out->buf);
 				return ERROR(compression_library);
@@ -603,7 +603,7 @@ void LIZARDMT_freeDCtx(LIZARDMT_DCtx * ctx)
 
 	for (t = 0; t < ctx->threads; t++) {
 		cwork_t *w = &ctx->cwork[t];
-		LZ5F_freeDecompressionContext(w->dctx);
+		LizardF_freeDecompressionContext(w->dctx);
 	}
 
 	pthread_mutex_destroy(&ctx->read_mutex);
