@@ -34,7 +34,7 @@ static int opt_iterations = 1;
 static int exit_code = E_OK;
 
 static int opt_stdout = 0;
-static int opt_level = 3;
+static int opt_level = LEVEL_DEF;
 static int opt_force = 0;
 static int opt_keep = 0;
 static int opt_threads;

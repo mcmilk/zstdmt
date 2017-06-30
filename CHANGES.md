@@ -1,4 +1,7 @@
 
+v0.5
+- use correct lizard version (v1.0)
+
 v0.4
 - added brotli, added lizard (was lz5 v2.0)
 - add man pages for the sample programs
