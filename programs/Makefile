@@ -107,7 +107,7 @@ LIBLIZ	+= $(LIZDIR)/lizard_compress.c \
 	  $(LIZDIR)/entropy/huf_decompress.c
 CF_LIZ	= $(CFLAGS) -Ilizard/lib
 
-# ZStandard, https://github.com/facebook/zstd
+# Zstandard, https://github.com/facebook/zstd
 ZSTDDIR	= zstd/lib
 LIBZSTD	+= $(ZSTDDIR)/common/entropy_common.c \
 	  $(ZSTDDIR)/common/fse_decompress.c \
