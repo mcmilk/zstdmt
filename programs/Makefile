@@ -1,14 +1,14 @@
 ##############################################################################
 # GNU Makefile for zstmt
-# /TR 2017-05-19
+# /TR 2018-12-28
 ##############################################################################
 
 # current versions we're using (tagged in their main repo)
-BRO_VER	= "v0.6.0"
+BRO_VER	= "v1.0.7"
 LIZ_VER	= "v1.0"
-LZ4_VER	= "v1.7.5"
+LZ4_VER	= "v1.8.3"
 LZ5_VER	= "v1.5"
-ZSTD_VER= "v1.2.0"
+ZSTD_VER= "v1.3.8"
 
 # uncomment, for cross compiling or windows binaries
 #WIN_LDFLAGS	= -lwinmm -lpsapi
@@ -38,8 +38,8 @@ LDFLAGS	= $(WIN_LDFLAGS) -lpthread
 PRGS	= lizard-mt$(EXTENSION) \
 	  lz4-mt$(EXTENSION) \
 	  lz5-mt$(EXTENSION) \
-	  zstd-mt$(EXTENSION) \
-	  brotli-mt$(EXTENSION)
+	  brotli-mt$(EXTENSION) \
+	  zstd-mt$(EXTENSION)
 
 all:	loadsource $(PRGS)
 again:	clean $(PRGS)
@@ -59,8 +59,9 @@ LIBZSTD	= $(COMMON) $(ZSTDMTDIR)/zstd-mt_common.c $(ZSTDMTDIR)/zstd-mt_compress.
 	  $(ZSTDMTDIR)/zstd-mt_decompress.c zstd-mt.c
 
 # Brotli, https://github.com/google/brotli
-BRODIR	= brotli
+BRODIR	= brotli/c
 LIBBRO	+= $(BRODIR)/common/dictionary.c \
+	  $(BRODIR)/common/transform.c \
 	  $(BRODIR)/dec/bit_reader.c \
 	  $(BRODIR)/dec/decode.c \
 	  $(BRODIR)/dec/huffman.c \
@@ -75,6 +76,7 @@ LIBBRO	+= $(BRODIR)/common/dictionary.c \
 	  $(BRODIR)/enc/compress_fragment_two_pass.c \
 	  $(BRODIR)/enc/dictionary_hash.c \
 	  $(BRODIR)/enc/encode.c \
+	  $(BRODIR)/enc/encoder_dict.c \
 	  $(BRODIR)/enc/entropy_encode.c \
 	  $(BRODIR)/enc/histogram.c \
 	  $(BRODIR)/enc/literal_cost.c \
@@ -109,16 +111,27 @@ CF_LIZ	= $(CFLAGS) -Ilizard/lib
 
 # Zstandard, https://github.com/facebook/zstd
 ZSTDDIR	= zstd/lib
-LIBZSTD	+= $(ZSTDDIR)/common/entropy_common.c \
+LIBZSTD	+= $(ZSTDDIR)/common/debug.c \
+	  $(ZSTDDIR)/common/entropy_common.c \
+	  $(ZSTDDIR)/common/error_private.c \
 	  $(ZSTDDIR)/common/fse_decompress.c \
+	  $(ZSTDDIR)/common/pool.c \
+	  $(ZSTDDIR)/common/threading.c \
 	  $(ZSTDDIR)/common/xxhash.c \
 	  $(ZSTDDIR)/common/zstd_common.c \
-	  $(ZSTDDIR)/common/error_private.c \
 	  $(ZSTDDIR)/compress/fse_compress.c \
+	  $(ZSTDDIR)/compress/hist.c \
 	  $(ZSTDDIR)/compress/huf_compress.c \
 	  $(ZSTDDIR)/compress/zstd_compress.c \
+	  $(ZSTDDIR)/compress/zstd_double_fast.c \
+	  $(ZSTDDIR)/compress/zstd_fast.c \
+	  $(ZSTDDIR)/compress/zstd_lazy.c \
+	  $(ZSTDDIR)/compress/zstd_ldm.c \
+	  $(ZSTDDIR)/compress/zstd_opt.c \
 	  $(ZSTDDIR)/decompress/huf_decompress.c \
+	  $(ZSTDDIR)/decompress/zstd_ddict.c \
 	  $(ZSTDDIR)/decompress/zstd_decompress.c \
+	  $(ZSTDDIR)/decompress/zstd_decompress_block.c \
 	  $(ZSTDDIR)/legacy/zstd_v01.c $(ZSTDDIR)/legacy/zstd_v02.c \
 	  $(ZSTDDIR)/legacy/zstd_v03.c $(ZSTDDIR)/legacy/zstd_v04.c \
 	  $(ZSTDDIR)/legacy/zstd_v05.c $(ZSTDDIR)/legacy/zstd_v06.c \

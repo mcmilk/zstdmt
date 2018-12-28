@@ -1,4 +1,7 @@
 
+v0.6
+- update versions: zstd 1.3.8, lz4 1.8.3, brotli 1.0.7
+
 v0.5
 - use correct lizard version (v1.0)
 

@@ -17,29 +17,29 @@
 #define SUFFIX   ".zst"
 
 #define LEVEL_DEF          3
-#define LEVEL_MIN          ZSTDMT_LEVEL_MIN
-#define LEVEL_MAX          ZSTDMT_LEVEL_MAX
-#define THREAD_MAX         ZSTDMT_THREAD_MAX
+#define LEVEL_MIN          ZSTDCB_LEVEL_MIN
+#define LEVEL_MAX          ZSTDCB_LEVEL_MAX
+#define THREAD_MAX         ZSTDCB_THREAD_MAX
 
-#define MT_isError         ZSTDMT_isError
-#define MT_getErrorString  ZSTDMT_getErrorString
-#define MT_Buffer          ZSTDMT_Buffer
-#define MT_RdWr_t          ZSTDMT_RdWr_t
+#define MT_isError         ZSTDCB_isError
+#define MT_getErrorString  ZSTDCB_getErrorString
+#define MT_Buffer          ZSTDCB_Buffer
+#define MT_RdWr_t          ZSTDCB_RdWr_t
 
-#define MT_CCtx            ZSTDMT_CCtx
-#define MT_createCCtx      ZSTDMT_createCCtx
-#define MT_compressCCtx    ZSTDMT_compressCCtx
-#define MT_GetFramesCCtx   ZSTDMT_GetFramesCCtx
-#define MT_GetInsizeCCtx   ZSTDMT_GetInsizeCCtx
-#define MT_GetOutsizeCCtx  ZSTDMT_GetOutsizeCCtx
-#define MT_freeCCtx        ZSTDMT_freeCCtx
+#define MT_CCtx            ZSTDCB_CCtx
+#define MT_createCCtx      ZSTDCB_createCCtx
+#define MT_compressCCtx    ZSTDCB_compressCCtx
+#define MT_GetFramesCCtx   ZSTDCB_GetFramesCCtx
+#define MT_GetInsizeCCtx   ZSTDCB_GetInsizeCCtx
+#define MT_GetOutsizeCCtx  ZSTDCB_GetOutsizeCCtx
+#define MT_freeCCtx        ZSTDCB_freeCCtx
 
-#define MT_DCtx            ZSTDMT_DCtx
-#define MT_createDCtx      ZSTDMT_createDCtx
-#define MT_decompressDCtx  ZSTDMT_decompressDCtx
-#define MT_GetFramesDCtx   ZSTDMT_GetFramesDCtx
-#define MT_GetInsizeDCtx   ZSTDMT_GetInsizeDCtx
-#define MT_GetOutsizeDCtx  ZSTDMT_GetOutsizeDCtx
-#define MT_freeDCtx        ZSTDMT_freeDCtx
+#define MT_DCtx            ZSTDCB_DCtx
+#define MT_createDCtx      ZSTDCB_createDCtx
+#define MT_decompressDCtx  ZSTDCB_decompressDCtx
+#define MT_GetFramesDCtx   ZSTDCB_GetFramesDCtx
+#define MT_GetInsizeDCtx   ZSTDCB_GetInsizeDCtx
+#define MT_GetOutsizeDCtx  ZSTDCB_GetOutsizeDCtx
+#define MT_freeDCtx        ZSTDCB_freeDCtx
 
 #include "main.c"

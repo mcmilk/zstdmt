@@ -756,7 +756,7 @@ int main(int argc, char **argv)
 
 		case 'h':	/* show help */
 			usage();
-			/* not reached */
+			break;
 
 		case 'k':	/* keep old files */
 			opt_keep = 1;
@@ -769,7 +769,7 @@ int main(int argc, char **argv)
 
 		case 'L':	/* show License */
 			license();
-			/* not reached */
+			break;
 
 		case 'q':	/* be quiet */
 			opt_verbose = 0;
@@ -790,7 +790,7 @@ int main(int argc, char **argv)
 
 		case 'V':	/* version */
 			version();
-			/* not reached */
+			break;
 
 			/* 2) additional options */
 		case 'T':	/* threads */
