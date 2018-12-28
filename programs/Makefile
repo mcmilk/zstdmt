@@ -84,7 +84,7 @@ LIBBRO	+= $(BRODIR)/common/dictionary.c \
 	  $(BRODIR)/enc/metablock.c \
 	  $(BRODIR)/enc/static_dict.c \
 	  $(BRODIR)/enc/utf8_util.c
-CF_BRO	= $(CFLAGS) -Ibrotli/include
+CF_BRO	= $(CFLAGS) -I$(BRODIR)/include
 
 # LZ4, https://github.com/Cyan4973/lz4
 LZ4DIR	= lz4/lib
