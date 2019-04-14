@@ -553,9 +553,10 @@ static void treat_stdin()
 		errmsg = do_decompress(fin, fout);
 
 	/* remember, that we had some error */
-	if (errmsg)
+	if (errmsg) {
+		fprintf(stderr, "%s: stdin: %s\n", progname, errmsg);
 		exit_code = E_ERROR;
-
+	}
 	/* listing mode */
 	if (opt_mode == MODE_LIST)
 		print_listmode(1, filename);
@@ -643,9 +644,10 @@ static void treat_file(char *filename)
 		errmsg = do_decompress(fin, local_fout);
 
 	/* remember, that we had some error */
-	if (errmsg)
+	if (errmsg) {
+		fprintf(stderr, "%s: %s: %s\n", progname, filename, errmsg);
 		exit_code = E_ERROR;
-
+	}
 	/* close instream */
 	if (fin && fin != stdin)
 		if (fclose(fin) != 0 && opt_verbose)
