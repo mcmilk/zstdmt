@@ -40,7 +40,6 @@ CXXFLAGS	+= -std=gnu++11
 #CFLAGS += -march=native 
 LDFLAGS	= $(WIN_LDFLAGS) -lpthread
 
-	#   lz5-mt$(EXTENSION) 
 PRGS	= lizard-mt$(EXTENSION) \
 	  lz4-mt$(EXTENSION) \
 	  brotli-mt$(EXTENSION) \
@@ -198,8 +197,8 @@ install:
 
 clean:
 	rm -f $(PRGS)
-	rm -f unbrotli-mt unlizard-mt unlz4-mt unlz5-mt unzstd-mt unsnappy-mt
-	rm -f brotlicat-mt lizardcat-mt lz4cat-mt lz5cat-mt zstdcat-mt  snappycat-mt
+	rm -f unbrotli-mt unlizard-mt unlz4-mt unzstd-mt unsnappy-mt
+	rm -f brotlicat-mt lizardcat-mt lz4cat-mt zstdcat-mt  snappycat-mt
 
 mrproper: clean
-	rm -rf brotli lizard lz4 lz5 zstd snappy
+	rm -rf brotli lizard lz4 zstd snappy
