@@ -129,9 +129,6 @@ LIBZSTD	+= $(ZSTDDIR)/common/debug.c \
 	  $(ZSTDDIR)/compress/zstd_lazy.c \
 	  $(ZSTDDIR)/compress/zstd_ldm.c \
 	  $(ZSTDDIR)/compress/zstd_opt.c \
-	  $(ZSTDDIR)/compress/zstd_compress_sequences.c \
-	  $(ZSTDDIR)/compress/zstd_compress_literals.c \
-	  $(ZSTDDIR)/compress/zstd_compress_superblock.c \
 	  $(ZSTDDIR)/decompress/huf_decompress.c \
 	  $(ZSTDDIR)/decompress/zstd_ddict.c \
 	  $(ZSTDDIR)/decompress/zstd_decompress.c \
