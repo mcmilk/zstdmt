@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define IN_ALLOC_SIZE (1024*1024)
+#define SNAPPY_IN_ALLOC_SIZE (1024*64) /* 64K frame */
 
 /**
  * multi threaded snappy - multiple workers version
@@ -98,7 +98,7 @@ SNAPPYMT_CCtx *SNAPPYMT_createCCtx(int threads, int level,/*Not use*/
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else
-		ctx->inputsize = 1024 * 64;  /* 64K frame */
+		ctx->inputsize = SNAPPY_IN_ALLOC_SIZE;  
 
 	/* setup ctx */
 	ctx->level = 0; 

@@ -29,7 +29,7 @@ size    | value             | description
 2 bytes | 0x5242U           | magic for brotli "BR"
 2 bytes | uncompressed size | allocation hint for decompressor (64KB * this size)
 
-## [Snappy]frame definition
+## [Snappy] frame definition
 
 - the frame header for Snappy is defined a bit different:
 
