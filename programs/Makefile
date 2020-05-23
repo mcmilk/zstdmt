@@ -8,7 +8,7 @@ BRO_VER	= "v1.0.7"
 LIZ_VER	= "v1.0"
 LZ4_VER	= "v1.8.3"
 LZ5_VER	= "v1.5"
-ZSTD_VER= "v1.4.4"
+ZSTD_VER= "v1.3.8"
 SNAP_VER= "1.1.8"
 # uncomment, for cross compiling or windows binaries
 #WIN_LDFLAGS	= -lwinmm -lpsapi
