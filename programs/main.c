@@ -186,7 +186,7 @@ static int WriteData(void *arg, MT_Buffer * out)
 
 	/* generate crc32 of uncompressed file */
 	if (opt_mode == MODE_LIST && opt_verbose > 1)
-		crc = crc32(out->buf, out->size, crc);
+		crc = crc32((unsigned char*)out->buf, out->size, crc);
 	/* printf("crc for %zu bytes, %8x\n", out->size, crc); */
 
 	out->size = done;
@@ -311,7 +311,7 @@ static char *add_suffix(const char *filename)
 {
 	int flen = strlen(filename);
 	int xlen = strlen(opt_suffix);
-	char *newname = malloc(flen + xlen + 1);
+	char *newname = (char *)malloc(flen + xlen + 1);
 
 	if (!newname)
 		panic("nomem!");
@@ -326,7 +326,7 @@ static char *remove_suffix(const char *filename)
 {
 	int flen = strlen(filename);
 	int xlen = strlen(opt_suffix);
-	char *newname = malloc(flen + xlen + 5);
+	char *newname = (char *)malloc(flen + xlen + 5);
 
 	if (!newname)
 		panic("nomem!");

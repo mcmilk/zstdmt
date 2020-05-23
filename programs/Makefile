@@ -34,16 +34,16 @@ CFLAGS	+= -O3
 CXXFLAGS	= -W -pthread -Wall -pipe
 CXXFLAGS	+= -fomit-frame-pointer
 CXXFLAGS	+= -O3
-CXXFLAGS	+= -std=c++11 
+CXXFLAGS	+= -std=gnu++11 
 #CFLAGS	+= -flto
 #CFLAGS += -DDEBUGME
 #CFLAGS += -g
-#CFLAGS += -march=native
+#CFLAGS += -march=native 
 LDFLAGS	= $(WIN_LDFLAGS) -lpthread
 
+	#   lz5-mt$(EXTENSION) 
 PRGS	= lizard-mt$(EXTENSION) \
 	  lz4-mt$(EXTENSION) \
-	  lz5-mt$(EXTENSION) \
 	  brotli-mt$(EXTENSION) \
 	  zstd-mt$(EXTENSION) \
 	  snappy-mt$(EXTENSION) 
@@ -60,8 +60,8 @@ LIBLIZ	= $(COMMON) $(ZSTDMTDIR)/lizard-mt_common.c $(ZSTDMTDIR)/lizard-mt_compre
 	  $(ZSTDMTDIR)/lizard-mt_decompress.c lizard-mt.c
 LIBLZ4	= $(COMMON) $(ZSTDMTDIR)/lz4-mt_common.c $(ZSTDMTDIR)/lz4-mt_compress.c \
 	  $(ZSTDMTDIR)/lz4-mt_decompress.c lz4-mt.c
-LIBLZ5	= $(COMMON) $(ZSTDMTDIR)/lz5-mt_common.c $(ZSTDMTDIR)/lz5-mt_compress.c \
-	  $(ZSTDMTDIR)/lz5-mt_decompress.c lz5-mt.c
+# LIBLZ5	= $(COMMON) $(ZSTDMTDIR)/lz5-mt_common.c $(ZSTDMTDIR)/lz5-mt_compress.c \
+# 	  $(ZSTDMTDIR)/lz5-mt_decompress.c lz5-mt.c
 LIBZSTD	= $(COMMON) $(ZSTDMTDIR)/zstd-mt_common.c $(ZSTDMTDIR)/zstd-mt_compress.c \
 	  $(ZSTDMTDIR)/zstd-mt_decompress.c zstd-mt.c
 LIBSNAP	= $(COMMON) $(ZSTDMTDIR)/snappy-mt_common.cc $(ZSTDMTDIR)/snappy-mt_compress.cc \
@@ -101,9 +101,9 @@ LIBLZ4	+= $(LZ4DIR)/lz4.c $(LZ4DIR)/lz4frame.c $(LZ4DIR)/lz4hc.c $(LZ4DIR)/xxhas
 CF_LZ4	= $(CFLAGS) -Ilz4/lib
 
 # LZ5, https://github.com/inikep/lz5
-LZ5DIR	= lz5/lib
-LIBLZ5	+= $(LZ5DIR)/lz5.c $(LZ5DIR)/lz5frame.c $(LZ5DIR)/lz5hc.c $(LZ5DIR)/xxhash.c
-CF_LZ5	= $(CFLAGS) -Ilz5/lib
+# LZ5DIR	= lz5/lib
+# LIBLZ5	+= $(LZ5DIR)/lz5.c $(LZ5DIR)/lz5frame.c $(LZ5DIR)/lz5hc.c $(LZ5DIR)/xxhash.c
+# CF_LZ5	= $(CFLAGS) -Ilz5/lib
 
 # Lizard, https://github.com/inikep/lizard
 LIZDIR	= lizard/lib
@@ -137,6 +137,9 @@ LIBZSTD	+= $(ZSTDDIR)/common/debug.c \
 	  $(ZSTDDIR)/compress/zstd_lazy.c \
 	  $(ZSTDDIR)/compress/zstd_ldm.c \
 	  $(ZSTDDIR)/compress/zstd_opt.c \
+	  $(ZSTDDIR)/compress/zstd_compress_sequences.c \
+	  $(ZSTDDIR)/compress/zstd_compress_literals.c \
+	  $(ZSTDDIR)/compress/zstd_compress_superblock.c \
 	  $(ZSTDDIR)/decompress/huf_decompress.c \
 	  $(ZSTDDIR)/decompress/zstd_ddict.c \
 	  $(ZSTDDIR)/decompress/zstd_decompress.c \
@@ -178,11 +181,11 @@ lz4-mt$(EXTENSION):
 	$(LN) -s $@ un$@
 	$(LN) -s $@ lz4cat-mt
 
-lz5-mt$(EXTENSION):
-	$(CC) $(CF_LZ5) -DVERSION='$(LZ5_VER)' -o $@ $(LIBLZ5) $(LDFLAGS)
-	$(STRIP) $(SFLAGS) $@
-	$(LN) -s $@ un$@
-	$(LN) -s $@ lz5cat-mt
+# lz5-mt$(EXTENSION):
+# 	$(CC) $(CF_LZ5) -DVERSION='$(LZ5_VER)' -o $@ $(LIBLZ5) $(LDFLAGS)
+# 	$(STRIP) $(SFLAGS) $@
+# 	$(LN) -s $@ un$@
+# 	$(LN) -s $@ lz5cat-mt
 
 zstd-mt$(EXTENSION):
 	$(CC) $(CF_ZSTD) -DVERSION='$(ZSTD_VER)' -o $@ $(LIBZSTD) $(LDFLAGS)
@@ -198,7 +201,7 @@ snappy-mt$(EXTENSION):
 
 loadsource:
 	test -d lz4    || git clone https://github.com/Cyan4973/lz4  -b $(LZ4_VER)  --depth=1 lz4
-	test -d lz5    || git clone https://github.com/inikep/lz5    -b $(LZ5_VER)  --depth=1 lz5
+	# test -d lz5    || git clone https://github.com/inikep/lz5    -b $(LZ5_VER)  --depth=1 lz5
 	test -d zstd   || git clone https://github.com/facebook/zstd -b $(ZSTD_VER) --depth=1 zstd
 	test -d lizard || git clone https://github.com/inikep/lizard -b $(LIZ_VER)  --depth=1 lizard
 	test -d brotli || git clone https://github.com/google/brotli -b $(BRO_VER)  --depth=1 brotli
