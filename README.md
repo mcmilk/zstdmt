@@ -1,5 +1,5 @@
 
-# Multithreading Library for [Brotli], [Lizard], [LZ4], [LZ5] and [Zstandard]
+# Multithreading Library for [Brotli], [Lizard], [LZ4], [LZ5], [Snappy] and [Zstandard]
 
 ## Description
 - works with skippables frame id 0x184D2A50 (12 bytes per compressed frame)
@@ -29,6 +29,17 @@ size    | value             | description
 2 bytes | 0x5242U           | magic for brotli "BR"
 2 bytes | uncompressed size | allocation hint for decompressor (64KB * this size)
 
+## [Snappy] frame definition
+
+- the frame header for Snappy is defined a bit different:
+
+size    | value             | description
+--------|-------------------|------------
+4 bytes | 0x184D2A50U       | magic for skippable frame (like zstd)
+4 bytes | 8                 | size of skippable frame
+4 bytes | compressed size   | size of the following frame (compressed data)
+2 bytes | 0x5053U           | magic for Snappy "SP"
+2 bytes | uncompressed size | allocation hint for decompressor (64KB * this size)
 
 ## Usage of the Testutils
 - see [programs](https://github.com/mcmilk/zstdmt/tree/master/programs)
@@ -43,6 +54,7 @@ size    | value             | description
 [LZ5]:https://github.com/inikep/lz5/
 [Zstandard]:https://github.com/facebook/zstd/
 [Lizard]:https://github.com/inikep/lizard/
+[Snappy]:https://github.com/google/snappy
 
 
 /TR 2017-05-24
