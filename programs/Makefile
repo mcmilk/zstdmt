@@ -197,7 +197,7 @@ loadsource:
 	test -d zstd   || git clone https://github.com/facebook/zstd      -b $(ZSTD_VER)  --depth=1 zstd
 	test -d lizard || git clone https://github.com/inikep/lizard      -b $(LIZ_VER)   --depth=1 lizard
 	test -d brotli || git clone https://github.com/google/brotli      -b $(BRO_VER)   --depth=1 brotli
-	test -d snappy || git clone https://github.com/andikleen/snappy-c -b              --depth=1 snappy
+	test -d snappy || git clone https://github.com/andikleen/snappy-c                 --depth=1 snappy
 	# cd snappy && cmake CMakeLists.txt && cd ..
 
 install:
