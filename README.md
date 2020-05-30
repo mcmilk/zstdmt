@@ -54,7 +54,7 @@ size    | value             | description
 [LZ5]:https://github.com/inikep/lz5/
 [Zstandard]:https://github.com/facebook/zstd/
 [Lizard]:https://github.com/inikep/lizard/
-[Snappy]:https://github.com/google/snappy
+[Snappy]:https://github.com/andikleen/snappy-c
 
 
 /TR 2017-05-24

@@ -686,6 +686,10 @@ static void treat_file(char *filename)
 
 int main(int argc, char **argv)
 {
+	if (argc < 2){
+		usage();
+		exit(0);
+	}
 	/* default options: */
 	struct rusage ru;
 	int opt;		/* for getopt */

@@ -9,7 +9,7 @@ LIZ_VER	= "v1.0"
 LZ4_VER	= "v1.8.3"
 LZ5_VER	= "v1.5"
 ZSTD_VER= "v1.4.5"
-SNAP_VER= "1.1.8"
+SNAP_VER= "v0.0.0"
 # uncomment, for cross compiling or windows binaries
 #WIN_LDFLAGS	= -lwinmm -lpsapi
 #CROSS		= i686-w64-mingw32-
@@ -22,7 +22,6 @@ LN	= ln -sf
 #CC	= $(CROSS)musl-gcc
 #CC	= $(CROSS)clang
 CC	= $(CROSS)gcc
-CXX	= $(CROSS)g++
 RANLIB	= $(CROSS)ranlib
 STRIP	= $(CROSS)strip
 #SFLAGS	= -R .note -R .comment
@@ -31,10 +30,7 @@ SFLAGS	= #-R .note .comment
 CFLAGS	= -W -pthread -Wall -pipe
 CFLAGS	+= -fomit-frame-pointer
 CFLAGS	+= -O3
-CXXFLAGS	= -W -pthread -Wall -pipe
-CXXFLAGS	+= -fomit-frame-pointer
-CXXFLAGS	+= -O3
-CXXFLAGS	+= -std=gnu++11 
+ 
 #CFLAGS	+= -flto
 #CFLAGS += -DDEBUGME
 #CFLAGS += -g
@@ -64,8 +60,8 @@ LIBLZ5	= $(COMMON) $(ZSTDMTDIR)/lz5-mt_common.c $(ZSTDMTDIR)/lz5-mt_compress.c \
 	  $(ZSTDMTDIR)/lz5-mt_decompress.c lz5-mt.c
 LIBZSTD	= $(COMMON) $(ZSTDMTDIR)/zstd-mt_common.c $(ZSTDMTDIR)/zstd-mt_compress.c \
 	  $(ZSTDMTDIR)/zstd-mt_decompress.c zstd-mt.c
-LIBSNAP	= $(COMMON) $(ZSTDMTDIR)/snappy-mt_common.cc $(ZSTDMTDIR)/snappy-mt_compress.cc \
-	  $(ZSTDMTDIR)/snappy-mt_decompress.cc snappy-mt.cc
+LIBSNAP	= $(COMMON) $(ZSTDMTDIR)/snappy-mt_common.c $(ZSTDMTDIR)/snappy-mt_compress.c \
+	  $(ZSTDMTDIR)/snappy-mt_decompress.c snappy-mt.c
 
 # Brotli, https://github.com/google/brotli
 BRODIR	= brotli/c
@@ -151,17 +147,13 @@ LIBZSTD	+= $(ZSTDDIR)/common/debug.c \
 CF_ZSTD	= $(CFLAGS) -I$(ZSTDDIR) -I$(ZSTDDIR)/common -I$(ZSTDDIR)/compress \
 	  -I$(ZSTDDIR)/decompress -I$(ZSTDDIR)/legacy
 
-# snappy, https://github.com/google/snappy
+# snappy, https://github.com/andikleen/snappy-c
 SNAPDIR	= snappy
-LIBSNAP	+= $(SNAPDIR)/snappy-c.cc \
-	  $(SNAPDIR)/snappy-sinksource.cc \
-	  $(SNAPDIR)/snappy-stubs-internal.cc \
-	  $(SNAPDIR)/snappy.cc 
-CF_SNAP	= $(CXXFLAGS) -I$(SNAPDIR)
+LIBSNAP	+= $(SNAPDIR)/snappy.c
+CF_SNAP	= $(CFLAGS) -I$(SNAPDIR)
 
 # append lib include directory
 CFLAGS	+= -I. -I$(ZSTDMTDIR)
-CXXFLAGS	+= -I. -I$(ZSTDMTDIR)
 
 brotli-mt$(EXTENSION):
 	$(CC) $(CF_BRO) -DVERSION='$(BRO_VER)' -o $@ $(LIBBRO) $(LDFLAGS) -lm
@@ -194,19 +186,19 @@ zstd-mt$(EXTENSION):
 	$(LN) $@ zstdcat-mt
 
 snappy-mt$(EXTENSION):
-	$(CXX) $(CF_SNAP) -DVERSION='$(SNAP_VER)' -o $@ $(LIBSNAP) $(LDFLAGS)
+	$(CC) $(CF_SNAP) -DVERSION='$(SNAP_VER)' -o $@ $(LIBSNAP) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
 	$(LN) $@ un$@
 	$(LN) $@ snappycat-mt
 
 loadsource:
-	test -d lz4    || git clone https://github.com/Cyan4973/lz4  -b $(LZ4_VER)  --depth=1 lz4
-	test -d lz5    || git clone https://github.com/inikep/lz5    -b $(LZ5_VER)  --depth=1 lz5
-	test -d zstd   || git clone https://github.com/facebook/zstd -b $(ZSTD_VER) --depth=1 zstd
-	test -d lizard || git clone https://github.com/inikep/lizard -b $(LIZ_VER)  --depth=1 lizard
-	test -d brotli || git clone https://github.com/google/brotli -b $(BRO_VER)  --depth=1 brotli
-	test -d snappy || git clone https://github.com/google/snappy -b $(SNAP_VER)  --depth=1 snappy
-	cd snappy && cmake CMakeLists.txt && cd ..
+	test -d lz4    || git clone https://github.com/Cyan4973/lz4       -b $(LZ4_VER)   --depth=1 lz4
+	test -d lz5    || git clone https://github.com/inikep/lz5         -b $(LZ5_VER)   --depth=1 lz5
+	test -d zstd   || git clone https://github.com/facebook/zstd      -b $(ZSTD_VER)  --depth=1 zstd
+	test -d lizard || git clone https://github.com/inikep/lizard      -b $(LIZ_VER)   --depth=1 lizard
+	test -d brotli || git clone https://github.com/google/brotli      -b $(BRO_VER)   --depth=1 brotli
+	test -d snappy || git clone https://github.com/andikleen/snappy-c -b              --depth=1 snappy
+	# cd snappy && cmake CMakeLists.txt && cd ..
 
 install:
 	echo TODO ;)

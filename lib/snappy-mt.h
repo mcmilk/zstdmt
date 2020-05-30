@@ -11,7 +11,7 @@ extern "C" {
 
 #include <stddef.h>   /* size_t */
 
-
+#define SNAPPY_OK 0
 #define SNAPPYMT_THREAD_MAX 128
 #define SNAPPYMT_MAGICNUMBER 0x5053 // SP
 #define SNAPPYMT_MAGIC_SKIPPABLE 0x184D2A50U  // MT magic number

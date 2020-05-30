@@ -1,11 +1,11 @@
-#include "../snappy/snappy-c.h"
+#include "snappy.h"
 #include "snappy-mt.h"
 
 #include "memmt.h"
 #include "threading.h"
 #include "list.h"
 
-#include <iostream>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -115,7 +115,7 @@ SNAPPYMT_DCtx *SNAPPYMT_createDCtx(int threads, int inputsize)
 	for (t = 0; t < threads; t++) {
 		cwork_t *w = &ctx->cwork[t];
         w->in.allocated = 0;
-        w->in.buf = nullptr;
+        w->in.buf = NULL;
         w->in.size = 0;
 		w->ctx = ctx;
 	}
@@ -124,7 +124,7 @@ SNAPPYMT_DCtx *SNAPPYMT_createDCtx(int threads, int inputsize)
 
  err_cwork:
 	free(ctx);
-    ctx = nullptr;
+    ctx = NULL;
 
 	return 0;
 }
@@ -259,11 +259,11 @@ static size_t pt_read(SNAPPYMT_DCtx *ctx, SNAPPYMT_Buffer *in, size_t *frame,
 			pthread_mutex_unlock(&ctx->read_mutex);
 			return mt_error(rv);
 		}
-        size_t output_length = 0;
-        if(snappy_validate_compressed_buffer((char *)in->buf, in->size) 
-            != SNAPPY_OK){
-                return MT_ERROR(data_error);
-        }
+        // size_t output_length = 0;
+        // if(snappy_validate_compressed_buffer((char *)in->buf, in->size) 
+        //     != SNAPPY_OK){
+        //         return MT_ERROR(data_error);
+        // }
         snappy_uncompressed_length((char *)in->buf, in->size, uncompressed);
         //*uncompressed = output_length;
 		/* needed more bytes! */
@@ -326,7 +326,7 @@ static void *pt_decompress(void *arg)
 		out = &wl->out;
 
 		/* zero should not happen here! */
-		result = pt_read(ctx, in, &wl->frame, &wl->out.size);
+		result = pt_read(ctx, in, &wl->frame, &(wl->out.size));
 		if (SNAPPYMT_isError(result)) {
 			list_move(&wl->node, &ctx->writelist_free);
 			goto error_lock;
@@ -347,8 +347,7 @@ static void *pt_decompress(void *arg)
 			out->allocated = out->size;
 		}
 
-		rv = snappy_uncompress(static_cast<char*>(in->buf), in->size, 
-                              static_cast<char*>(out->buf), &out->size);
+		rv = snappy_uncompress((char *)(in->buf), in->size, (char *)(out->buf));
 
 		if (rv != SNAPPY_OK) {
 			result = MT_ERROR(frame_decompress);
@@ -369,7 +368,7 @@ static void *pt_decompress(void *arg)
 	pthread_mutex_unlock(&ctx->write_mutex);
 	if (in->allocated)
 		free(in->buf);
-        in->buf = nullptr;
+        in->buf = NULL;
         in->allocated = 0;
         in->size = 0;
 	return 0;
@@ -381,7 +380,7 @@ static void *pt_decompress(void *arg)
 	pthread_mutex_unlock(&ctx->write_mutex);
 	if (in->allocated)
 		free(in->buf);
-        in->buf = nullptr;
+        in->buf = NULL;
         in->allocated = 0;
         in->size = 0;
 	return (void *)result;
@@ -458,12 +457,12 @@ size_t SNAPPYMT_decompressDCtx(SNAPPYMT_DCtx * ctx, SNAPPYMT_RdWr_t * rdwr)
 		entry = list_first(&ctx->writelist_free);
 		wl = list_entry(entry, struct writelist, node);
 		free(wl->out.buf);
-        wl->out.buf = nullptr;
+        wl->out.buf = NULL;
         wl->out.allocated = 0;
         wl->out.size = 0;
 		list_del(&wl->node);
 		free(wl);
-        wl = nullptr;
+        wl = NULL;
 	}
 
 	return (size_t) retval_of_thread;
@@ -504,9 +503,9 @@ void SNAPPYMT_freeDCtx(SNAPPYMT_DCtx * ctx)
 	pthread_mutex_destroy(&ctx->read_mutex);
 	pthread_mutex_destroy(&ctx->write_mutex);
 	free(ctx->cwork);
-    ctx->cwork = nullptr;
+    ctx->cwork = NULL;
 	free(ctx);
-    ctx = nullptr;
+    ctx = NULL;
 	ctx = 0;
 
 	return;
