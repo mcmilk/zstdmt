@@ -13,8 +13,9 @@ jobs:
     - uses: actions/checkout@v2
     - name: programs
       run: |
-           cd programs && make
-	   bash generaterandomdata.sh test.bin 7340032
+           cd programs
+           make
+           bash generaterandomdata.sh test.bin 7340032
 	   cp test.bin random.bin
 	   lizard-mt -z random.bin
 	   lizard-mt -d random.bin.liz
