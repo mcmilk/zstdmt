@@ -125,11 +125,6 @@ SNAPPYMT_CCtx *SNAPPYMT_createCCtx(int threads, __attribute__((unused)) int leve
 		cwork_t *w = &ctx->cwork[t];
 		w->ctx = ctx;
 
-		memset(&w->zpref, 0, sizeof(struct snappy_env));
-		/*
-			each thread struct snappy_env hash_table malloc mem once
-		*/
-		snappy_init_env(&w->zpref);
 	}
 
 	return ctx;
@@ -265,12 +260,10 @@ static void *pt_compress(void *arg)
 			char *obuf = (char *)(wl->out.buf) + 16;
 			wl->out.size -= 16;
 
-			/* 
-				same thread doesn't malloc hash_table mem each round
-			*/
-			w->zpref.scratch = NULL;
-			w->zpref.scratch_output = NULL;
-			rv = snappy_compress(&(w->zpref), ibuf, in.size, obuf, &wl->out.size);
+
+			struct snappy_env env;
+			snappy_init_env(&env);
+			rv = snappy_compress(&(env), ibuf, in.size, obuf, &wl->out.size);
 
 			/* printf("snappy_compress() rv=%d in=%zu out=%zu\n", rv, in.size, wl->out.size); */
 
@@ -280,6 +273,7 @@ static void *pt_compress(void *arg)
 				pthread_mutex_unlock(&ctx->write_mutex);
 				return (void *)MT_ERROR(frame_compress);
 			}
+			snappy_free_env(&(env));
 		}
 
 		/* write skippable frame */
@@ -341,10 +335,6 @@ size_t SNAPPYMT_compressCCtx(SNAPPYMT_CCtx *ctx, SNAPPYMT_RdWr_t *rdwr)
 	/* wait for all workers */
 	for (t = 0; t < ctx->threads; t++) {
 		cwork_t *w = &ctx->cwork[t];
-		/*
-			free hash_table, each thread free hash_table once
-		*/
-		snappy_free_env(&(w->zpref));
 		void *p = 0;
 		pthread_join(w->pthread, &p);
 		if (p)

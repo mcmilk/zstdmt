@@ -42,7 +42,7 @@ PRGS	= lizard-mt$(EXTENSION) \
 	  lz5-mt$(EXTENSION) \
 	  brotli-mt$(EXTENSION) \
 	  zstd-mt$(EXTENSION) \
-	  snappy-mt$(EXTENSION) 
+	  snappy-c-mt$(EXTENSION) 
 
 all:	loadsource $(PRGS)
 again:	clean $(PRGS)
@@ -147,8 +147,8 @@ LIBZSTD	+= $(ZSTDDIR)/common/debug.c \
 CF_ZSTD	= $(CFLAGS) -I$(ZSTDDIR) -I$(ZSTDDIR)/common -I$(ZSTDDIR)/compress \
 	  -I$(ZSTDDIR)/decompress -I$(ZSTDDIR)/legacy
 
-# snappy, https://github.com/andikleen/snappy-c
-SNAPDIR	= snappy
+# snappy-c, https://github.com/andikleen/snappy-c
+SNAPDIR	= snappy-c
 LIBSNAP	+= $(SNAPDIR)/snappy.c
 CF_SNAP	= $(CFLAGS) -I$(SNAPDIR)
 
@@ -185,11 +185,11 @@ zstd-mt$(EXTENSION):
 	$(LN) $@ un$@
 	$(LN) $@ zstdcat-mt
 
-snappy-mt$(EXTENSION):
+snappy-c-mt$(EXTENSION):
 	$(CC) $(CF_SNAP) -DVERSION='$(SNAP_VER)' -o $@ $(LIBSNAP) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
 	$(LN) $@ un$@
-	$(LN) $@ snappycat-mt
+	$(LN) $@ snappy-ccat-mt
 
 loadsource:
 	test -d lz4    || git clone https://github.com/Cyan4973/lz4       -b $(LZ4_VER)   --depth=1 lz4
@@ -197,7 +197,7 @@ loadsource:
 	test -d zstd   || git clone https://github.com/facebook/zstd      -b $(ZSTD_VER)  --depth=1 zstd
 	test -d lizard || git clone https://github.com/inikep/lizard      -b $(LIZ_VER)   --depth=1 lizard
 	test -d brotli || git clone https://github.com/google/brotli      -b $(BRO_VER)   --depth=1 brotli
-	test -d snappy || git clone https://github.com/andikleen/snappy-c                 --depth=1 snappy
+	test -d snappy-c || git clone https://github.com/andikleen/snappy-c               --depth=1 snappy-c
 	# cd snappy && cmake CMakeLists.txt && cd ..
 
 install:
@@ -205,8 +205,8 @@ install:
 
 clean:
 	rm -f $(PRGS)
-	rm -f unbrotli-mt unlizard-mt unlz4-mt unlz5-mt unzstd-mt unsnappy-mt
-	rm -f brotlicat-mt lizardcat-mt lz4cat-mt lz5cat-mt zstdcat-mt  snappycat-mt
+	rm -f unbrotli-mt unlizard-mt unlz4-mt unlz5-mt unzstd-mt unsnappy-c-mt
+	rm -f brotlicat-mt lizardcat-mt lz4cat-mt lz5cat-mt zstdcat-mt  snappy-ccat-mt
 
 mrproper: clean
-	rm -rf brotli lizard lz4 lz5 zstd snappy
+	rm -rf brotli lizard lz4 lz5 zstd snappy-c
