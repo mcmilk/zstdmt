@@ -17,8 +17,8 @@ jobs:
            make
            bash generaterandomdata.sh test.bin 7340032
            cp test.bin random.bin
-           lizard-mt -z random.bin
-           lizard-mt -d random.bin.liz
+           lizardcat-mt -z random.bin
+           unlizard-mt -d random.bin.liz
            diff random.bin test.bin
            lz4-mt -z random.bin
            lz4-mt -d random.bin.lz4
