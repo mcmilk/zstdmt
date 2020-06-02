@@ -18,21 +18,33 @@ jobs:
            bash generaterandomdata.sh test.bin 7340032
            cp test.bin random.bin
            ls -al
+           echo "TEST lz4\n..."
            ./lz4-mt -z random.bin
            ./lz4-mt -d random.bin.lz4
            diff random.bin test.bin
+           echo "lz4 SUCCESS"
+           echo "TEST lz5"
            ./lz5-mt -z random.bin
            ./lz5-mt -d random.bin.lz5
            diff random.bin test.bin
+           echo "lz5 SUCCESS"
+           echo "TEST brotli"
            ./brotli-mt -z random.bin
            ./brotli-mt -d random.bin.brot
            diff random.bin test.bin
+           echo "brotli SUCCESS"
+           echo "TEST zstd"
            ./zstd-mt -z random.bin
            ./zstd-mt -d random.bin.zst
            diff random.bin test.bin
+           echo "zstd SUCCESS"
+           echo "TEST snappy-c"
            ./snappy-c-mt -z random.bin
            ./snappy-c-mt -d random.bin.snp
            diff random.bin test.bin
+           echo "snappy-c SUCCESS"
+           echo "TSET lizard"
            ./lizard-mt -z random.bin
            ./lizard-mt -d random.bin.liz
            diff random.bin test.bin
+           echo "lizard SUCCESS"
