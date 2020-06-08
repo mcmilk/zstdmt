@@ -199,6 +199,17 @@ loadsource:
 	test -d snappy-c || git clone https://github.com/andikleen/snappy-c               --depth=1 snappy-c
 	# cd snappy && cmake CMakeLists.txt && cd ..
 
+# tests are unix / linux only
+tests:
+	@dd if=/dev/urandom of=testbytes.raw bs=1M count=10 2>/dev/null
+	@for m in brotli lizard lz4 lz5 zstd snappy-c ; do \
+	cat testbytes.raw | ./$$m-mt -z > compressed.$$m ; \
+	cat compressed.$$m | ./$$m-mt -d > testbytes-$$m.raw ; \
+	cmp testbytes.raw testbytes-$$m.raw && echo "SUCCESS: $$m" || echo "FAILING: $$m" ; \
+	rm compressed.$$m testbytes-$$m.raw ; \
+	done
+	@rm testbytes.raw
+
 install:
 	echo TODO ;)
 
