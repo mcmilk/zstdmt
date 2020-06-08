@@ -1,11 +1,11 @@
-#include "../snappy/snappy-c.h"
+#include "snappy.h"
 #include "snappy-mt.h"
 
 #include "memmt.h"
 #include "threading.h"
 #include "list.h"
 
-#include <iostream>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -26,6 +26,7 @@
 
 typedef struct {
 	SNAPPYMT_CCtx *ctx;
+	struct snappy_env zpref;
 	pthread_t pthread;
 } cwork_t;
 
@@ -76,7 +77,7 @@ struct SNAPPYMT_CCtx_s {
  * Compression
  ****************************************/
 
-SNAPPYMT_CCtx *SNAPPYMT_createCCtx(int threads, int level,/*Not use*/ 
+SNAPPYMT_CCtx *SNAPPYMT_createCCtx(int threads, __attribute__((unused)) int level,/*Not use*/ 
 								   int inputsize)
 {
 	SNAPPYMT_CCtx *ctx;
@@ -123,6 +124,7 @@ SNAPPYMT_CCtx *SNAPPYMT_createCCtx(int threads, int level,/*Not use*/
 	for (t = 0; t < threads; t++) {
 		cwork_t *w = &ctx->cwork[t];
 		w->ctx = ctx;
+
 	}
 
 	return ctx;
@@ -130,7 +132,7 @@ SNAPPYMT_CCtx *SNAPPYMT_createCCtx(int threads, int level,/*Not use*/
  err_cwork:
 	free(ctx);
 
-	return nullptr;
+	return NULL;
 }
 
 /**
@@ -207,7 +209,7 @@ static void *pt_compress(void *arg)
 			entry = list_first(&ctx->writelist_free);
 			wl = list_entry(entry, struct writelist, node);
 			wl->out.size =
-			    snappy_max_compressed_length(ctx->inputsize) + 16;
+			    snappy_max_compressed_length((size_t)(ctx->inputsize)) + 16;
 			list_move(entry, &ctx->writelist_busy);
 		} else {
 			/* allocate new one */
@@ -218,7 +220,7 @@ static void *pt_compress(void *arg)
 				return (void *)MT_ERROR(memory_allocation);
 			}
 			wl->out.size =
-			    snappy_max_compressed_length(ctx->inputsize) + 16;
+			    snappy_max_compressed_length((size_t)(ctx->inputsize)) + 16;
 			wl->out.buf = malloc(wl->out.size);
 			if (!wl->out.buf) {
 				pthread_mutex_unlock(&ctx->write_mutex);
@@ -254,10 +256,14 @@ static void *pt_compress(void *arg)
 
 		/* compress whole frame */
 		{
-			const char *ibuf = static_cast<char*>(in.buf);
-			char *obuf = static_cast<char*>(wl->out.buf) + 16;
+			const char *ibuf = (char *)(in.buf);
+			char *obuf = (char *)(wl->out.buf) + 16;
 			wl->out.size -= 16;
-			rv = snappy_compress(ibuf, in.size, obuf, &wl->out.size);
+
+
+			struct snappy_env env;
+			snappy_init_env(&env);
+			rv = snappy_compress(&(env), ibuf, in.size, obuf, &wl->out.size);
 
 			/* printf("snappy_compress() rv=%d in=%zu out=%zu\n", rv, in.size, wl->out.size); */
 
@@ -267,6 +273,7 @@ static void *pt_compress(void *arg)
 				pthread_mutex_unlock(&ctx->write_mutex);
 				return (void *)MT_ERROR(frame_compress);
 			}
+			snappy_free_env(&(env));
 		}
 
 		/* write skippable frame */
