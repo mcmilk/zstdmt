@@ -57,4 +57,4 @@ size    | value             | description
 [Snappy-c]:https://github.com/andikleen/snappy-c
 
 
-/TR 2017-05-24
+/TR 2020-06-08

@@ -1,6 +1,6 @@
 
 /**
- * Copyright (c) 2017 Tino Reichardt
+ * Copyright (c) 2017 - 2020 Tino Reichardt
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
@@ -81,8 +81,8 @@ static void panic(const char *msg)
 
 static void version(void)
 {
-	printf("%s version %s, zstdmt v0.4\n"
-	       "\nCopyright (c) 2016 - 2017 Tino Reichardt" "\n"
+	printf("%s version %s, zstdmt v0.7\n"
+	       "\nCopyright (c) 2016 - 2020 Tino Reichardt" "\n"
 	       "\n", progname, VERSION);
 	exit(0);
 }
@@ -90,7 +90,7 @@ static void version(void)
 static void license(void)
 {
 	printf("\n %s version %s\n"
-	       "\n Copyright (c) 2016 - 2017 Tino Reichardt"
+	       "\n Copyright (c) 2016 - 2020 Tino Reichardt"
 	       "\n "
 	       "\n Redistribution and use in source and binary forms, with or without modification,"
 	       "\n are permitted provided that the following conditions are met:"

@@ -11,7 +11,7 @@
 
 .SH SYNOPSIS
 .B %PROGNAME%
-.RB [ -1234567890cdzfhklLqrtvV ]
+.RB [ -%LEVELNUMBERS%cdzfhklLqrtvV ]
 .RB [ "-S \fIsuffix\fP" ]
 .RB [ "\fIfile\fP ..." ]
 
@@ -25,18 +25,7 @@ It's based on the zstdmt library version %ZSTDMT% and version %VERSION% of the %
 More information about %ALGORITHM% can be found here: %HOMEPAGE%
 
 .SH OPTIONS
-
-.TP
-.BI -%LMIN%..%LMAX%
-Use the compression method with a level -%LMIN% to -%LMAX%.
-.br
-Compression level -%LMIN% is the fastest, but provides a poorer level
-of compression.
-.br
-Compression level -%LMAX% provides the best level of compression, but is
-also the slowest.
-.br
-The default is -%LDEF%.
+%LEVELNOTES%
 
 .TP
 .BI -c
@@ -162,7 +151,7 @@ cat somefile.%SUFFIX% | %PROGNAME% -d > somefile
 Please report any bugs to https://github.com/mcmilk/zstdmt/issues
 
 .SH AUTHOR
-This manual page was written by Tino Reichardt <milky-zstdmt (at) mcmilk dot de>
+Tino Reichardt <milky-zstdmt (at) mcmilk.de>
 
 .SH "SEE ALSO"
 .BR bzip2 (1),

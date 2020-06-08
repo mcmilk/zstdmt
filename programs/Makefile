@@ -6,7 +6,7 @@
 # current versions we're using (tagged in their main repo)
 BRO_VER	= "v1.0.7"
 LIZ_VER	= "v1.0"
-LZ4_VER	= "v1.8.3"
+LZ4_VER	= "v1.9.2"
 LZ5_VER	= "v1.5"
 ZSTD_VER= "v1.4.5"
 SNAP_VER= "v0.0.0"
@@ -24,8 +24,8 @@ LN	= ln -sf
 CC	= $(CROSS)gcc
 RANLIB	= $(CROSS)ranlib
 STRIP	= $(CROSS)strip
-#SFLAGS	= -R .note -R .comment
-SFLAGS	= #-R .note .comment
+SFLAGS	= -R .note -R .comment
+#SFLAGS	= -R .note .comment
 
 CFLAGS	= -W -pthread -Wall -pipe
 CFLAGS	+= -fomit-frame-pointer
@@ -41,7 +41,7 @@ PRGS	= lizard-mt$(EXTENSION) \
 	  lz5-mt$(EXTENSION) \
 	  brotli-mt$(EXTENSION) \
 	  zstd-mt$(EXTENSION) \
-	  snappy-c-mt$(EXTENSION) 
+	  snappy-mt$(EXTENSION) 
 
 all:	loadsource $(PRGS)
 again:	clean $(PRGS)
@@ -147,7 +147,7 @@ CF_ZSTD	= $(CFLAGS) -I$(ZSTDDIR) -I$(ZSTDDIR)/common -I$(ZSTDDIR)/compress \
 	  -I$(ZSTDDIR)/decompress -I$(ZSTDDIR)/legacy
 
 # snappy-c, https://github.com/andikleen/snappy-c
-SNAPDIR	= snappy-c
+SNAPDIR	= snappy
 LIBSNAP	+= $(SNAPDIR)/snappy.c
 CF_SNAP	= $(CFLAGS) -I$(SNAPDIR)
 
@@ -184,25 +184,24 @@ zstd-mt$(EXTENSION):
 	$(LN) $@ un$@
 	$(LN) $@ zstdcat-mt
 
-snappy-c-mt$(EXTENSION):
+snappy-mt$(EXTENSION):
 	$(CC) $(CF_SNAP) -DVERSION='$(SNAP_VER)' -o $@ $(LIBSNAP) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
 	$(LN) $@ un$@
-	$(LN) $@ snappy-ccat-mt
+	$(LN) $@ snappycat-mt
 
 loadsource:
-	test -d lz4    || git clone https://github.com/Cyan4973/lz4       -b $(LZ4_VER)   --depth=1 lz4
-	test -d lz5    || git clone https://github.com/inikep/lz5         -b $(LZ5_VER)   --depth=1 lz5
-	test -d zstd   || git clone https://github.com/facebook/zstd      -b $(ZSTD_VER)  --depth=1 zstd
-	test -d lizard || git clone https://github.com/inikep/lizard      -b $(LIZ_VER)   --depth=1 lizard
-	test -d brotli || git clone https://github.com/google/brotli      -b $(BRO_VER)   --depth=1 brotli
-	test -d snappy-c || git clone https://github.com/andikleen/snappy-c               --depth=1 snappy-c
-	# cd snappy && cmake CMakeLists.txt && cd ..
+	test -d lz4    || git clone https://github.com/Cyan4973/lz4       -b $(LZ4_VER)  --depth=1 lz4
+	test -d lz5    || git clone https://github.com/inikep/lz5         -b $(LZ5_VER)  --depth=1 lz5
+	test -d zstd   || git clone https://github.com/facebook/zstd      -b $(ZSTD_VER) --depth=1 zstd
+	test -d lizard || git clone https://github.com/inikep/lizard      -b $(LIZ_VER)  --depth=1 lizard
+	test -d brotli || git clone https://github.com/google/brotli      -b $(BRO_VER)  --depth=1 brotli
+	test -d snappy || git clone https://github.com/andikleen/snappy-c                --depth=1 snappy
 
 # tests are unix / linux only
 tests:
 	@dd if=/dev/urandom of=testbytes.raw bs=1M count=10 2>/dev/null
-	@for m in brotli lizard lz4 lz5 zstd snappy-c ; do \
+	@for m in brotli lizard lz4 lz5 zstd snappy ; do \
 	cat testbytes.raw | ./$$m-mt -z > compressed.$$m ; \
 	cat compressed.$$m | ./$$m-mt -d > testbytes-$$m.raw ; \
 	cmp testbytes.raw testbytes-$$m.raw && echo "SUCCESS: $$m" || echo "FAILING: $$m" ; \
@@ -215,8 +214,8 @@ install:
 
 clean:
 	rm -f $(PRGS)
-	rm -f unbrotli-mt unlizard-mt unlz4-mt unlz5-mt unzstd-mt unsnappy-c-mt
-	rm -f brotlicat-mt lizardcat-mt lz4cat-mt lz5cat-mt zstdcat-mt  snappy-ccat-mt
+	rm -f unbrotli-mt unlizard-mt unlz4-mt unlz5-mt unzstd-mt unsnappy-mt
+	rm -f brotlicat-mt lizardcat-mt lz4cat-mt lz5cat-mt zstdcat-mt snappycat-mt
 
 mrproper: clean
-	rm -rf brotli lizard lz4 lz5 zstd snappy-c
+	rm -rf brotli lizard lz4 lz5 zstd snappy
