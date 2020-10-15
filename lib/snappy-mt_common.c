@@ -18,7 +18,7 @@ unsigned SNAPPYMT_isError(size_t code)
  */
 const char *SNAPPYMT_getErrorString(size_t code)
 {
-	static const char *noErrorCode = "Unspecified brotli error code";
+	static const char *noErrorCode = "Unspecified snappy error code";
 
 	switch ((SNAPPYMT_ErrorCode) (0 - code)) {
 	case PREFIX(no_error):

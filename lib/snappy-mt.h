@@ -78,7 +78,7 @@ typedef struct SNAPPYMT_CCtx_s SNAPPYMT_CCtx;
  * - return cctx or zero on error
  *
  * @level   - 1 .. 9
- * @threads - 1 .. BROTLIMT_THREAD_MAX
+ * @threads - 1 .. SNAPPYMT_THREAD_MAX
  * @inputsize - if zero, becomes some optimal value for the level
  *            - if nonzero, the given value is taken
  */
@@ -114,7 +114,7 @@ typedef struct SNAPPYMT_DCtx_s SNAPPYMT_DCtx;
  * 1) allocate new cctx
  * - return cctx or zero on error
  *
- * @threads - 1 .. BROTLIMT_THREAD_MAX
+ * @threads - 1 .. SNAPPYMT_THREAD_MAX
  * @ inputsize - used for single threaded standard bro format without 
  *   skippable frames
  */
