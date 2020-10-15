@@ -10,6 +10,7 @@ LZ4_VER	= "v1.9.2"
 LZ5_VER	= "v1.5"
 ZSTD_VER= "v1.4.5"
 SNAP_VER= "v0.0.0"
+LZFSE_VER="lzfse-1.0"
 # uncomment, for cross compiling or windows binaries
 #WIN_LDFLAGS	= -lwinmm -lpsapi
 #CROSS		= i686-w64-mingw32-
@@ -41,7 +42,8 @@ PRGS	= lizard-mt$(EXTENSION) \
 	  lz5-mt$(EXTENSION) \
 	  brotli-mt$(EXTENSION) \
 	  zstd-mt$(EXTENSION) \
-	  snappy-mt$(EXTENSION) 
+	  snappy-mt$(EXTENSION) \
+	  lzfse-mt$(EXTENSION) 
 
 all:	loadsource $(PRGS)
 again:	clean $(PRGS)
@@ -61,6 +63,8 @@ LIBZSTD	= $(COMMON) $(ZSTDMTDIR)/zstd-mt_common.c $(ZSTDMTDIR)/zstd-mt_compress.
 	  $(ZSTDMTDIR)/zstd-mt_decompress.c zstd-mt.c
 LIBSNAP	= $(COMMON) $(ZSTDMTDIR)/snappy-mt_common.c $(ZSTDMTDIR)/snappy-mt_compress.c \
 	  $(ZSTDMTDIR)/snappy-mt_decompress.c snappy-mt.c
+LIBLZFSE = $(COMMON) $(ZSTDMTDIR)/lzfse-mt_common.c $(ZSTDMTDIR)/lzfse-mt_compress.c \
+	  $(ZSTDMTDIR)/lzfse-mt_decompress.c lzfse-mt.c
 
 # Brotli, https://github.com/google/brotli
 BRODIR	= brotli/c
@@ -151,6 +155,17 @@ SNAPDIR	= snappy
 LIBSNAP	+= $(SNAPDIR)/snappy.c
 CF_SNAP	= $(CFLAGS) -I$(SNAPDIR)
 
+# lzfse, https://github.com/lzfse/lzfse
+LZFSEDIR = lzfse/src
+LIBLZFSE += $(LZFSEDIR)/lzfse_decode.c \
+            $(LZFSEDIR)/lzfse_decode_base.c \
+            $(LZFSEDIR)/lzfse_encode.c \
+            $(LZFSEDIR)/lzfse_encode_base.c \
+            $(LZFSEDIR)/lzfse_fse.c \
+            $(LZFSEDIR)/lzvn_decode_base.c \
+            $(LZFSEDIR)/lzvn_encode_base.c 
+CF_LZFSE = $(CFLAGS) -I$(LZFSEDIR)
+
 # append lib include directory
 CFLAGS	+= -I. -I$(ZSTDMTDIR)
 
@@ -190,6 +205,12 @@ snappy-mt$(EXTENSION):
 	$(LN) $@ un$@
 	$(LN) $@ snappycat-mt
 
+lzfse-mt$(EXTENSION):
+	$(CC) $(CF_LZFSE) -DVERSION='$(LZFSE_VER)' -o $@ $(LIBLZFSE) $(LDFLAGS)
+	$(STRIP) $(SFLAGS) $@
+	$(LN) $@ un$@
+	$(LN) $@ lzfsecat-mt
+
 loadsource:
 	test -d lz4    || git clone https://github.com/Cyan4973/lz4       -b $(LZ4_VER)  --depth=1 lz4
 	test -d lz5    || git clone https://github.com/inikep/lz5         -b $(LZ5_VER)  --depth=1 lz5
@@ -197,6 +218,7 @@ loadsource:
 	test -d lizard || git clone https://github.com/inikep/lizard      -b $(LIZ_VER)  --depth=1 lizard
 	test -d brotli || git clone https://github.com/google/brotli      -b $(BRO_VER)  --depth=1 brotli
 	test -d snappy || git clone https://github.com/andikleen/snappy-c                --depth=1 snappy
+	test -d lzfse  || git clone https://github.com/lzfse/lzfse        -b $(LZFSE_VER) --depth=1 lzfse
 
 # tests are unix / linux only
 tests:
@@ -214,8 +236,8 @@ install:
 
 clean:
 	rm -f $(PRGS)
-	rm -f unbrotli-mt unlizard-mt unlz4-mt unlz5-mt unzstd-mt unsnappy-mt
-	rm -f brotlicat-mt lizardcat-mt lz4cat-mt lz5cat-mt zstdcat-mt snappycat-mt
+	rm -f unbrotli-mt unlizard-mt unlz4-mt unlz5-mt unzstd-mt unsnappy-mt unlzfse-mt
+	rm -f brotlicat-mt lizardcat-mt lz4cat-mt lz5cat-mt zstdcat-mt snappycat-mt lzfsecat-mt
 
 mrproper: clean
-	rm -rf brotli lizard lz4 lz5 zstd snappy
+	rm -rf brotli lizard lz4 lz5 zstd snappy lzfse
