@@ -223,7 +223,7 @@ loadsource:
 # tests are unix / linux only
 tests:
 	@dd if=/dev/urandom of=testbytes.raw bs=1M count=10 2>/dev/null
-	@for m in brotli lizard lz4 lz5 zstd snappy ; do \
+	@for m in brotli lizard lz4 lz5 zstd snappy lzfse ; do \
 	cat testbytes.raw | ./$$m-mt -z > compressed.$$m ; \
 	cat compressed.$$m | ./$$m-mt -d > testbytes-$$m.raw ; \
 	cmp testbytes.raw testbytes-$$m.raw && echo "SUCCESS: $$m" || echo "FAILING: $$m" ; \
