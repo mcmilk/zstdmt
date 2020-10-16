@@ -13,7 +13,7 @@ extern "C" {
 
 
 #define LZFSEMT_THREAD_MAX 128
-#define LZFSEMT_MAGICNUMBER 0x534C // LS
+#define LZFSEMT_MAGICNUMBER 0x464C // LF
 #define LZFSEMT_MAGIC_SKIPPABLE 0x184D2A50U  // MT magic number
 
 /* **************************************

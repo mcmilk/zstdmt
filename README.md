@@ -50,7 +50,7 @@ size    | value             | description
 4 bytes | 0x184D2A50U       | magic for skippable frame (like zstd)
 4 bytes | 8                 | size of skippable frame
 4 bytes | compressed size   | size of the following frame (compressed data)
-2 bytes | 0x534CU           | magic for Lzfse "LS"
+2 bytes | 0x464CU           | magic for Lzfse "LF"
 2 bytes | uncompressed size | allocation hint for decompressor (64KB * this size)
 
 ## Usage of the Testutils
