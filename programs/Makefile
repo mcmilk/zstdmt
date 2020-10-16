@@ -1,10 +1,10 @@
 ##############################################################################
 # GNU Makefile for zstmt
-# /TR 2018-12-28
+# /TR 2020-10-16
 ##############################################################################
 
 # current versions we're using (tagged in their main repo)
-BRO_VER	= "v1.0.7"
+BRO_VER	= "v1.0.9"
 LIZ_VER	= "v1.0"
 LZ4_VER	= "v1.9.2"
 LZ5_VER	= "v1.5"
@@ -68,7 +68,11 @@ LIBLZFSE = $(COMMON) $(ZSTDMTDIR)/lzfse-mt_common.c $(ZSTDMTDIR)/lzfse-mt_compre
 
 # Brotli, https://github.com/google/brotli
 BRODIR	= brotli/c
-LIBBRO	+= $(BRODIR)/common/dictionary.c \
+LIBBRO	+= \
+	  $(BRODIR)/common/constants.c \
+	  $(BRODIR)/common/context.c \
+	  $(BRODIR)/common/dictionary.c \
+	  $(BRODIR)/common/platform.c \
 	  $(BRODIR)/common/transform.c \
 	  $(BRODIR)/dec/bit_reader.c \
 	  $(BRODIR)/dec/decode.c \
@@ -80,12 +84,14 @@ LIBBRO	+= $(BRODIR)/common/dictionary.c \
 	  $(BRODIR)/enc/block_splitter.c \
 	  $(BRODIR)/enc/brotli_bit_stream.c \
 	  $(BRODIR)/enc/cluster.c \
+	  $(BRODIR)/enc/command.c \
 	  $(BRODIR)/enc/compress_fragment.c \
 	  $(BRODIR)/enc/compress_fragment_two_pass.c \
 	  $(BRODIR)/enc/dictionary_hash.c \
 	  $(BRODIR)/enc/encode.c \
 	  $(BRODIR)/enc/encoder_dict.c \
 	  $(BRODIR)/enc/entropy_encode.c \
+	  $(BRODIR)/enc/fast_log.c \
 	  $(BRODIR)/enc/histogram.c \
 	  $(BRODIR)/enc/literal_cost.c \
 	  $(BRODIR)/enc/memory.c \
@@ -217,8 +223,8 @@ loadsource:
 	test -d zstd   || git clone https://github.com/facebook/zstd      -b $(ZSTD_VER) --depth=1 zstd
 	test -d lizard || git clone https://github.com/inikep/lizard      -b $(LIZ_VER)  --depth=1 lizard
 	test -d brotli || git clone https://github.com/google/brotli      -b $(BRO_VER)  --depth=1 brotli
-	test -d snappy || git clone https://github.com/andikleen/snappy-c                --depth=1 snappy
 	test -d lzfse  || git clone https://github.com/lzfse/lzfse        -b $(LZFSE_VER) --depth=1 lzfse
+	test -d snappy || git clone https://github.com/andikleen/snappy-c                --depth=1 snappy
 
 # tests are unix / linux only
 tests:

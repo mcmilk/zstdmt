@@ -1,5 +1,5 @@
 
-# Multithreading Library for [Brotli], [Lizard], [LZ4], [LZ5], [Snappy-c], [Lzfse] and [Zstandard]
+# Multithreading Library for [Brotli], [Lizard], [LZ4], [LZ5], [Snappy-c], [LZFSE] and [Zstandard]
 
 ## Description
 - works with skippables frame id 0x184D2A50 (12 bytes per compressed frame)
@@ -41,7 +41,7 @@ size    | value             | description
 2 bytes | 0x5053U           | magic for Snappy-c "SP"
 2 bytes | uncompressed size | allocation hint for decompressor (64KB * this size)
 
-## [Lzfse] frame definition
+## [LZFSE] frame definition
 
 - the frame header for Lzfse is defined a bit different:
 
@@ -60,13 +60,12 @@ size    | value             | description
 
 - see [lib](https://github.com/mcmilk/zstdmt/tree/master/lib)
 
-
 [Brotli]:https://github.com/google/brotli/
 [LZ4]:https://github.com/lz4/lz4/
 [LZ5]:https://github.com/inikep/lz5/
 [Zstandard]:https://github.com/facebook/zstd/
 [Lizard]:https://github.com/inikep/lizard/
 [Snappy-c]:https://github.com/andikleen/snappy-c
-[Lzfse]:https://github.com/lzfse/lzfse
+[LZFSE]:https://github.com/lzfse/lzfse
 
 /TR 2020-10-15
