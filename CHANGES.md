@@ -1,4 +1,8 @@
 
+v0.8
+- update versions: brotli v1.0.9
+- add LZFSE (https://github.com/lzfse/lzfse)
+
 v0.7
 - add snappy (c version)
 - update versions: zstd 1.4.5, lz4 1.9.2

@@ -81,7 +81,7 @@ static void panic(const char *msg)
 
 static void version(void)
 {
-	printf("%s version %s, zstdmt v0.7\n"
+	printf("%s version %s, zstdmt v0.8\n"
 	       "\nCopyright (c) 2016 - 2020 Tino Reichardt" "\n"
 	       "\n", progname, VERSION);
 	exit(0);
