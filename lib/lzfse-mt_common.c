@@ -1,26 +1,26 @@
 
-#include "snappy-mt.h"
+#include "lzfse-mt.h"
 
 /* ****************************************
- * SNAPPY Error Management
+ * LZFSE Error Management
  ******************************************/
 
 /**
- * SNAPPYMT_isError() - tells if a return value is an error code
+ * LZFSEMT_isError() - tells if a return value is an error code
  */
-unsigned SNAPPYMT_isError(size_t code)
+unsigned LZFSEMT_isError(size_t code)
 {
 	return (code > MT_ERROR(maxCode));
 }
 
 /**
- * SNAPPYMT_getErrorString() - give our error code string of result
+ * LZFSEMT_getErrorString() - give our error code string of result
  */
-const char *SNAPPYMT_getErrorString(size_t code)
+const char *LZFSEMT_getErrorString(size_t code)
 {
-	static const char *noErrorCode = "Unspecified snappy error code";
+	static const char *noErrorCode = "Unspecified lzfse error code";
 
-	switch ((SNAPPYMT_ErrorCode) (0 - code)) {
+	switch ((LZFSEMT_ErrorCode) (0 - code)) {
 	case PREFIX(no_error):
 		return "No error detected";
 	case PREFIX(memory_allocation):
