@@ -111,7 +111,7 @@ LIZARDMT_CCtx *LIZARDMT_createCCtx(int threads, int level, int inputsize)
 	if (inputsize)
 		ctx->inputsize = inputsize;
 	else
-		ctx->inputsize = 1024 * 1024;
+		ctx->inputsize = 1024 * 1024 * 4;
 
 	/* setup ctx */
 	ctx->level = level;

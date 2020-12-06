@@ -6,7 +6,7 @@
 # current versions we're using (tagged in their main repo)
 BRO_VER	= "v1.0.9"
 LIZ_VER	= "v1.0"
-LZ4_VER	= "v1.9.2"
+LZ4_VER	= "v1.9.3"
 LZ5_VER	= "v1.5"
 ZSTD_VER= "v1.4.5"
 SNAP_VER= "v0.0.0"
