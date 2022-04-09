@@ -8,7 +8,7 @@ BRO_VER	= "v1.0.9"
 LIZ_VER	= "v1.0"
 LZ4_VER	= "v1.9.3"
 LZ5_VER	= "v1.5"
-ZSTD_VER= "v1.4.5"
+ZSTD_VER= "v1.5.2"
 SNAP_VER= "v0.0.0"
 LZFSE_VER="lzfse-1.0"
 # uncomment, for cross compiling or windows binaries
@@ -149,6 +149,7 @@ LIBZSTD	+= $(ZSTDDIR)/common/debug.c \
 	  $(ZSTDDIR)/decompress/zstd_ddict.c \
 	  $(ZSTDDIR)/decompress/zstd_decompress.c \
 	  $(ZSTDDIR)/decompress/zstd_decompress_block.c \
+	  $(ZSTDDIR)/decompress/huf_decompress_amd64.S \
 	  $(ZSTDDIR)/legacy/zstd_v01.c $(ZSTDDIR)/legacy/zstd_v02.c \
 	  $(ZSTDDIR)/legacy/zstd_v03.c $(ZSTDDIR)/legacy/zstd_v04.c \
 	  $(ZSTDDIR)/legacy/zstd_v05.c $(ZSTDDIR)/legacy/zstd_v06.c \
