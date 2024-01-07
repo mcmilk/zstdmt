@@ -1,14 +1,14 @@
 ##############################################################################
 # GNU Makefile for zstmt
-# /TR 2020-10-16
+# /TR 2024-01-07
 ##############################################################################
 
 # current versions we're using (tagged in their main repo)
-BRO_VER	= "v1.0.9"
+BRO_VER	= "v1.1.0"
 LIZ_VER	= "v1.0"
-LZ4_VER	= "v1.9.3"
+LZ4_VER	= "v1.9.4"
 LZ5_VER	= "v1.5"
-ZSTD_VER= "v1.5.2"
+ZSTD_VER= "v1.5.5"
 SNAP_VER= "v0.0.0"
 LZFSE_VER="lzfse-1.0"
 # uncomment, for cross compiling or windows binaries
@@ -30,6 +30,7 @@ SFLAGS	= -R .note -R .comment
 
 CFLAGS	= -W -pthread -Wall -pipe
 CFLAGS	+= -fomit-frame-pointer
+CFLAGS	+= -Wno-implicit-fallthrough
 CFLAGS	+= -O3
 #CFLAGS	+= -flto
 #CFLAGS += -DDEBUGME
@@ -73,6 +74,7 @@ LIBBRO	+= \
 	  $(BRODIR)/common/context.c \
 	  $(BRODIR)/common/dictionary.c \
 	  $(BRODIR)/common/platform.c \
+	  $(BRODIR)/common/shared_dictionary.c \
 	  $(BRODIR)/common/transform.c \
 	  $(BRODIR)/dec/bit_reader.c \
 	  $(BRODIR)/dec/decode.c \
@@ -85,6 +87,7 @@ LIBBRO	+= \
 	  $(BRODIR)/enc/brotli_bit_stream.c \
 	  $(BRODIR)/enc/cluster.c \
 	  $(BRODIR)/enc/command.c \
+	  $(BRODIR)/enc/compound_dictionary.c \
 	  $(BRODIR)/enc/compress_fragment.c \
 	  $(BRODIR)/enc/compress_fragment_two_pass.c \
 	  $(BRODIR)/enc/dictionary_hash.c \
@@ -99,6 +102,7 @@ LIBBRO	+= \
 	  $(BRODIR)/enc/static_dict.c \
 	  $(BRODIR)/enc/utf8_util.c
 CF_BRO	= $(CFLAGS) -I$(BRODIR)/include
+
 
 # LZ4, https://github.com/Cyan4973/lz4
 LZ4DIR	= lz4/lib
