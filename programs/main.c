@@ -742,6 +742,7 @@ int main(int argc, char **argv)
 
 		case 'c':	/* force to stdout */
 			opt_stdout = 1;
+			opt_keep = 1;
 			break;
 
 		case 'd':	/* mode = decompress */
