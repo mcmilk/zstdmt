@@ -1,6 +1,6 @@
 ##############################################################################
 # GNU Makefile for zstmt
-# /TR 2024-01-07
+# /TR 2024-02-02
 ##############################################################################
 
 # current versions we're using (tagged in their main repo)
@@ -11,6 +11,11 @@ LZ5_VER	= "v1.5"
 ZSTD_VER= "v1.5.5"
 SNAP_VER= "v0.0.0"
 LZFSE_VER="lzfse-1.0"
+
+# In order to link to external library define it in command line. For example to link with libzstd.so:
+# $ make LIBZSTD=-lzstd
+# You will still need sources in zstd directory to compile program but it will link to libzstd.so.
+
 # uncomment, for cross compiling or windows binaries
 #WIN_LDFLAGS	= -lwinmm -lpsapi
 #CROSS		= i686-w64-mingw32-
@@ -24,7 +29,7 @@ LN	= ln -sf
 #CC	= $(CROSS)clang
 CC	= $(CROSS)gcc
 RANLIB	= $(CROSS)ranlib
-STRIP	= $(CROSS)strip
+#STRIP	= $(CROSS)strip
 SFLAGS	= -R .note -R .comment
 #SFLAGS	= -R .note .comment
 
@@ -44,7 +49,7 @@ PRGS	= lizard-mt$(EXTENSION) \
 	  brotli-mt$(EXTENSION) \
 	  zstd-mt$(EXTENSION) \
 	  snappy-mt$(EXTENSION) \
-	  lzfse-mt$(EXTENSION) 
+	  lzfse-mt$(EXTENSION)
 
 all:	loadsource $(PRGS)
 again:	clean $(PRGS)
@@ -52,23 +57,25 @@ again:	clean $(PRGS)
 ZSTDMTDIR = ../lib
 COMMON	= platform.c $(ZSTDMTDIR)/threading.c
 
-LIBBRO	= $(COMMON) $(ZSTDMTDIR)/brotli-mt_common.c $(ZSTDMTDIR)/brotli-mt_compress.c \
+BRO_MT	= $(COMMON) $(ZSTDMTDIR)/brotli-mt_common.c $(ZSTDMTDIR)/brotli-mt_compress.c \
 	  $(ZSTDMTDIR)/brotli-mt_decompress.c brotli-mt.c
-LIBLIZ	= $(COMMON) $(ZSTDMTDIR)/lizard-mt_common.c $(ZSTDMTDIR)/lizard-mt_compress.c \
+LIZ_MT	= $(COMMON) $(ZSTDMTDIR)/lizard-mt_common.c $(ZSTDMTDIR)/lizard-mt_compress.c \
 	  $(ZSTDMTDIR)/lizard-mt_decompress.c lizard-mt.c
-LIBLZ4	= $(COMMON) $(ZSTDMTDIR)/lz4-mt_common.c $(ZSTDMTDIR)/lz4-mt_compress.c \
+LZ4_MT	= $(COMMON) $(ZSTDMTDIR)/lz4-mt_common.c $(ZSTDMTDIR)/lz4-mt_compress.c \
 	  $(ZSTDMTDIR)/lz4-mt_decompress.c lz4-mt.c
-LIBLZ5	= $(COMMON) $(ZSTDMTDIR)/lz5-mt_common.c $(ZSTDMTDIR)/lz5-mt_compress.c \
+LZ5_MT	= $(COMMON) $(ZSTDMTDIR)/lz5-mt_common.c $(ZSTDMTDIR)/lz5-mt_compress.c \
 	  $(ZSTDMTDIR)/lz5-mt_decompress.c lz5-mt.c
-LIBZSTD	= $(COMMON) $(ZSTDMTDIR)/zstd-mt_common.c $(ZSTDMTDIR)/zstd-mt_compress.c \
+ZSTD_MT	= $(COMMON) $(ZSTDMTDIR)/zstd-mt_common.c $(ZSTDMTDIR)/zstd-mt_compress.c \
 	  $(ZSTDMTDIR)/zstd-mt_decompress.c zstd-mt.c
-LIBSNAP	= $(COMMON) $(ZSTDMTDIR)/snappy-mt_common.c $(ZSTDMTDIR)/snappy-mt_compress.c \
+SNAP_MT	= $(COMMON) $(ZSTDMTDIR)/snappy-mt_common.c $(ZSTDMTDIR)/snappy-mt_compress.c \
 	  $(ZSTDMTDIR)/snappy-mt_decompress.c snappy-mt.c
-LIBLZFSE = $(COMMON) $(ZSTDMTDIR)/lzfse-mt_common.c $(ZSTDMTDIR)/lzfse-mt_compress.c \
+LZFSE_MT = $(COMMON) $(ZSTDMTDIR)/lzfse-mt_common.c $(ZSTDMTDIR)/lzfse-mt_compress.c \
 	  $(ZSTDMTDIR)/lzfse-mt_decompress.c lzfse-mt.c
+
 
 # Brotli, https://github.com/google/brotli
 BRODIR	= brotli/c
+ifndef LIBBRO
 LIBBRO	+= \
 	  $(BRODIR)/common/constants.c \
 	  $(BRODIR)/common/context.c \
@@ -101,21 +108,27 @@ LIBBRO	+= \
 	  $(BRODIR)/enc/metablock.c \
 	  $(BRODIR)/enc/static_dict.c \
 	  $(BRODIR)/enc/utf8_util.c
+endif # ifndef LIBBRO
 CF_BRO	= $(CFLAGS) -I$(BRODIR)/include
 
 
 # LZ4, https://github.com/Cyan4973/lz4
 LZ4DIR	= lz4/lib
+ifndef LIBLZ4
 LIBLZ4	+= $(LZ4DIR)/lz4.c $(LZ4DIR)/lz4frame.c $(LZ4DIR)/lz4hc.c $(LZ4DIR)/xxhash.c
+endif # ifndef LIBLZ4
 CF_LZ4	= $(CFLAGS) -Ilz4/lib
 
 # LZ5, https://github.com/inikep/lz5
 LZ5DIR	= lz5/lib
+ifndef LIBLZ5
 LIBLZ5	+= $(LZ5DIR)/lz5.c $(LZ5DIR)/lz5frame.c $(LZ5DIR)/lz5hc.c $(LZ5DIR)/xxhash.c
+endif # ifndef LIBLZ5
 CF_LZ5	= $(CFLAGS) -Ilz5/lib
 
 # Lizard, https://github.com/inikep/lizard
 LIZDIR	= lizard/lib
+ifndef LIBLIZ
 LIBLIZ	+= $(LIZDIR)/lizard_compress.c \
 	  $(LIZDIR)/lizard_decompress.c \
 	  $(LIZDIR)/lizard_frame.c \
@@ -125,10 +138,12 @@ LIBLIZ	+= $(LIZDIR)/lizard_compress.c \
 	  $(LIZDIR)/entropy/fse_decompress.c \
 	  $(LIZDIR)/entropy/huf_compress.c \
 	  $(LIZDIR)/entropy/huf_decompress.c
+endif # ifndef LIBLIZ
 CF_LIZ	= $(CFLAGS) -Ilizard/lib
 
 # Zstandard, https://github.com/facebook/zstd
 ZSTDDIR	= zstd/lib
+ifndef LIBZSTD
 LIBZSTD	+= $(ZSTDDIR)/common/debug.c \
 	  $(ZSTDDIR)/common/entropy_common.c \
 	  $(ZSTDDIR)/common/error_private.c \
@@ -158,6 +173,7 @@ LIBZSTD	+= $(ZSTDDIR)/common/debug.c \
 	  $(ZSTDDIR)/legacy/zstd_v03.c $(ZSTDDIR)/legacy/zstd_v04.c \
 	  $(ZSTDDIR)/legacy/zstd_v05.c $(ZSTDDIR)/legacy/zstd_v06.c \
 	  $(ZSTDDIR)/legacy/zstd_v07.c
+endif # ifndef LIBZSTD
 CF_ZSTD	= $(CFLAGS) -I$(ZSTDDIR) -I$(ZSTDDIR)/common -I$(ZSTDDIR)/compress \
 	  -I$(ZSTDDIR)/decompress -I$(ZSTDDIR)/legacy
 
@@ -168,56 +184,58 @@ CF_SNAP	= $(CFLAGS) -I$(SNAPDIR)
 
 # lzfse, https://github.com/lzfse/lzfse
 LZFSEDIR = lzfse/src
+ifndef LIBLZFSE
 LIBLZFSE += $(LZFSEDIR)/lzfse_decode.c \
             $(LZFSEDIR)/lzfse_decode_base.c \
             $(LZFSEDIR)/lzfse_encode.c \
             $(LZFSEDIR)/lzfse_encode_base.c \
             $(LZFSEDIR)/lzfse_fse.c \
             $(LZFSEDIR)/lzvn_decode_base.c \
-            $(LZFSEDIR)/lzvn_encode_base.c 
+            $(LZFSEDIR)/lzvn_encode_base.c
+endif # ifndef LIBLZFSE
 CF_LZFSE = $(CFLAGS) -I$(LZFSEDIR)
 
 # append lib include directory
 CFLAGS	+= -I. -I$(ZSTDMTDIR)
 
 brotli-mt$(EXTENSION):
-	$(CC) $(CF_BRO) -DVERSION='$(BRO_VER)' -o $@ $(LIBBRO) $(LDFLAGS) -lm
+	$(CC) $(CF_BRO) $(BRO_MT) -DVERSION='$(BRO_VER)' -o $@ $(LIBBRO) $(LDFLAGS) -lm
 	$(STRIP) $(SFLAGS) $@
 	$(LN) -s $@ un$@
 	$(LN) -s $@ brotlicat-mt
 
 lizard-mt$(EXTENSION):
-	$(CC) $(CF_LIZ) -DVERSION='$(LIZ_VER)' -o $@ $(LIBLIZ) $(LDFLAGS)
+	$(CC) $(CF_LIZ) $(LIZ_MT) -DVERSION='$(LIZ_VER)' -o $@ $(LIBLIZ) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
 	$(LN) -s $@ un$@
 	$(LN) -s $@ lizardcat-mt
 
 lz4-mt$(EXTENSION):
-	$(CC) $(CF_LZ4) -DVERSION='$(LZ4_VER)' -o $@ $(LIBLZ4) $(LDFLAGS)
+	$(CC) $(CF_LZ4) $(LZ4_MT) -DVERSION='$(LZ4_VER)' -o $@ $(LIBLZ4) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
 	$(LN) -s $@ un$@
 	$(LN) -s $@ lz4cat-mt
 
 lz5-mt$(EXTENSION):
-	$(CC) $(CF_LZ5) -DVERSION='$(LZ5_VER)' -o $@ $(LIBLZ5) $(LDFLAGS)
+	$(CC) $(CF_LZ5) $(LZ5_MT) -DVERSION='$(LZ5_VER)' -o $@ $(LIBLZ5) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
 	$(LN) -s $@ un$@
 	$(LN) -s $@ lz5cat-mt
 
 zstd-mt$(EXTENSION):
-	$(CC) $(CF_ZSTD) -DVERSION='$(ZSTD_VER)' -o $@ $(LIBZSTD) $(LDFLAGS)
+	$(CC) $(CF_ZSTD) $(ZSTD_MT) -DVERSION='$(ZSTD_VER)' -o $@ $(LIBZSTD) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
 	$(LN) $@ un$@
 	$(LN) $@ zstdcat-mt
 
 snappy-mt$(EXTENSION):
-	$(CC) $(CF_SNAP) -DVERSION='$(SNAP_VER)' -o $@ $(LIBSNAP) $(LDFLAGS)
+	$(CC) $(CF_SNAP) $(SNAP_MT) -DVERSION='$(SNAP_VER)' -o $@ $(LIBSNAP) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
 	$(LN) $@ un$@
 	$(LN) $@ snappycat-mt
 
 lzfse-mt$(EXTENSION):
-	$(CC) $(CF_LZFSE) -DVERSION='$(LZFSE_VER)' -o $@ $(LIBLZFSE) $(LDFLAGS)
+	$(CC) $(CF_LZFSE) $(LZFSE_MT) -DVERSION='$(LZFSE_VER)' -o $@ $(LIBLZFSE) $(LDFLAGS)
 	$(STRIP) $(SFLAGS) $@
 	$(LN) $@ un$@
 	$(LN) $@ lzfsecat-mt
