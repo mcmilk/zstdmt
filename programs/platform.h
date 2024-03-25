@@ -30,6 +30,7 @@ extern "C" {
 #include <stdio.h>
 #include <errno.h>
 #include <time.h>
+#include <utime.h>
 
 extern int getcpucount(void);
 

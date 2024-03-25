@@ -535,6 +535,34 @@ static int str_casestart(const char *a, const char *b)
 	return 0;
 }
 
+int get_fstat(FILE* file, struct stat* const f_stat)
+{
+	int fd = fileno(file);
+	int i = fstat(fd, f_stat);
+	return i;
+}
+
+int set_fstat(FILE* file, const char* fname, struct stat* const f_stat)
+{
+	int fd = fileno(file);
+	mode_t mode;
+	int warn = 0;
+	struct utimbuf ftm;
+
+	if (f_stat)
+	{
+	mode = f_stat->st_mode;
+	if(fchmod(fd, mode) != 0)
+		warn = 1;
+
+	ftm.actime = f_stat->st_atime;
+	ftm.modtime = f_stat->st_mtime;
+	if(utime(fname, &ftm) != 0)
+		warn = 1;
+	}
+	return warn;
+}
+
 static void treat_stdin()
 {
 	const char *filename = "(stdin)";
@@ -573,6 +601,7 @@ static void treat_file(char *filename)
 	static int first = 1;
 	FILE *local_fout = NULL;
 	char *fn2 = 0;
+	struct stat fin_stat;
 
 	/* reset counter */
 	bytes_written = bytes_read = 0;
@@ -593,6 +622,7 @@ static void treat_file(char *filename)
 		if (errmsg)
 			return;
 		fin = fopen(filename, "rb");
+		get_fstat(fin, &fin_stat);
 	}
 
 	/* setup fout stream */
@@ -655,8 +685,12 @@ static void treat_file(char *filename)
 
 	/* close outstream */
 	if (!global_fout && local_fout != stdout)
+	{
+		fflush(local_fout);
+		set_fstat(local_fout, fn2, &fin_stat);
 		if (fclose(local_fout) != 0 && opt_verbose)
 			fprintf(stderr, "Closing outfile failed.");
+	}
 
 	/* listing mode */
 	if (opt_mode == MODE_LIST)
@@ -683,6 +717,8 @@ static void treat_file(char *filename)
 	first = 0;
 	return;
 }
+
+
 
 int main(int argc, char **argv)
 {
@@ -938,3 +974,4 @@ int main(int argc, char **argv)
 	/* exit should flush stdout / stderr */
 	exit(exit_code);
 }
+
