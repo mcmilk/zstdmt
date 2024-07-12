@@ -1,6 +1,6 @@
 
 /**
- * Copyright (c) 2017 - 2020 Tino Reichardt
+ * Copyright (c) 2017 - 2024 Tino Reichardt
  * All rights reserved.
  *
  * This source code is licensed under the BSD-style license found in the
@@ -79,19 +79,20 @@ static void panic(const char *msg)
 	exit(1);
 }
 
-static void version(void)
+static void version(int quit)
 {
-	printf("%s version %s, zstdmt v0.8\n"
-	       "\nCopyright (c) 2016 - 2020 Tino Reichardt" "\n"
-	       "\n", progname, VERSION);
-	exit(0);
+	printf(" %s using libzstdmt v0.8, using %s %s"
+		"\n Copyright (c) 2016 - 2024 Tino Reichardt",
+		progname, METHOD, VERSION);
+
+	if (quit)
+		exit(0);
 }
 
 static void license(void)
 {
-	printf("\n %s version %s\n"
-	       "\n Copyright (c) 2016 - 2020 Tino Reichardt"
-	       "\n "
+	version(0);
+	printf("\n"
 	       "\n Redistribution and use in source and binary forms, with or without modification,"
 	       "\n are permitted provided that the following conditions are met:"
 	       "\n "
@@ -114,7 +115,7 @@ static void license(void)
 	       "\n SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
 	       "\n "
 	       "\n Report bugs to: https://github.com/mcmilk/zstdmt/issues"
-	       "\n", progname, VERSION);
+	       "\n");
 	exit(0);
 }
 
@@ -832,7 +833,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'V':	/* version */
-			version();
+			version(1);
 			break;
 
 			/* 2) additional options */

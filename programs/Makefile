@@ -8,7 +8,7 @@ BRO_VER	= "v1.1.0"
 LIZ_VER	= "v1.0"
 LZ4_VER	= "v1.9.4"
 LZ5_VER	= "v1.5"
-ZSTD_VER= "v1.5.5"
+ZSTD_VER= "v1.5.6"
 SNAP_VER= "v0.0.0"
 LZFSE_VER="lzfse-1.0"
 
@@ -29,9 +29,8 @@ LN	= ln -sf
 #CC	= $(CROSS)clang
 CC	= $(CROSS)gcc
 RANLIB	= $(CROSS)ranlib
-#STRIP	= $(CROSS)strip
+STRIP	= $(CROSS)strip
 SFLAGS	= -R .note -R .comment
-#SFLAGS	= -R .note .comment
 
 CFLAGS	= -W -pthread -Wall -pipe
 CFLAGS	+= -fomit-frame-pointer
