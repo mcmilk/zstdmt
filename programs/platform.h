@@ -44,6 +44,8 @@ extern int getcpucount(void);
 #include <timezoneapi.h> /* FileTimeToSystemTime() */
 #include <psapi.h> /* GetProcessMemoryInfo() */
 #include <io.h> /* _isatty */
+#define fchmod(x,y) 0
+#define fchown(x,y,z) 0
 
 #define DEVNULL "NUL"
 #define PATH_SEPERATOR '\\'
