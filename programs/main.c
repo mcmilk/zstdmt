@@ -550,17 +550,17 @@ int set_fstat(FILE* file, const char* fname, struct stat* const f_stat)
 	int warn = 0;
 	struct utimbuf ftm;
 
-	if (f_stat)
-	{
-	mode = f_stat->st_mode;
-	if(fchmod(fd, mode) != 0)
-		warn = 1;
+	if (f_stat) {
+		mode = f_stat->st_mode;
+		if (fchmod(fd, mode) != 0)
+			warn = 1;
 
-	ftm.actime = f_stat->st_atime;
-	ftm.modtime = f_stat->st_mtime;
-	if(utime(fname, &ftm) != 0)
-		warn = 1;
+		ftm.actime = f_stat->st_atime;
+		ftm.modtime = f_stat->st_mtime;
+		if (utime(fname, &ftm) != 0)
+			warn = 1;
 	}
+
 	return warn;
 }
 

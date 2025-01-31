@@ -84,6 +84,8 @@ struct rusage {
 	U64 ru_nivcsw;   /* involuntary context switches */
 };
 extern int getrusage(int who, struct rusage *uv_rusage);
+
+extern int fchmod(int fd, mode_t mode);
 #else
 
 /* POSIX */

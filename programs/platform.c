@@ -88,6 +88,14 @@ int getrusage(int who, struct rusage *uv_rusage)
 
 	return 0;
 }
+
+int fchmod(int fd, mode_t mode)
+{
+	(void)fd;
+	(void)mode;
+	errno = ENOSYS;
+	return -1;
+}
 #else
 /* POSIX */
 int getcpucount(void)
