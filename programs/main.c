@@ -423,6 +423,10 @@ static void print_testmode(const char *filename)
 
 static void check_stdout(void)
 {
+	/* for -l and -t we can write to stdout ;) */
+	if (opt_mode >= MODE_LIST)
+		return;
+
 	if (IS_CONSOLE(fout) && !opt_force)
 		panic("Data not written to terminal. Use -f to force!");
 }
