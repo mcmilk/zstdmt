@@ -123,7 +123,7 @@ ZSTDCB_CCtx *ZSTDCB_createCCtx(int threads, int level, int inputsize)
 			23, 23, 23, 23, 25, /* 16 - 20 */
 			26, 27
 		};
-		ctx->inputsize = 1 << (windowLog[level - 1] + 1);
+		ctx->inputsize = 1 << (windowLog[level] + 1);
 	}
 
 	/* setup ctx */
