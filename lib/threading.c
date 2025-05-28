@@ -62,6 +62,7 @@ int _pthread_join(pthread_t * thread, void **value_ptr)
 	case WAIT_OBJECT_0:
 		if (value_ptr)
 			*value_ptr = thread->arg;
+		CloseHandle(thread->handle);
 		return 0;
 	case WAIT_ABANDONED:
 		return EINVAL;
